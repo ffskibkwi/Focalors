@@ -5,7 +5,8 @@
 
   # Focalors
 
-  基于FFT区域分解算法的高性能不可压缩流求解器
+
+  High-Performance Incompressible CFD Solver Based on FFT-based Domain Decomposition Algorithm
 </div>
 
 <div align="center">
@@ -14,10 +15,10 @@
   [![Language](https://img.shields.io/badge/Language-C%2B%2B-blue.svg)](https://isocpp.org/)
   [![CMake](https://img.shields.io/badge/Build-CMake-green.svg)](https://cmake.org/)
 
-  中文&nbsp;&nbsp;|&nbsp;&nbsp;[English](./README_en.md)&nbsp;&nbsp;|&nbsp;&nbsp;[日本語](./README_ja.md)
+  [中文](./README.md)&nbsp;&nbsp;|&nbsp;&nbsp;English&nbsp;&nbsp;|&nbsp;&nbsp;[日本語](./README_ja.md)
 
 </div>
 
 ---
 
-**Focalors** 
+**Focalors**
