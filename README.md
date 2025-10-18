@@ -21,3 +21,8 @@
 ---
 
 **Focalors** 
+
+```shell
+cmake -S . -B build -DCMAKE_CXX_COMPILER=mpicxx -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel $(nproc) #推荐使用并行编译，将$(nproc)替换为机器的核心数
+```
