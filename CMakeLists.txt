@@ -32,15 +32,18 @@ file(GLOB_RECURSE SOLVER_HEADER_FILES
     "${CMAKE_SOURCE_DIR}/poisson_base/base/*.h" "${CMAKE_SOURCE_DIR}/poisson_base/base/*.hpp"
     "${CMAKE_SOURCE_DIR}/poisson_base/io/*.h"   "${CMAKE_SOURCE_DIR}/poisson_base/io/*.hpp"
     "${CMAKE_SOURCE_DIR}/poisson_base/pe/*.h"   "${CMAKE_SOURCE_DIR}/poisson_base/pe/*.hpp"
+    "${CMAKE_SOURCE_DIR}/ns/*.h"   "${CMAKE_SOURCE_DIR}/ns/*.hpp"
 )
 file(GLOB_RECURSE SOLVER_SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/poisson_base/base/*.cpp"
     "${CMAKE_SOURCE_DIR}/poisson_base/io/*.cpp"
     "${CMAKE_SOURCE_DIR}/poisson_base/pe/*.cpp"
+    "${CMAKE_SOURCE_DIR}/ns/*.cpp"
 )
 
 add_library(Solver ${SOLVER_SOURCE_FILES} ${SOLVER_HEADER_FILES})
 target_include_directories(Solver PUBLIC
+    "${CMAKE_SOURCE_DIR}"
     "${CMAKE_SOURCE_DIR}/poisson_base"  # 使得 #include "base/..." 可解析
     ${FFTW_INCLUDE_DIRS}
     ${MPI_CXX_INCLUDE_DIRS})
