@@ -32,7 +32,8 @@ private:
     std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, Domain2DUniform*>> adjacency;
     
     std::unordered_map<Domain2DUniform*, field2*> u_field_map, v_field_map, p_field_map;
-    std::unordered_map<Domain2DUniform*, field2*> u_temp_fields, v_temp_fields;
+    std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, double*>> u_buffer_map, v_buffer_map, p_buffer_map;
+    std::unordered_map<Domain2DUniform*, field2*> u_temp_field_map, v_temp_field_map;
     
     EnvironmentConfig* env_config;
     
@@ -45,4 +46,6 @@ private:
 
     void euler_conv_diff();
     void buffer_pass();
+    void boundary_init();
+    void boundary_update();
 };

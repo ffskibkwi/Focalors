@@ -33,19 +33,28 @@ ConcatNSSolver2D::ConcatNSSolver2D(Variable* in_u_var, Variable* in_v_var, Varia
 
     domains = u_var->geometry->domains;
     adjacency = u_var->geometry->adjacency;
+
     u_field_map = u_var->field_map;
     v_field_map = v_var->field_map;
     p_field_map = p_var->field_map;
 
+    u_buffer_map = u_var->buffer_map;
+    v_buffer_map = v_var->buffer_map;
+    p_buffer_map = p_var->buffer_map;
+
     //Construct the temp field for each domain
     for (auto &[domain, field] : u_field_map)
-        u_temp_fields[domain] = new field2(field->get_nx(), field->get_ny(), field->get_name() + "_temp");
+        u_temp_field_map[domain] = new field2(field->get_nx(), field->get_ny(), field->get_name() + "_temp");
     for (auto &[domain, field] : v_field_map)
-        v_temp_fields[domain] = new field2(field->get_nx(), field->get_ny(), field->get_name() + "_temp");
+        v_temp_field_map[domain] = new field2(field->get_nx(), field->get_ny(), field->get_name() + "_temp");
 }
 
 ConcatNSSolver2D::~ConcatNSSolver2D()
 {
+    for (auto &[domain, field] : u_field_map)
+        delete u_temp_field_map[domain];
+    for (auto &[domain, field] : v_field_map)
+        delete v_temp_field_map[domain];
 }
 
 void ConcatNSSolver2D::variable_check()
@@ -71,14 +80,15 @@ void ConcatNSSolver2D::euler_conv_diff()
         field2& v = *v_field_map[domain];
         field2& p = *p_field_map[domain];
 
-        field2& u_temp = *u_temp_fields[domain];
-        field2& v_temp = *v_temp_fields[domain];
+        field2& u_temp = *u_temp_field_map[domain];
+        field2& v_temp = *v_temp_field_map[domain];
 
         int nx = u.get_nx();
         int ny = u.get_ny();
         double hx = domain->hx;
         double hy = domain->hy;
 
+        // u
         OPENMP_PARALLEL_FOR()
         for (int i = 0; i < nx; i++)
         {
@@ -92,6 +102,7 @@ void ConcatNSSolver2D::euler_conv_diff()
             }
         }
 
+        // v
         OPENMP_PARALLEL_FOR()
         for (int i = 0; i < nx; i++)
         {
@@ -109,8 +120,79 @@ void ConcatNSSolver2D::euler_conv_diff()
 
 void ConcatNSSolver2D::buffer_pass()
 {
+    //Only adjacented boundaries
+    for (auto &domain : domains)
+    {
+        field2& u = *u_field_map[domain];
+        field2& v = *v_field_map[domain];
+        field2& p = *p_field_map[domain];
+
+        int nx = u.get_nx();
+        int ny = u.get_ny();
+
+        for (auto &[loc, type] : u_var->boundary_type_map[domain])
+        {
+            //While u has adjacented boundary, it means v and p also have adjacented boundary
+            if (type == PDEBoundaryType::Adjacented)
+            {
+                double* u_buffer = u_buffer_map[domain][loc];
+                double* v_buffer = v_buffer_map[domain][loc];
+                double* p_buffer = p_buffer_map[domain][loc];
+
+                Domain2DUniform* adj_domain = adjacency[domain][loc];
+                field2& adj_u = *u_field_map[adj_domain];
+                field2& adj_v = *v_field_map[adj_domain];
+                field2& adj_p = *p_field_map[adj_domain];
+                switch (loc)
+                {
+                    case LocationType::Left:
+                        
+                        for (int j = 0; j < ny; j++)
+                        {
+                            u_buffer[j] = adj_u(nx - 1, j);
+                            v_buffer[j] = adj_v(nx - 1, j);
+                            p_buffer[j] = adj_p(nx - 1, j);
+                        }
+                        break;
+                    case LocationType::Right:
+                        for (int j = 0; j < ny; j++)
+                        {
+                            u_buffer[j] = adj_u(0, j);
+                            v_buffer[j] = adj_v(0, j);
+                        }
+                        break;
+                    case LocationType::Down:
+                        for (int i = 0; i < nx; i++)
+                        {
+                            u_buffer[i] = adj_u(i, ny - 1);
+                            v_buffer[i] = adj_v(i, ny - 1);
+                            p_buffer[i] = adj_p(i, ny - 1);
+                        }
+                        break;
+                    case LocationType::Up:
+                        for (int i = 0; i < nx; i++)
+                        {
+                            u_buffer[i] = adj_u(i, 0);
+                            v_buffer[i] = adj_v(i, 0);
+                        }
+                        break;
+                    default:
+                        throw std::runtime_error("ConcatNSSolver2D: invalid location type");
+                }
+            }
+        }
+        
+    }
+}
+
+void ConcatNSSolver2D::boundary_init()
+{
     // for (auto &domain : domains)
     // {
-    //     for 
     // }
+}
+
+void ConcatNSSolver2D::boundary_update()
+{
+
 }
