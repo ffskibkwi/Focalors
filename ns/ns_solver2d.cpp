@@ -7,6 +7,8 @@ ConcatNSSolver2D::ConcatNSSolver2D(Variable* in_u_var, Variable* in_v_var, Varia
     , time_config(in_time_config)
     , phy_config(in_physics_config)
     , env_config(in_env_config)
+    , left_up_corner_map(v_var->left_up_corner_map)
+    , right_down_corner_map(u_var->right_down_corner_map)
 {
     //config load
     if (in_env_config)
@@ -70,9 +72,17 @@ void ConcatNSSolver2D::variable_check()
 
 void ConcatNSSolver2D::solve()
 {
+    boundary_init();
+    for (int it = 0; it < num_it; it++)
+    {
+        euler_conv_diff_inner();
+        buffer_pass();
+        euler_conv_diff_outer();
+        boundary_update();
+    }
 }
 
-void ConcatNSSolver2D::euler_conv_diff()
+void ConcatNSSolver2D::euler_conv_diff_inner()
 {
     for (auto &domain : domains)
     {
@@ -118,210 +128,7 @@ void ConcatNSSolver2D::euler_conv_diff()
     }
 }
 
-void ConcatNSSolver2D::buffer_pass()
+void ConcatNSSolver2D::euler_conv_diff_outer()
 {
-    //Only adjacented boundaries
-    for (auto &domain : domains)
-    {
-        field2& u = *u_field_map[domain];
-        field2& v = *v_field_map[domain];
-        field2& p = *p_field_map[domain];
-
-        int nx = u.get_nx();
-        int ny = u.get_ny();
-
-        for (auto &[loc, type] : u_var->boundary_type_map[domain])
-        {
-            //While u has adjacented boundary, it means v and p also have adjacented boundary
-            if (type == PDEBoundaryType::Adjacented)
-            {
-                double* u_buffer = u_buffer_map[domain][loc];
-                double* v_buffer = v_buffer_map[domain][loc];
-                double* p_buffer = p_buffer_map[domain][loc];
-
-                Domain2DUniform* adj_domain = adjacency[domain][loc];
-                field2& adj_u = *u_field_map[adj_domain];
-                field2& adj_v = *v_field_map[adj_domain];
-                field2& adj_p = *p_field_map[adj_domain];
-                switch (loc)
-                {
-                    case LocationType::Left:
-                        
-                        for (int j = 0; j < ny; j++)
-                        {
-                            u_buffer[j] = adj_u(nx - 1, j);
-                            v_buffer[j] = adj_v(nx - 1, j);
-                            p_buffer[j] = adj_p(nx - 1, j);
-                        }
-                        break;
-                    case LocationType::Right:
-                        for (int j = 0; j < ny; j++)
-                        {
-                            u_buffer[j] = adj_u(0, j);
-                            v_buffer[j] = adj_v(0, j);
-                        }
-                        break;
-                    case LocationType::Down:
-                        for (int i = 0; i < nx; i++)
-                        {
-                            u_buffer[i] = adj_u(i, ny - 1);
-                            v_buffer[i] = adj_v(i, ny - 1);
-                            p_buffer[i] = adj_p(i, ny - 1);
-                        }
-                        break;
-                    case LocationType::Up:
-                        for (int i = 0; i < nx; i++)
-                        {
-                            u_buffer[i] = adj_u(i, 0);
-                            v_buffer[i] = adj_v(i, 0);
-                        }
-                        break;
-                    default:
-                        throw std::runtime_error("ConcatNSSolver2D: invalid location type");
-                }
-            }
-        }
-        
-    }
-}
-
-void ConcatNSSolver2D::boundary_init()
-{
-    //It only be used once at the start of time advancing
-    //Including u-left/right v-down/up
-    for (auto &domain : domains)
-    {
-        field2& u = *u_field_map[domain];
-        field2& v = *v_field_map[domain];
-
-        int nx = u.get_nx();
-        int ny = u.get_ny();
-
-        for (auto &[loc, type] : u_var->boundary_type_map[domain])
-        {
-            if (loc == LocationType::Left)
-            {
-                //left-u boundary is at physical boundary
-                if (type == PDEBoundaryType::Dirichlet)
-                {
-                    if (u_var->has_boundary_value_map[domain][loc])
-                    {
-                        double* boundary_value = u_var->boundary_value_map[domain][loc];
-                        for (int j = 0; j < ny; j++)
-                            u(0, j) = boundary_value[j];
-                    }else
-                    {
-                        for (int j = 0; j < ny; j++)
-                            u(0, j) = 0.0;
-                    }
-                }else if (type == PDEBoundaryType::Neumann)
-                {
-                    throw std::runtime_error("ConcatNSSolver2D: left-u boundary is not supported for Neumann boundary");
-                }else if (type == PDEBoundaryType::Periodic)
-                {
-                    throw std::runtime_error("ConcatNSSolver2D: left-u boundary is not supported for Periodic boundary (Under development)");
-                }
-            }
-
-            if (loc == LocationType::Right)
-            {
-                //right-u boundary is at physical boundary
-                if (type == PDEBoundaryType::Dirichlet)
-                {
-                    double* u_buffer_right = u_buffer_map[domain][loc];
-                    if (u_var->has_boundary_value_map[domain][loc])
-                    {
-                        double* boundary_value = u_var->boundary_value_map[domain][loc];
-                        for (int j = 0; j < ny; j++)
-                            u_buffer_right[j] = boundary_value[j];
-                    }else
-                    {
-                        for (int j = 0; j < ny; j++)
-                            u_buffer_right[j] = 0.0;
-                    }
-                }else if (type == PDEBoundaryType::Neumann)
-                {
-                    double* u_buffer_right = u_buffer_map[domain][loc];
-                    if (u_var->has_boundary_value_map[domain][loc])
-                    {
-                        throw std::runtime_error("ConcatNSSolver2D: right-u Neumann boundary should not set value");
-                    }else
-                    {
-                        for (int j = 0; j < ny; j++)
-                            u_buffer_right[j] = u(nx - 1, j);
-                    }
-                }else if (type == PDEBoundaryType::Periodic)
-                {
-                    throw std::runtime_error("ConcatNSSolver2D: right-u boundary is not supported for Periodic boundary (Under development)");
-                }
-            }
-        }
-
-        for (auto &[loc, type] : v_var->boundary_type_map[domain])
-        {
-            if (loc == LocationType::Up)
-            {
-                //up-v boundary is at physical boundary
-                if (type == PDEBoundaryType::Dirichlet)
-                {
-                    double* v_buffer_up = v_buffer_map[domain][loc];
-                    if (v_var->has_boundary_value_map[domain][loc])
-                    {
-                        double* boundary_value = v_var->boundary_value_map[domain][loc];
-                        for (int i = 0; i < nx; i++)
-                            v_buffer_up[i] = boundary_value[i];
-                    }else
-                    {
-                        for (int i = 0; i < nx; i++)
-                            v_buffer_up[i] = 0.0;
-                    }
-                }else if (type == PDEBoundaryType::Neumann)
-                {
-                    double* v_buffer_up = v_buffer_map[domain][loc];
-                    if (u_var->has_boundary_value_map[domain][loc])
-                    {
-                        throw std::runtime_error("ConcatNSSolver2D: up-v Neumann boundary should not set value");
-                    }else
-                    {
-                        for (int i = 0; i < nx; i++)
-                            v_buffer_up[i] = v(i, ny - 1);
-                    }
-                }else if (type == PDEBoundaryType::Periodic)
-                {
-                    throw std::runtime_error("ConcatNSSolver2D: up-v boundary is not supported for Periodic boundary (Under development)");
-                }
-            }
-
-            if (loc == LocationType::Down)
-            {
-                //down-v boundary is at physical boundary
-                if (type == PDEBoundaryType::Dirichlet)
-                {
-                    if (v_var->has_boundary_value_map[domain][loc])
-                    {
-                        double* boundary_value = v_var->boundary_value_map[domain][loc];
-                        for (int i = 0; i < nx; i++)
-                            v(i, 0) = boundary_value[i];
-                    }else
-                    {
-                        for (int i = 0; i < nx; i++)
-                            v(i, 0) = 0.0;
-                    }
-                }else if (type == PDEBoundaryType::Neumann)
-                {
-                    throw std::runtime_error("ConcatNSSolver2D: down-v boundary is not supported for Neumann boundary");
-                }else if (type == PDEBoundaryType::Periodic)
-                {
-                    throw std::runtime_error("ConcatNSSolver2D: down-v boundary is not supported for Periodic boundary (Under development)");
-                }
-            }
-        }
-    }
-}
-
-void ConcatNSSolver2D::boundary_update()
-{
-    //It is used in every time step
-    //Including u-up/down v-left/right
 
 }

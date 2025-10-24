@@ -34,6 +34,9 @@ private:
     std::unordered_map<Domain2DUniform*, field2*> u_field_map, v_field_map, p_field_map;
     std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, double*>> u_buffer_map, v_buffer_map, p_buffer_map;
     std::unordered_map<Domain2DUniform*, field2*> u_temp_field_map, v_temp_field_map;
+
+    std::unordered_map<Domain2DUniform*, double>& left_up_corner_map;
+    std::unordered_map<Domain2DUniform*, double>& right_down_corner_map;
     
     EnvironmentConfig* env_config;
     
@@ -44,7 +47,8 @@ private:
     PhysicsConfig* phy_config;
     double nu;
 
-    void euler_conv_diff();
+    void euler_conv_diff_inner();
+    void euler_conv_diff_outer();
     void buffer_pass();
     void boundary_init();
     void boundary_update();
