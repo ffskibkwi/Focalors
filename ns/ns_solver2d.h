@@ -35,8 +35,8 @@ private:
     std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, double*>> u_buffer_map, v_buffer_map, p_buffer_map;
     std::unordered_map<Domain2DUniform*, field2*> u_temp_field_map, v_temp_field_map;
 
-    std::unordered_map<Domain2DUniform*, double>& left_up_corner_map;
-    std::unordered_map<Domain2DUniform*, double>& right_down_corner_map;
+    std::unordered_map<Domain2DUniform*, double>& left_up_corner_value_map;
+    std::unordered_map<Domain2DUniform*, double>& right_down_corner_value_map;
     
     EnvironmentConfig* env_config;
     

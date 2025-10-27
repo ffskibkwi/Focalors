@@ -7,8 +7,8 @@ ConcatNSSolver2D::ConcatNSSolver2D(Variable* in_u_var, Variable* in_v_var, Varia
     , time_config(in_time_config)
     , phy_config(in_physics_config)
     , env_config(in_env_config)
-    , left_up_corner_map(v_var->left_up_corner_map)
-    , right_down_corner_map(u_var->right_down_corner_map)
+    , left_up_corner_value_map(v_var->left_up_corner_value_map)
+    , right_down_corner_value_map(u_var->right_down_corner_value_map)
 {
     //config load
     if (in_env_config)
@@ -69,7 +69,6 @@ void ConcatNSSolver2D::variable_check()
         throw std::runtime_error("ConcatNSSolver2D: p->position_type is not Center");
 }
 
-
 void ConcatNSSolver2D::solve()
 {
     boundary_init();
@@ -114,9 +113,9 @@ void ConcatNSSolver2D::euler_conv_diff_inner()
 
         // v
         OPENMP_PARALLEL_FOR()
-        for (int i = 0; i < nx; i++)
+        for (int i = 1; i < nx - 1; i++)
         {
-            for (int j = 0; j < ny; j++)
+            for (int j = 1; j < ny - 1; j++)
             {
                 double conv_x = (v(i, j) + v(i + 1, j)) * (u(i + 1, j - 1) + u(i + 1, j)) - (v(i - 1, j) + v(i, j)) * (u(i, j - 1) + u(i, j));
                 double conv_y = v(i, j + 1) * (v(i, j + 1) + 2.0 * v(i, j)) - v(i, j - 1) * (v(i, j - 1) + 2.0 * v(i, j));
@@ -130,5 +129,68 @@ void ConcatNSSolver2D::euler_conv_diff_inner()
 
 void ConcatNSSolver2D::euler_conv_diff_outer()
 {
+    for (auto &domain : domains)
+    {
+        field2& u = *u_field_map[domain];
+        field2& v = *v_field_map[domain];
+        field2& u_temp = *u_temp_field_map[domain];
+        field2& v_temp = *v_temp_field_map[domain];
 
+        double hx = domain->hx;
+        double hy = domain->hy;
+
+        double* v_left_buffer = v_buffer_map[domain][LocationType::Left];
+        double* v_right_buffer = v_buffer_map[domain][LocationType::Right];
+        double* v_down_buffer = v_buffer_map[domain][LocationType::Down];
+        double* v_up_buffer = v_buffer_map[domain][LocationType::Up];
+
+        double* u_left_buffer = u_buffer_map[domain][LocationType::Left];
+        double* u_right_buffer = u_buffer_map[domain][LocationType::Right];
+        double* u_down_buffer = u_buffer_map[domain][LocationType::Down];
+        double* u_up_buffer = u_buffer_map[domain][LocationType::Up];
+
+        int nx = domain->get_nx();
+        int ny = domain->get_ny();
+
+        auto bound_cal = [&](int i, int j)
+        {
+            double u_left = i == 0 ? u_left_buffer[j] : u(i - 1, j);
+            double u_right = i == nx - 1 ? u_right_buffer[j] : u(i + 1, j);
+            double u_down = j == 0 ? u_down_buffer[i] : u(i, j - 1);
+            double u_up = j == ny - 1 ? u_up_buffer[i] : u(i, j + 1);
+
+            double v_left = i == 0 ? v_left_buffer[j] : v(i - 1, j);
+            double v_right = i == nx - 1 ? v_right_buffer[j] : v(i + 1, j);
+            double v_down = j == 0 ? v_down_buffer[i] : v(i, j - 1);
+            double v_up = j == ny - 1 ? v_up_buffer[i] : v(i, j + 1);
+
+            double v_left_up = i == 0 ?
+                (j == ny - 1 ? left_up_corner_value_map[domain] : v_left_buffer[j + 1])
+                : (j == ny - 1 ? v_up_buffer[i - 1] : v(i - 1, j + 1));
+
+            double u_right_down = j == 0 ? 
+                (i == nx - 1 ? right_down_corner_value_map[domain] : u_down_buffer[i + 1])
+                : (i == nx - 1 ? u_right_buffer[j - 1] : u(i + 1, j - 1));
+
+            double u_conv_x = u_right * (u_right + 2.0 * u(i, j)) - u_left * (u_left + 2.0 * u(i, j));
+            double u_conv_y = (u(i, j) + u_up) * (v_left_up + v_up) - (u_down + u(i, j)) * (v_left + v(i, j));
+            double u_diff = (u_right + u_left - 2.0 * u(i, j)) / hx / hx + (u_up + u_down - 2.0 * u(i, j)) / hy / hy;
+
+            double v_conv_x = (v(i, j) + v_right) * (u_right_down + u_right) - (v_left + v(i, j)) * (u_down + u(i, j));
+            double v_conv_y = v_up * (v_up + 2.0 * v(i, j)) - v_down * (v_down + 2.0 * v(i, j));
+            double v_diff = (v_right + v_left - 2.0 * v(i, j)) / hx / hx + (v_up + v_down - 2.0 * v(i, j)) / hy / hy;
+
+            u_temp(i, j) = -0.25 / hx * u_conv_x - 0.25 / hy * u_conv_y + nu * u_diff;
+            v_temp(i, j) = -0.25 / hx * v_conv_x - 0.25 / hy * v_conv_y + nu * v_diff;
+        };
+
+        for (int i = 0; i < nx; i++)
+            bound_cal(i, ny - 1);
+        for (int j = 0; j < ny; j++)
+            bound_cal(nx - 1, j);
+        for (int i = 0; i < nx; i++)
+            bound_cal(i, 0);
+        for (int j = 0; j < ny; j++)
+            bound_cal(0, j);
+    }
 }

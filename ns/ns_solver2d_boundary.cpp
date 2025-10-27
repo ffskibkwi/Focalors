@@ -341,34 +341,34 @@ void ConcatNSSolver2D::boundary_update()
         //Corner nodes
         if (u_var->boundary_type_map[domain][LocationType::Down] == PDEBoundaryType::Dirichlet)
         {    
-            //Becareful! In the current version, the Dirichlet boundary at the corner is forced to be zero
-            right_down_corner_map[domain] =  -1.0 * u_buffer_map[domain][LocationType::Down][0];
+            double right_down_corner_value = u_var->right_down_corner_boundary_map[domain];
+            right_down_corner_value_map[domain] =  2.0 * right_down_corner_value - u_buffer_map[domain][LocationType::Down][0];
         }else if (u_var->boundary_type_map[domain][LocationType::Down] == PDEBoundaryType::Neumann)
         {
-            right_down_corner_map[domain] =  u_buffer_map[domain][LocationType::Down][0];
+            right_down_corner_value_map[domain] =  u_buffer_map[domain][LocationType::Down][0];
         }else if (u_var->boundary_type_map[domain][LocationType::Down] == PDEBoundaryType::Periodic)
         {
             throw std::runtime_error("ConcatNSSolver2D (corner): down-u boundary is not supported for Periodic boundary (Under development)");
         }else if (u_var->boundary_type_map[domain][LocationType::Down] == PDEBoundaryType::Adjacented)
         {
             Domain2DUniform* adj_domain = adjacency[domain][LocationType::Left];
-            left_up_corner_map[domain] = u_buffer_map[adj_domain][LocationType::Up][adj_domain->get_nx() - 1];
+            left_up_corner_value_map[domain] = u_buffer_map[adj_domain][LocationType::Up][adj_domain->get_nx() - 1];
         }
         
         if (v_var->boundary_type_map[domain][LocationType::Left] == PDEBoundaryType::Dirichlet)
         {
-            //Becareful! In the current version, the Dirichlet boundary at the corner is forced to be zero
-            left_up_corner_map[domain] =  -1.0 * v_buffer_map[domain][LocationType::Left][0];
+           double left_up_corner_value = v_var->left_up_corner_boundary_map[domain];
+           left_up_corner_value_map[domain] =  2.0 * left_up_corner_value - v_buffer_map[domain][LocationType::Left][0];
         }else if (v_var->boundary_type_map[domain][LocationType::Left] == PDEBoundaryType::Neumann)
         {
-            left_up_corner_map[domain] =  v_buffer_map[domain][LocationType::Left][0];
+            left_up_corner_value_map[domain] =  v_buffer_map[domain][LocationType::Left][0];
         }else if (v_var->boundary_type_map[domain][LocationType::Left] == PDEBoundaryType::Periodic)
         {
             throw std::runtime_error("ConcatNSSolver2D (corner): left-v boundary is not supported for Periodic boundary (Under development)");
         }else if (v_var->boundary_type_map[domain][LocationType::Left] == PDEBoundaryType::Adjacented)
         {
             Domain2DUniform* adj_domain = adjacency[domain][LocationType::Left];
-            left_up_corner_map[domain] = v_buffer_map[adj_domain][LocationType::Right][adj_domain->get_ny() - 1];
+            left_up_corner_value_map[domain] = v_buffer_map[adj_domain][LocationType::Right][adj_domain->get_ny() - 1];
         }
     }
 }
