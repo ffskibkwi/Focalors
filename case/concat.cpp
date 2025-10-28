@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
     // clang-format off
     u.set_boundary_type(&T2, LocationType::Up,    PDEBoundaryType::Dirichlet);
 
-    u.set_boundary_type(&T1, LocationType::Left,  PDEBoundaryType::Dirichlet);
+    u.set_boundary_type(&T1, LocationType::Left,  PDEBoundaryType::Dirichlet); // inlet
     u.set_boundary_type(&T1, LocationType::Up,    PDEBoundaryType::Dirichlet);
     u.set_boundary_type(&T1, LocationType::Down,  PDEBoundaryType::Dirichlet);
 
@@ -81,7 +81,7 @@ int main(int argc, char* argv[])
     u.set_boundary_type(&T5, LocationType::Left,  PDEBoundaryType::Dirichlet);
     u.set_boundary_type(&T5, LocationType::Down,  PDEBoundaryType::Dirichlet);
 
-    u.set_boundary_type(&T6, LocationType::Right, PDEBoundaryType::Neumann);
+    u.set_boundary_type(&T6, LocationType::Right, PDEBoundaryType::Neumann); // outlet
     u.set_boundary_type(&T6, LocationType::Up,    PDEBoundaryType::Dirichlet);
     u.set_boundary_type(&T6, LocationType::Down,  PDEBoundaryType::Dirichlet);
     // clang-format on
@@ -99,7 +99,7 @@ int main(int argc, char* argv[])
     // clang-format off
     v.set_boundary_type(&T2, LocationType::Up,    PDEBoundaryType::Dirichlet);
 
-    v.set_boundary_type(&T1, LocationType::Left,  PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T1, LocationType::Left,  PDEBoundaryType::Dirichlet); // inlet
     v.set_boundary_type(&T1, LocationType::Up,    PDEBoundaryType::Dirichlet);
     v.set_boundary_type(&T1, LocationType::Down,  PDEBoundaryType::Dirichlet);
 
@@ -113,7 +113,7 @@ int main(int argc, char* argv[])
     v.set_boundary_type(&T5, LocationType::Left,  PDEBoundaryType::Dirichlet);
     v.set_boundary_type(&T5, LocationType::Down,  PDEBoundaryType::Dirichlet);
 
-    v.set_boundary_type(&T6, LocationType::Right, PDEBoundaryType::Neumann);
+    v.set_boundary_type(&T6, LocationType::Right, PDEBoundaryType::Neumann); // outlet
     v.set_boundary_type(&T6, LocationType::Up,    PDEBoundaryType::Dirichlet);
     v.set_boundary_type(&T6, LocationType::Down,  PDEBoundaryType::Dirichlet);
     // clang-format on
@@ -150,10 +150,16 @@ int main(int argc, char* argv[])
     p.set_boundary_type(&T6, LocationType::Down,  PDEBoundaryType::Neumann);
     // clang-format on
 
-    ConcatNSSolver2D ns_solver(&u, &v, &p, time_config, physics_config, env_config);
-    ns_solver.solve();
-    ConcatPoissonSolver2D pe_solver(&v, env_config);
-    pe_solver.solve();
+    for (int iter = 0; i < time_config->num_iterations; iter++)
+    {
+        if (iter % 200 == 0)
+            std::cout << "iter: " << iter << "/" << time_config->num_iterations << "\n";
+
+        ConcatNSSolver2D ns_solver(&u, &v, &p, time_config, physics_config, env_config);
+        ns_solver.solve();
+        ConcatPoissonSolver2D pe_solver(&v, env_config);
+        pe_solver.solve();
+    }
 
     IO::field_to_csv(v_T1, "result/v_T1.txt");
     IO::field_to_csv(v_T2, "result/v_T2.txt");
