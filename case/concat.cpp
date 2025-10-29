@@ -150,7 +150,7 @@ int main(int argc, char* argv[])
     p.set_boundary_type(&T6, LocationType::Down,  PDEBoundaryType::Neumann);
     // clang-format on
 
-    for (int iter = 0; i < time_config->num_iterations; iter++)
+    for (int iter = 0; iter < time_config->num_iterations; iter++)
     {
         if (iter % 200 == 0)
             std::cout << "iter: " << iter << "/" << time_config->num_iterations << "\n";

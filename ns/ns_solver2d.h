@@ -32,6 +32,8 @@ public:
     void solve();
 
 private:
+    ConcatPoissonSolver2D* p_solver = nullptr;
+
     std::vector<Domain2DUniform*> domains;    
     std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, Domain2DUniform*>> adjacency;
 
@@ -65,5 +67,4 @@ private:
 
     void boundary_init();
     void boundary_update();
-    void swap_temp();
 };
