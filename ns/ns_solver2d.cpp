@@ -49,6 +49,8 @@ ConcatNSSolver2D::ConcatNSSolver2D(Variable* in_u_var, Variable* in_v_var, Varia
         u_temp_field_map[domain] = new field2(field->get_nx(), field->get_ny(), field->get_name() + "_temp");
     for (auto &[domain, field] : v_field_map)
         v_temp_field_map[domain] = new field2(field->get_nx(), field->get_ny(), field->get_name() + "_temp");
+
+    p_solver = new ConcatPoissonSolver2D(p_var, env_config);
 }
 
 ConcatNSSolver2D::~ConcatNSSolver2D()
@@ -57,6 +59,7 @@ ConcatNSSolver2D::~ConcatNSSolver2D()
         delete u_temp_field_map[domain];
     for (auto &[domain, field] : v_field_map)
         delete v_temp_field_map[domain];
+    delete p_solver;
 }
 
 void ConcatNSSolver2D::variable_check()
@@ -75,9 +78,10 @@ void ConcatNSSolver2D::solve()
     for (int it = 0; it < num_it; it++)
     {
         euler_conv_diff_inner();
-        buffer_pass();
+        velocity_buffer_pass();
         euler_conv_diff_outer();
         boundary_update();
+        pressure_calculate();
     }
 }
 

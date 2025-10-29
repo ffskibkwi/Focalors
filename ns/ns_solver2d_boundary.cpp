@@ -1,6 +1,6 @@
 #include "ns_solver2d.h"
 
-void ConcatNSSolver2D::buffer_pass()
+void ConcatNSSolver2D::velocity_buffer_pass()
 {
     //Only adjacented boundaries
     for (auto &domain : domains)
@@ -19,12 +19,10 @@ void ConcatNSSolver2D::buffer_pass()
             {
                 double* u_buffer = u_buffer_map[domain][loc];
                 double* v_buffer = v_buffer_map[domain][loc];
-                double* p_buffer = p_buffer_map[domain][loc];
 
                 Domain2DUniform* adj_domain = adjacency[domain][loc];
                 field2& adj_u = *u_field_map[adj_domain];
                 field2& adj_v = *v_field_map[adj_domain];
-                field2& adj_p = *p_field_map[adj_domain];
                 switch (loc)
                 {
                     case LocationType::Left:
@@ -32,7 +30,6 @@ void ConcatNSSolver2D::buffer_pass()
                         {
                             u_buffer[j] = adj_u(nx - 1, j);
                             v_buffer[j] = adj_v(nx - 1, j);
-                            p_buffer[j] = adj_p(nx - 1, j);
                         }
                         break;
                     case LocationType::Right:
@@ -47,7 +44,6 @@ void ConcatNSSolver2D::buffer_pass()
                         {
                             u_buffer[i] = adj_u(i, ny - 1);
                             v_buffer[i] = adj_v(i, ny - 1);
-                            p_buffer[i] = adj_p(i, ny - 1);
                         }
                         break;
                     case LocationType::Up:

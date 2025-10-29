@@ -28,6 +28,8 @@ public:
     
 
 private:
+    ConcatPoissonSolver2D* p_solver = nullptr;
+
     std::vector<Domain2DUniform*> domains;    
     std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, Domain2DUniform*>> adjacency;
     
@@ -49,7 +51,15 @@ private:
 
     void euler_conv_diff_inner();
     void euler_conv_diff_outer();
-    void buffer_pass();
+    void velocity_buffer_pass();
+
+    void pressure_calculate();
+    void velocity_div_calculate();
+    void velocity_div_inner();
+    void velocity_div_outer();
+    void pressure_buffer_pass();
+    void velocity_update();
+
     void boundary_init();
     void boundary_update();
 };
