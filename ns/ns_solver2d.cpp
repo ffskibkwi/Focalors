@@ -79,14 +79,33 @@ void ConcatNSSolver2D::variable_check()
 
 void ConcatNSSolver2D::solve()
 {
-    boundary_init();
     for (int it = 0; it < num_it; it++)
     {
-        velocity_buffer_pass();
+        // update boundary for NS
+        phys_boundary_update();
+        nondiag_shared_boundary_update();
+        diag_shared_boundary_update();
+
+        // NS
         euler_conv_diff_inner();
         euler_conv_diff_outer();
-        boundary_update();
-        pressure_calculate();
+
+        // update boundary for divu
+        phys_boundary_update();
+        nondiag_shared_boundary_update();
+
+        // divu
+        velocity_div_inner();
+        velocity_div_outer();
+
+        // PE
+        p_solver->solve();
+
+        // update boundary for p
+        pressure_buffer_pass();
+
+        // p grad
+        add_pressure_gradient();
     }
 }
 
@@ -173,8 +192,8 @@ void ConcatNSSolver2D::euler_conv_diff_outer()
             double u_down  = j == 0 ? u_down_buffer[i] : u(i, j - 1);
             double u_up    = j == ny - 1 ? u_up_buffer[i] : u(i, j + 1);
 
-            double v_left  = i == 0 ? v_left_buffer[j] : v(i - 1, j);
-            double v_up    = j == ny - 1 ? v_up_buffer[i] : v(i, j + 1);
+            double v_left = i == 0 ? v_left_buffer[j] : v(i - 1, j);
+            double v_up   = j == ny - 1 ? v_up_buffer[i] : v(i, j + 1);
 
             double v_left_up = i == 0 ? (j == ny - 1 ? left_up_corner_value_map[domain] : v_left_buffer[j + 1]) :
                                         (j == ny - 1 ? v_up_buffer[i - 1] : v(i - 1, j + 1));
@@ -205,28 +224,28 @@ void ConcatNSSolver2D::euler_conv_diff_outer()
             v_temp(i, j) = -0.25 / hx * v_conv_x - 0.25 / hy * v_conv_y + nu * v_diff;
         };
 
-        //Left
+        // Left
         for (int j = 0; j < ny; j++)
         {
             if (u_var->boundary_type_map[domain][LocationType::Left] != PDEBoundaryType::Dirichlet)
                 bound_cal_u(0, j);
             bound_cal_v(0, j);
         }
-            
-        //Right
+
+        // Right
         for (int j = 0; j < ny; j++)
         {
             bound_cal_u(nx - 1, j);
             bound_cal_v(nx - 1, j);
         }
-        //Down
+        // Down
         for (int i = 0; i < nx; i++)
         {
             bound_cal_u(i, 0);
             if (v_var->boundary_type_map[domain][LocationType::Down] != PDEBoundaryType::Dirichlet)
                 bound_cal_v(i, 0);
         }
-        //Up
+        // Up
         for (int i = 0; i < nx; i++)
         {
             bound_cal_u(i, ny - 1);
