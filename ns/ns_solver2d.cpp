@@ -101,8 +101,8 @@ void ConcatNSSolver2D::solve()
         // PE
         p_solver->solve();
 
-        // update boundary for p
-        pressure_buffer_pass();
+        // update buffer for p
+        pressure_buffer_update();
 
         // p grad
         add_pressure_gradient();
@@ -227,7 +227,7 @@ void ConcatNSSolver2D::euler_conv_diff_outer()
         // Left
         for (int j = 0; j < ny; j++)
         {
-            if (u_var->boundary_type_map[domain][LocationType::Left] != PDEBoundaryType::Dirichlet)
+            if (u_var->boundary_type_map[domain][LocationType::Left] != PDEBoundaryType::Adjacented)
                 bound_cal_u(0, j);
             bound_cal_v(0, j);
         }
@@ -238,13 +238,15 @@ void ConcatNSSolver2D::euler_conv_diff_outer()
             bound_cal_u(nx - 1, j);
             bound_cal_v(nx - 1, j);
         }
+
         // Down
         for (int i = 0; i < nx; i++)
         {
             bound_cal_u(i, 0);
-            if (v_var->boundary_type_map[domain][LocationType::Down] != PDEBoundaryType::Dirichlet)
+            if (v_var->boundary_type_map[domain][LocationType::Down] != PDEBoundaryType::Adjacented)
                 bound_cal_v(i, 0);
         }
+
         // Up
         for (int i = 0; i < nx; i++)
         {

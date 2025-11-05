@@ -137,6 +137,6 @@ private:
 
     void velocity_div_inner();
     void velocity_div_outer();
-    void pressure_buffer_pass();
+    void pressure_buffer_update();
     void add_pressure_gradient();
 };
