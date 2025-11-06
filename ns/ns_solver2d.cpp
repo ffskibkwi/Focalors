@@ -125,11 +125,11 @@ void ConcatNSSolver2D::euler_conv_diff_inner()
         double hx = domain->hx;
         double hy = domain->hy;
 
-        // u
+        // u (interior only; boundaries handled in euler_conv_diff_outer)
         OPENMP_PARALLEL_FOR()
-        for (int i = 0; i < nx; i++)
+        for (int i = 1; i < nx - 1; i++)
         {
-            for (int j = 0; j < ny; j++)
+            for (int j = 1; j < ny - 1; j++)
             {
                 double conv_x =
                     u(i + 1, j) * (u(i + 1, j) + 2.0 * u(i, j)) - u(i - 1, j) * (u(i - 1, j) + 2.0 * u(i, j));

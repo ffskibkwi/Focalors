@@ -76,7 +76,8 @@ void ConcatNSSolver2D::pressure_buffer_update()
                             p_buffer[i] = adj_p(i, ny - 1);
                         break;
                     default:
-                        throw std::runtime_error("ConcatNSSolver2D: invalid location type");
+                        // For center pressure, only Left/Down buffers are owned; ignore Right/Up.
+                        break;
                 }
             }
         }
@@ -91,8 +92,8 @@ void ConcatNSSolver2D::add_pressure_gradient()
         field2& v = *v_field_map[domain];
         field2& p = *p_field_map[domain];
 
-        double* p_buffer_down = u_buffer_map[domain][LocationType::Right];
-        double* p_buffer_left = v_buffer_map[domain][LocationType::Up];
+        double* p_buffer_down = p_buffer_map[domain][LocationType::Down];
+        double* p_buffer_left = p_buffer_map[domain][LocationType::Left];
 
         int    nx = u.get_nx();
         int    ny = u.get_ny();
