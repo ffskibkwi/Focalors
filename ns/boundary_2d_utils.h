@@ -19,3 +19,6 @@ void copy_y_to_buffer(double* buffer, field2& f, int src);
 
 void mirror_x_to_buffer(double* buffer, field2& f, int src, double* val_ptr, double val_default);
 void mirror_y_to_buffer(double* buffer, field2& f, int src, double* val_ptr, double val_default);
+// Swap underlying data pointers of two same-typed fields (no shape/metadata change)
+void swap_field_data(field2& a, field2& b);
+void swap_field_data(field3& a, field3& b);

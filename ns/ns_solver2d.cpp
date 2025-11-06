@@ -1,4 +1,5 @@
 #include "ns_solver2d.h"
+#include "boundary_2d_utils.h"
 
 ConcatNSSolver2D::ConcatNSSolver2D(Variable*            in_u_var,
                                    Variable*            in_v_var,
@@ -138,7 +139,7 @@ void ConcatNSSolver2D::euler_conv_diff_inner()
                 double diff = (u(i + 1, j) + u(i - 1, j) - 2.0 * u(i, j)) / hx / hx +
                               (u(i, j + 1) + u(i, j - 1) - 2.0 * u(i, j)) / hy / hy;
 
-                u_temp(i, j) = -0.25 / hx * conv_x - 0.25 / hy * conv_y + nu * diff;
+                u_temp(i, j) = u(i, j) - 0.25 / hx * conv_x - 0.25 / hy * conv_y + nu * diff;
             }
         }
 
@@ -155,7 +156,7 @@ void ConcatNSSolver2D::euler_conv_diff_inner()
                 double diff = (v(i + 1, j) + v(i - 1, j) - 2.0 * v(i, j)) / hx / hx +
                               (v(i, j + 1) + v(i, j - 1) - 2.0 * v(i, j)) / hy / hy;
 
-                v_temp(i, j) = -0.25 / hx * conv_x - 0.25 / hy * conv_y + nu * diff;
+                v_temp(i, j) = v(i, j) - 0.25 / hx * conv_x - 0.25 / hy * conv_y + nu * diff;
             }
         }
     }
@@ -202,7 +203,7 @@ void ConcatNSSolver2D::euler_conv_diff_outer()
             double u_conv_y = (u(i, j) + u_up) * (v_left_up + v_up) - (u_down + u(i, j)) * (v_left + v(i, j));
             double u_diff   = (u_right + u_left - 2.0 * u(i, j)) / hx / hx + (u_up + u_down - 2.0 * u(i, j)) / hy / hy;
 
-            u_temp(i, j) = -0.25 / hx * u_conv_x - 0.25 / hy * u_conv_y + nu * u_diff;
+            u_temp(i, j) = u(i, j) - 0.25 / hx * u_conv_x - 0.25 / hy * u_conv_y + nu * u_diff;
         };
 
         auto bound_cal_v = [&](int i, int j) {
@@ -221,13 +222,13 @@ void ConcatNSSolver2D::euler_conv_diff_outer()
             double v_conv_y = v_up * (v_up + 2.0 * v(i, j)) - v_down * (v_down + 2.0 * v(i, j));
             double v_diff   = (v_right + v_left - 2.0 * v(i, j)) / hx / hx + (v_up + v_down - 2.0 * v(i, j)) / hy / hy;
 
-            v_temp(i, j) = -0.25 / hx * v_conv_x - 0.25 / hy * v_conv_y + nu * v_diff;
+            v_temp(i, j) = v(i, j) - 0.25 / hx * v_conv_x - 0.25 / hy * v_conv_y + nu * v_diff;
         };
 
         // Left
         for (int j = 0; j < ny; j++)
         {
-            if (u_var->boundary_type_map[domain][LocationType::Left] != PDEBoundaryType::Adjacented)
+            if (u_var->boundary_type_map[domain][LocationType::Left] == PDEBoundaryType::Adjacented)
                 bound_cal_u(0, j);
             bound_cal_v(0, j);
         }
@@ -243,7 +244,7 @@ void ConcatNSSolver2D::euler_conv_diff_outer()
         for (int i = 0; i < nx; i++)
         {
             bound_cal_u(i, 0);
-            if (v_var->boundary_type_map[domain][LocationType::Down] != PDEBoundaryType::Adjacented)
+            if (v_var->boundary_type_map[domain][LocationType::Down] == PDEBoundaryType::Adjacented)
                 bound_cal_v(i, 0);
         }
 
@@ -253,5 +254,9 @@ void ConcatNSSolver2D::euler_conv_diff_outer()
             bound_cal_u(i, ny - 1);
             bound_cal_v(i, ny - 1);
         }
+
+        // Swap data pointers: u <-> u_temp, v <-> v_temp
+        swap_field_data(u, u_temp);
+        swap_field_data(v, v_temp);
     }
 }

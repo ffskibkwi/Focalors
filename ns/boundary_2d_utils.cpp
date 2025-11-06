@@ -1,4 +1,6 @@
 #include "boundary_2d_utils.h"
+#include <stdexcept>
+#include <utility>
 
 void assign_x(field2& f, int dest, double* val_ptr, double val_default)
 {
@@ -120,4 +122,20 @@ void mirror_y_to_buffer(double* buffer, field2& f, int src, double* val_ptr, dou
         for (int i = 0; i < f.get_nx(); i++)
             buffer[i] = 2.0 * val_default - f(i, src);
     }
+}
+
+// Swap underlying data pointers for two same-typed fields.
+// Requires identical storage size; only swaps the data pointer without touching shape/metadata.
+void swap_field_data(field2& a, field2& b)
+{
+    if (a.get_size_n() != b.get_size_n())
+        throw std::runtime_error("swap_field_data(field2): size mismatch");
+    std::swap(a.value, b.value);
+}
+
+void swap_field_data(field3& a, field3& b)
+{
+    if (a.get_size_n() != b.get_size_n())
+        throw std::runtime_error("swap_field_data(field3): size mismatch");
+    std::swap(a.value, b.value);
 }
