@@ -92,6 +92,29 @@ public:
      */
     void diag_shared_boundary_update();
 
+    /**
+     * Euler convection and diffusion term inner calculation.
+     *
+     * Step 4 of PISO.
+     *
+     * It is independent of the buffer/corner.
+     */
+    void euler_conv_diff_inner();
+
+    /**
+     * Euler convection and diffusion term outer calculation.
+     *
+     * Step 5 of PISO.
+     *
+     * It is dependent of the buffer/corner.
+     */
+    void euler_conv_diff_outer();
+
+    void velocity_div_inner();
+    void velocity_div_outer();
+    void pressure_buffer_update();
+    void add_pressure_gradient();
+
 private:
     ConcatPoissonSolver2D* p_solver = nullptr;
 
@@ -115,30 +138,4 @@ private:
     PhysicsConfig* phy_config;
     double         nu;
 
-
-
-
-
-    /**
-     * Euler convection and diffusion term inner calculation.
-     *
-     * Step 4 of PISO.
-     *
-     * It is independent of the buffer/corner.
-     */
-    void euler_conv_diff_inner();
-
-    /**
-     * Euler convection and diffusion term outer calculation.
-     *
-     * Step 5 of PISO.
-     *
-     * It is dependent of the buffer/corner.
-     */
-    void euler_conv_diff_outer();
-
-    void velocity_div_inner();
-    void velocity_div_outer();
-    void pressure_buffer_update();
-    void add_pressure_gradient();
 };
