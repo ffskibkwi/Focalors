@@ -30,30 +30,6 @@ public:
     // void init();
     void variable_check();
     void solve();
-
-private:
-    ConcatPoissonSolver2D* p_solver = nullptr;
-
-    std::vector<Domain2DUniform*>                                                            domains;
-    std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, Domain2DUniform*>> adjacency;
-
-    std::unordered_map<Domain2DUniform*, field2*> u_field_map, v_field_map, p_field_map;
-    std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, double*>> u_buffer_map, v_buffer_map,
-        p_buffer_map;
-    std::unordered_map<Domain2DUniform*, field2*> u_temp_field_map, v_temp_field_map;
-
-    std::unordered_map<Domain2DUniform*, double>& left_up_corner_value_map;
-    std::unordered_map<Domain2DUniform*, double>& right_down_corner_value_map;
-
-    EnvironmentConfig* env_config;
-
-    TimeAdvancingConfig* time_config;
-    double               dt;
-    int                  num_it;
-
-    PhysicsConfig* phy_config;
-    double         nu;
-
     /**
      * Physics boundary update.
      *
@@ -78,7 +54,6 @@ private:
      * since the computational cost of the boundary handling function is already very small.
      */
     void phys_boundary_update();
-
     /**
      * Non-diagonal shared boundary update.
      *
@@ -116,6 +91,33 @@ private:
      * We'll simply determine it based on the connection conditions.
      */
     void diag_shared_boundary_update();
+
+private:
+    ConcatPoissonSolver2D* p_solver = nullptr;
+
+    std::vector<Domain2DUniform*>                                                            domains;
+    std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, Domain2DUniform*>> adjacency;
+
+    std::unordered_map<Domain2DUniform*, field2*> u_field_map, v_field_map, p_field_map;
+    std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, double*>> u_buffer_map, v_buffer_map,
+        p_buffer_map;
+    std::unordered_map<Domain2DUniform*, field2*> u_temp_field_map, v_temp_field_map;
+
+    std::unordered_map<Domain2DUniform*, double>& left_up_corner_value_map;
+    std::unordered_map<Domain2DUniform*, double>& right_down_corner_value_map;
+
+    EnvironmentConfig* env_config;
+
+    TimeAdvancingConfig* time_config;
+    double               dt;
+    int                  num_it;
+
+    PhysicsConfig* phy_config;
+    double         nu;
+
+
+
+
 
     /**
      * Euler convection and diffusion term inner calculation.
