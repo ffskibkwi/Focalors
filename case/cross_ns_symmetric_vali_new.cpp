@@ -61,7 +61,7 @@ static void calc_diff_with_two_field_reversed_along_x(field2& src1, field2& src2
     int nx = std::min(src1.get_nx(), src2.get_nx());
     int ny = std::min(src1.get_ny(), src2.get_ny());
     for (int i = 0; i < nx; ++i)
-        for (int j = 0; j < ny; ++j)
+        for (int j = 0; j < ny - 1; ++j)
             diff(i, j) = src1(i, j + 1) + src2(i, src2.get_ny() - 1 - j);
 }
 
@@ -545,38 +545,48 @@ int main(int argc, char* argv[])
                       << std::endl;
             std::cout << std::endl;
         }
-        std::cout << "right_down_corner_value_map[&A1]" << " : " << right_down_corner_value_map[&A1] << std::endl;
+        std::cout << "right_down_corner_value_map[&A1]"
+                  << " : " << right_down_corner_value_map[&A1] << std::endl;
         std::cout << "u_A4(0, ny - 1) : " << u_A4(0, ny - 1) << std::endl;
         std::cout << "right_down_corner_value_map[&A1] - u_A4(0, ny - 1) : "
                   << right_down_corner_value_map[&A1] - u_A4(0, ny - 1) << std::endl;
         std::cout << std::endl;
 
-        std::cout << "left_up_corner_value_map[&A2]" << " : " << left_up_corner_value_map[&A2] << std::endl;
+        std::cout << "left_up_corner_value_map[&A2]"
+                  << " : " << left_up_corner_value_map[&A2] << std::endl;
         std::cout << "v1_up_buffer[nx - 1]: " << v1_up_buffer[nx - 1] << std::endl;
         std::cout << "left_up_corner_value_map[&A2] - v1_up_buffer[nx - 1]: "
                   << left_up_corner_value_map[&A2] - v1_up_buffer[nx - 1] << std::endl;
         std::cout << std::endl;
 
-        std::cout << "right_down_corner_value_map[&A2]" << " : " << right_down_corner_value_map[&A2] << std::endl;
-        std::cout << "u4_right_buffer[ny - 1]" << " : " << u4_right_buffer[ny - 1] << std::endl;
+        std::cout << "right_down_corner_value_map[&A2]"
+                  << " : " << right_down_corner_value_map[&A2] << std::endl;
+        std::cout << "u4_right_buffer[ny - 1]"
+                  << " : " << u4_right_buffer[ny - 1] << std::endl;
         std::cout << "right_down_corner_value_map[&A2] - u4_right_buffer[ny - 1]: "
                   << right_down_corner_value_map[&A2] - u4_right_buffer[ny - 1] << std::endl;
         std::cout << std::endl;
 
-        std::cout << "left_up_corner_value_map[&A3]" << " : " << left_up_corner_value_map[&A3] << std::endl;
-        std::cout << "v2_up_buffer[nx - 1]" << " : " << v2_up_buffer[nx - 1] << std::endl;
+        std::cout << "left_up_corner_value_map[&A3]"
+                  << " : " << left_up_corner_value_map[&A3] << std::endl;
+        std::cout << "v2_up_buffer[nx - 1]"
+                  << " : " << v2_up_buffer[nx - 1] << std::endl;
         std::cout << "left_up_corner_value_map[&A3] - v2_up_buffer[nx - 1]: "
                   << left_up_corner_value_map[&A3] - v2_up_buffer[nx - 1] << std::endl;
         std::cout << std::endl;
 
-        std::cout << "left_up_corner_value_map[&A4]" << " : " << left_up_corner_value_map[&A4] << std::endl;
-        std::cout << "v_A1(nx - 1, 0)" << " : " << v_A1(nx - 1, 0) << std::endl;
+        std::cout << "left_up_corner_value_map[&A4]"
+                  << " : " << left_up_corner_value_map[&A4] << std::endl;
+        std::cout << "v_A1(nx - 1, 0)"
+                  << " : " << v_A1(nx - 1, 0) << std::endl;
         std::cout << "left_up_corner_value_map[&A4] - v3_up_buffer[ny - 1]: "
                   << left_up_corner_value_map[&A4] - v3_up_buffer[ny - 1] << std::endl;
         std::cout << std::endl;
 
-        std::cout << "right_down_corner_value_map[&A5]" << " : " << right_down_corner_value_map[&A5] << std::endl;
-        std::cout << "u2_right_buffer[ny - 1]" << " : " << u2_right_buffer[ny - 1] << std::endl;
+        std::cout << "right_down_corner_value_map[&A5]"
+                  << " : " << right_down_corner_value_map[&A5] << std::endl;
+        std::cout << "u2_right_buffer[ny - 1]"
+                  << " : " << u2_right_buffer[ny - 1] << std::endl;
         std::cout << "right_down_corner_value_map[&A5] - u2_right_buffer[ny - 1]: "
                   << right_down_corner_value_map[&A5] - u2_right_buffer[ny - 1] << std::endl;
         std::cout << std::endl;
