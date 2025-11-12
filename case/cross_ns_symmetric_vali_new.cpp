@@ -3,13 +3,10 @@
 #include "base/domain/variable.h"
 #include "base/field/field2.h"
 #include "base/location_boundary.h"
-
 #include "ns/ns_solver2d.h"
-
 #include "io/config.h"
 #include "io/csv_writer_2d.h"
-
-#include "pe/concat/concat_solver2d.h"
+#include "io/common.h"
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -625,16 +622,13 @@ int main(int argc, char* argv[])
     std::cout << "--------print before solve--------" << std::endl;
     print_buffer_info();
     print_all_field();
-    IO::field_to_csv(u_A1, "result/cross_ns_sym/u_A1_init");
-    IO::field_to_csv(v_A1, "result/cross_ns_sym/v_A1_init");
-    IO::field_to_csv(u_A2, "result/cross_ns_sym/u_A2_init");
-    IO::field_to_csv(v_A2, "result/cross_ns_sym/v_A2_init");
-    IO::field_to_csv(u_A3, "result/cross_ns_sym/u_A3_init");
-    IO::field_to_csv(v_A3, "result/cross_ns_sym/v_A3_init");
-    IO::field_to_csv(u_A4, "result/cross_ns_sym/u_A4_init");
-    IO::field_to_csv(v_A4, "result/cross_ns_sym/v_A4_init");
-    IO::field_to_csv(u_A5, "result/cross_ns_sym/u_A5_init");
-    IO::field_to_csv(v_A5, "result/cross_ns_sym/v_A5_init");
+    // 生成时间戳目录
+    std::string nowtime_dir = "result/cross_ns_sym/" + IO::create_timestamp();
+    IO::create_directory(nowtime_dir);
+
+    IO::var_to_csv(u, nowtime_dir + "/u_init");
+    IO::var_to_csv(v, nowtime_dir + "/v_init");
+    IO::var_to_csv(p, nowtime_dir + "/p_init");
 
     solver.solve();
     // Symmetry validation
@@ -649,20 +643,12 @@ int main(int argc, char* argv[])
     solver.nondiag_shared_boundary_update();
     solver.diag_shared_boundary_update();
 
-    // todo 检查corner buffer
 
     print_buffer_info();
     // Optional CSV outputs (uncomment if needed)
-    IO::field_to_csv(u_A1, "result/cross_ns_sym/u_A1");
-    IO::field_to_csv(u_A2, "result/cross_ns_sym/u_A2");
-    IO::field_to_csv(u_A3, "result/cross_ns_sym/u_A3");
-    IO::field_to_csv(u_A4, "result/cross_ns_sym/u_A4");
-    IO::field_to_csv(u_A5, "result/cross_ns_sym/u_A5");
-    IO::field_to_csv(v_A1, "result/cross_ns_sym/v_A1");
-    IO::field_to_csv(v_A2, "result/cross_ns_sym/v_A2");
-    IO::field_to_csv(v_A3, "result/cross_ns_sym/v_A3");
-    IO::field_to_csv(v_A4, "result/cross_ns_sym/v_A4");
-    IO::field_to_csv(v_A5, "result/cross_ns_sym/v_A5");
+    IO::var_to_csv(u, nowtime_dir + "/u");
+    IO::var_to_csv(v, nowtime_dir + "/v");
+    IO::var_to_csv(p, nowtime_dir + "/p");
 
     // check boundary types
     // for (auto* d : domains)
