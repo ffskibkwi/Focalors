@@ -3,10 +3,10 @@
 #include "base/domain/variable.h"
 #include "base/field/field2.h"
 #include "base/location_boundary.h"
-#include "ns/ns_solver2d.h"
+#include "io/common.h"
 #include "io/config.h"
 #include "io/csv_writer_2d.h"
-#include "io/common.h"
+#include "ns/ns_solver2d.h"
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -630,7 +630,20 @@ int main(int argc, char* argv[])
     IO::var_to_csv(v, nowtime_dir + "/v_init");
     IO::var_to_csv(p, nowtime_dir + "/p_init");
 
-    solver.solve();
+    // NS
+    solver.euler_conv_diff_inner();
+    solver.euler_conv_diff_outer();
+    // update boundary for divu
+    solver.phys_boundary_update();
+    solver.nondiag_shared_boundary_update();
+    // divu
+    solver.velocity_div_inner();
+    solver.velocity_div_outer();
+    // update buffer for p
+    solver.pressure_buffer_update();
+    // p grad
+    solver.add_pressure_gradient();
+    
     // Symmetry validation
     calc_diff_with_two_field_reversed_along_y(u_A1, u_A3, u_diff_r_1_3); // expect near 0
     calc_diff_with_two_field_along_y(v_A1, v_A3, v_diff_1_3);            // expect near 0
@@ -642,7 +655,6 @@ int main(int argc, char* argv[])
     solver.phys_boundary_update();
     solver.nondiag_shared_boundary_update();
     solver.diag_shared_boundary_update();
-
 
     print_buffer_info();
     // Optional CSV outputs (uncomment if needed)
