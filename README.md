@@ -22,7 +22,13 @@
 
 **Focalors** 
 
+Debug 用于 Debug。关闭 OpenMP
+
+Hybrid 对应开启 OpenMP。因为同时可以使用 MPI，所以命名为 Hybrid
+
+PureMPI 对应关闭 OpenMP。因此只有 MPI 生效
+
 ```shell
-cmake -S . -B build -DCMAKE_CXX_COMPILER=mpicxx -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build -DCMAKE_CXX_COMPILER=mpicxx -DCMAKE_BUILD_TYPE=Hybrid
 cmake --build build --parallel $(nproc) #推荐使用并行编译，将$(nproc)替换为机器的核心数
 ```
