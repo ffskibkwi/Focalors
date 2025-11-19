@@ -18,6 +18,7 @@ class ConcatNSSolver2D
     // Simple: Only for single main domain geometry
 public:
     Variable *u_var = nullptr, *v_var = nullptr, *p_var = nullptr;
+    ConcatPoissonSolver2D* p_solver = nullptr;
 
     ConcatNSSolver2D(Variable*            in_u_var,
                      Variable*            in_v_var,
@@ -30,6 +31,7 @@ public:
     // void init();
     void variable_check();
     void solve();
+    void normalize_pressure();
     /**
      * Physics boundary update.
      *
@@ -116,7 +118,6 @@ public:
     void add_pressure_gradient();
 
 private:
-    ConcatPoissonSolver2D* p_solver = nullptr;
 
     std::vector<Domain2DUniform*>                                                            domains;
     std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, Domain2DUniform*>> adjacency;
