@@ -3,13 +3,10 @@
 #include "base/domain/variable.h"
 #include "base/field/field2.h"
 #include "base/location_boundary.h"
-
-#include "ns/ns_solver2d.h"
-
+#include "io/common.h"
 #include "io/config.h"
 #include "io/csv_writer_2d.h"
-
-#include "pe/concat/concat_solver2d.h"
+#include "ns/ns_solver2d.h"
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -61,7 +58,7 @@ static void calc_diff_with_two_field_reversed_along_x(field2& src1, field2& src2
     int nx = std::min(src1.get_nx(), src2.get_nx());
     int ny = std::min(src1.get_ny(), src2.get_ny());
     for (int i = 0; i < nx; ++i)
-        for (int j = 0; j < ny; ++j)
+        for (int j = 0; j < ny - 1; ++j)
             diff(i, j) = src1(i, j + 1) + src2(i, src2.get_ny() - 1 - j);
 }
 
@@ -291,7 +288,7 @@ int main(int argc, char* argv[])
             {
                 for (int j = 0; j < ny; ++j)
                 {
-                    u_A4(i, j) = -0.5 * (i + j);
+                    u_A4(i, j) = 0;
                 }
                 continue;
             }
@@ -401,145 +398,6 @@ int main(int argc, char* argv[])
     {
         v_A5(i, 0) = -v_A2(i, 0);
     }
-
-    // Solve
-    ConcatNSSolver2D solver(&u, &v, &p, time_config, physics_config, env_config);
-    solver.variable_check();
-    solver.phys_boundary_update();
-    solver.nondiag_shared_boundary_update();
-    solver.diag_shared_boundary_update();
-
-    print_field_aligned(u_A1, "Initial u_A1");
-    print_field_aligned(u_A2, "Initial u_A2");
-    print_field_aligned(u_A3, "Initial u_A3");
-    print_field_aligned(u_A4, "Initial u_A4");
-    print_field_aligned(u_A5, "Initial u_A5");
-    print_field_aligned(v_A1, "Initial v_A1");
-    print_field_aligned(v_A2, "Initial v_A2");
-    print_field_aligned(v_A3, "Initial v_A3");
-    print_field_aligned(v_A4, "Initial v_A4");
-    print_field_aligned(v_A5, "Initial v_A5");
-    IO::field_to_csv(u_A1, "result/cross_ns_sym/u_A1_init");
-    IO::field_to_csv(v_A1, "result/cross_ns_sym/v_A1_init");
-    IO::field_to_csv(u_A2, "result/cross_ns_sym/u_A2_init");
-    IO::field_to_csv(v_A2, "result/cross_ns_sym/v_A2_init");
-    IO::field_to_csv(u_A3, "result/cross_ns_sym/u_A3_init");
-    IO::field_to_csv(v_A3, "result/cross_ns_sym/v_A3_init");
-    IO::field_to_csv(u_A4, "result/cross_ns_sym/u_A4_init");
-    IO::field_to_csv(v_A4, "result/cross_ns_sym/v_A4_init");
-    IO::field_to_csv(u_A5, "result/cross_ns_sym/u_A5_init");
-    IO::field_to_csv(v_A5, "result/cross_ns_sym/v_A5_init");
-
-    // Symmetry validation
-    field2 u_diff_r_1_3(u_A1.get_nx() - 1, u_A1.get_ny(), "u_diff_r_1_3");
-    calc_diff_with_two_field_reversed_along_y(u_A1, u_A3, u_diff_r_1_3); // expect near 0
-
-    field2 v_diff_1_3(v_A1.get_nx(), v_A1.get_ny(), "v_diff_1_3");
-    calc_diff_with_two_field_along_y(v_A1, v_A3, v_diff_1_3); // expect near 0
-
-    field2 u_diff_4_5(u_A4.get_nx(), u_A4.get_ny(), "u_diff_4_5");
-    calc_diff_with_two_field_along_x(u_A4, u_A5, u_diff_4_5); // expect near 0
-
-    field2 v_diff_r_4_5(v_A4.get_nx(), v_A4.get_ny() - 1, "v_diff_r_4_5");
-    calc_diff_with_two_field_reversed_along_x(v_A4, v_A5, v_diff_r_4_5); // expect near 0
-
-    std::cout << std::setprecision(6) << std::scientific;
-    std::cout << "\n[Initial Symmetry Check]\n";
-    std::cout << "[NS Symmetry] L_inf(u_1 + u_3^R) = " << max_abs(u_diff_r_1_3) << "\n";
-    std::cout << "[NS Symmetry] L_inf(v_1 - v_3^R) = " << max_abs(v_diff_1_3) << "\n";
-    std::cout << "[NS Symmetry] L_inf(u_4 - u_5^R) = " << max_abs(u_diff_4_5) << "\n";
-    std::cout << "[NS Symmetry] L_inf(v_4 + v_5^R) = " << max_abs(v_diff_r_4_5) << "\n";
-
-    // Pretty matrices for visual inspection
-    std::cout << "\n[Symmetry matrices]\n";
-    print_field_aligned(u_diff_r_1_3, "u_diff_r_1_3 = u_A1 + ReverseY(u_A3)");
-    print_field_aligned(v_diff_1_3, "v_diff_1_3   = v_A1 - ReverseY(v_A3)");
-    print_field_aligned(u_diff_4_5, "u_diff_4_5   = u_A4 - ReverseX(u_A5)");
-    print_field_aligned(v_diff_r_4_5, "v_diff_r_4_5 = v_A4 + ReverseX(v_A5)");
-
-    solver.solve();
-    print_field_aligned(u_A1, "u_A1 after solve");
-    print_field_aligned(u_A2, "u_A2 after solve");
-    print_field_aligned(u_A3, "u_A3 after solve");
-    print_field_aligned(u_A4, "u_A4 after solve");
-    print_field_aligned(u_A5, "u_A5 after solve");
-    print_field_aligned(v_A1, "v_A1 after solve");
-    print_field_aligned(v_A2, "v_A2 after solve");
-    print_field_aligned(v_A3, "v_A3 after solve");
-    print_field_aligned(v_A4, "v_A4 after solve");
-    print_field_aligned(v_A5, "v_A5 after solve");
-
-    // Symmetry validation
-    calc_diff_with_two_field_reversed_along_y(u_A1, u_A3, u_diff_r_1_3); // expect near 0
-
-    calc_diff_with_two_field_along_y(v_A1, v_A3, v_diff_1_3); // expect near 0
-
-    calc_diff_with_two_field_along_x(u_A4, u_A5, u_diff_4_5); // expect near 0
-
-    calc_diff_with_two_field_reversed_along_x(v_A4, v_A5, v_diff_r_4_5); // expect near 0
-
-    std::cout << std::setprecision(6) << std::scientific;
-    std::cout << "\n[Post-Solve Symmetry Check]\n";
-    std::cout << "[NS Symmetry] L_inf(u_1 + u_3^R) = " << max_abs(u_diff_r_1_3) << "\n";
-    std::cout << "[NS Symmetry] L_inf(v_1 - v_3^R) = " << max_abs(v_diff_1_3) << "\n";
-    std::cout << "[NS Symmetry] L_inf(u_4 - u_5^R) = " << max_abs(u_diff_4_5) << "\n";
-    std::cout << "[NS Symmetry] L_inf(v_4 + v_5^R) = " << max_abs(v_diff_r_4_5) << "\n";
-
-    // Pretty matrices for visual inspection
-    std::cout << "\n[Symmetry matrices]\n";
-    print_field_aligned(u_diff_r_1_3, "u_diff_r_1_3 = u_A1 + ReverseY(u_A3)");
-    print_field_aligned(v_diff_1_3, "v_diff_1_3   = v_A1 - ReverseY(v_A3)");
-    print_field_aligned(u_diff_4_5, "u_diff_4_5   = u_A4 - ReverseX(u_A5)");
-    print_field_aligned(v_diff_r_4_5, "v_diff_r_4_5 = v_A4 + ReverseX(v_A5)");
-
-    for (auto* d : domains)
-    {
-        for (auto loc : dirs)
-        {
-            auto& bound_type_map   = u.boundary_type_map[d];
-            auto& bound_type_map_v = v.boundary_type_map[d];
-            auto& bound_type_map_p = p.boundary_type_map[d];
-            std::cout << "Domain: " << d->name << ", Location: " << to_string(loc) << "\n";
-            std::cout << "  u boundary type: ";
-            if (bound_type_map.count(loc))
-                std::cout << to_string(bound_type_map[loc]) << "\n";
-            else
-                std::cout << "Not Set\n";
-            std::cout << "  v boundary type: ";
-            if (bound_type_map_v.count(loc))
-                std::cout << to_string(bound_type_map_v[loc]) << "\n";
-            else
-                std::cout << "Not Set\n";
-            std::cout << "  p boundary type: ";
-            if (bound_type_map_p.count(loc))
-                std::cout << to_string(bound_type_map_p[loc]) << "\n";
-            else
-                std::cout << "Not Set\n";
-        }
-    }
-
-    // Optional CSV outputs (uncomment if needed)
-    IO::field_to_csv(u_A1, "result/cross_ns_sym/u_A1");
-    IO::field_to_csv(u_A2, "result/cross_ns_sym/u_A2");
-    IO::field_to_csv(u_A3, "result/cross_ns_sym/u_A3");
-    IO::field_to_csv(u_A4, "result/cross_ns_sym/u_A4");
-    IO::field_to_csv(u_A5, "result/cross_ns_sym/u_A5");
-    IO::field_to_csv(v_A1, "result/cross_ns_sym/v_A1");
-    IO::field_to_csv(v_A2, "result/cross_ns_sym/v_A2");
-    IO::field_to_csv(v_A3, "result/cross_ns_sym/v_A3");
-    IO::field_to_csv(v_A4, "result/cross_ns_sym/v_A4");
-    IO::field_to_csv(v_A5, "result/cross_ns_sym/v_A5");
-
-    solver.phys_boundary_update();
-    solver.nondiag_shared_boundary_update();
-    solver.diag_shared_boundary_update();
-
-    // 输出的u为结束时刻的u 输出buffer只能得到前一dt的值，无法和field做比较
-    std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, double*>> u_buffer_map, v_buffer_map,
-        p_buffer_map;
-    u_buffer_map = u.buffer_map;
-    v_buffer_map = v.buffer_map;
-    p_buffer_map = p.buffer_map;
     // 这里直接用 .at() 获取指针，若不存在则为nullptr
     auto get_buffer_ptr = [](auto& map, Domain2DUniform* dom, LocationType loc) -> double* {
         try
@@ -552,6 +410,20 @@ int main(int argc, char* argv[])
         }
     };
 
+    // Solve
+    ConcatNSSolver2D solver(&u, &v, &p, time_config, physics_config, env_config);
+    solver.variable_check();
+    solver.phys_boundary_update();
+    solver.nondiag_shared_boundary_update();
+    solver.diag_shared_boundary_update();
+    // 输出的u为结束时刻的u 输出buffer只能得到前一dt的值，无法和field做比较
+    std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, double*>> u_buffer_map, v_buffer_map,
+        p_buffer_map;
+    std::unordered_map<Domain2DUniform*, double>& left_up_corner_value_map    = v.left_up_corner_value_map;
+    std::unordered_map<Domain2DUniform*, double>& right_down_corner_value_map = u.right_down_corner_value_map;
+    u_buffer_map                                                              = u.buffer_map;
+    v_buffer_map                                                              = v.buffer_map;
+    p_buffer_map                                                              = p.buffer_map;
     double* v1_left_buffer  = get_buffer_ptr(v_buffer_map, &A1, LocationType::Left);
     double* u1_left_buffer  = get_buffer_ptr(u_buffer_map, &A1, LocationType::Left);
     double* v1_right_buffer = get_buffer_ptr(v_buffer_map, &A1, LocationType::Right);
@@ -597,61 +469,224 @@ int main(int argc, char* argv[])
     double* u5_up_buffer    = get_buffer_ptr(u_buffer_map, &A5, LocationType::Up);
     double* v5_up_buffer    = get_buffer_ptr(v_buffer_map, &A5, LocationType::Up);
 
-    // check for buffer and share boundary values
-    for (int j = 0; j < 5; ++j)
-    {
-        std::cout << "u_A1(0, j)" << " : " << u_A1(0, j) << std::endl;
-        std::cout << "u3_right_buffer" << " : " << u3_right_buffer[j] << std::endl;
-        std::cout << "u_A1(0, j) + u3_right_buffer[j]" << " : " << u_A1(0, j) + u3_right_buffer[j] << std::endl;
+    // Symmetry validation
+    field2 u_diff_r_1_3(u_A1.get_nx() - 1, u_A1.get_ny(), "u_diff_r_1_3");
+    field2 v_diff_1_3(v_A1.get_nx(), v_A1.get_ny(), "v_diff_1_3");
+    field2 u_diff_4_5(u_A4.get_nx(), u_A4.get_ny(), "u_diff_4_5");
+    field2 v_diff_r_4_5(v_A4.get_nx(), v_A4.get_ny() - 1, "v_diff_r_4_5");
+
+    auto print_buffer_info = [&]() {
+        for (int j = 0; j < 5; ++j)
+        {
+            std::cout << "u_A1(0, " << j << "): " << u_A1(0, j) << std::endl;
+            std::cout << "u3_right_buffer[" << j << "]: " << u3_right_buffer[j] << std::endl;
+            std::cout << "u_A1(0, " << j << ") + u3_right_buffer[" << j << "]: " << u_A1(0, j) + u3_right_buffer[j]
+                      << std::endl;
+            std::cout << std::endl;
+
+            std::cout << "u_A3(0, " << j << "): " << u_A3(0, j) << std::endl;
+            std::cout << "u1_right_buffer[" << j << "]: " << u1_right_buffer[j] << std::endl;
+            std::cout << "u1_right_buffer[" << j << "] + u_A3(0, " << j << "): " << u1_right_buffer[j] + u_A3(0, j)
+                      << std::endl;
+            std::cout << "u1_right_buffer[" << j << "] - u_A2(0, " << j << "): " << u1_right_buffer[j] - u_A2(0, j)
+                      << std::endl;
+            std::cout << std::endl;
+
+            std::cout << "u2_right_buffer[" << j << "]: " << u2_right_buffer[j] << std::endl;
+            std::cout << "u2_right_buffer[" << j << "] - u_A3(0, " << j << "): " << u2_right_buffer[j] - u_A3(0, j)
+                      << std::endl;
+            std::cout << "u2_right_buffer[" << j << "] + u_A2(0, " << j << "): " << u2_right_buffer[j] + u_A2(0, j)
+                      << std::endl;
+            std::cout << std::endl;
+
+            std::cout << "u_A4(0, " << j << "): " << u_A4(0, j) << std::endl;
+            std::cout << "u4_right_buffer[" << j << "]: " << u4_right_buffer[j] << std::endl;
+            std::cout << "u_A4(0, " << j << ") + u5_left_buffer[" << j << "]: " << u_A4(0, j) + u5_left_buffer[j]
+                      << std::endl;
+            std::cout << std::endl;
+
+            std::cout << "u_A5(0, " << j << "): " << u_A5(0, j) << std::endl;
+            std::cout << "u5_right_buffer[" << j << "]: " << u5_right_buffer[j] << std::endl;
+            std::cout << "u_A5(0, " << j << ") + u5_right_buffer[" << j << "]: " << u_A5(0, j) + u5_right_buffer[j]
+                      << std::endl;
+            std::cout << std::endl;
+        }
+
+        for (int i = 0; i < 5; ++i)
+        {
+            std::cout << "v_A4(" << i << ", 0): " << v_A4(i, 0) << std::endl;
+            std::cout << "v5_up_buffer[" << i << "]: " << v5_up_buffer[i] << std::endl;
+            std::cout << "v_A4(" << i << ", 0) + v5_up_buffer[" << i << "]: " << v_A4(i, 0) + v5_up_buffer[i]
+                      << std::endl;
+            std::cout << std::endl;
+
+            std::cout << "v_A5(" << i << ", 0): " << v_A5(i, 0) << std::endl;
+            std::cout << "v4_up_buffer[" << i << "]: " << v4_up_buffer[i] << std::endl;
+            std::cout << "v_A5(" << i << ", 0) + v4_up_buffer[" << i << "]: " << v_A5(i, 0) + v4_up_buffer[i]
+                      << std::endl;
+            std::cout << "v_A2(" << i << ", 0) - v4_up_buffer[" << i << "]: " << v_A2(i, 0) - v4_up_buffer[i]
+                      << std::endl;
+            std::cout << "v_A2(" << i << ", 0) + v2_up_buffer[" << i << "]: " << v_A2(i, 0) + v2_up_buffer[i]
+                      << std::endl;
+            std::cout << std::endl;
+
+            std::cout << "v_A1(" << i << ", 0): " << v_A1(i, 0) << std::endl;
+            std::cout << "v1_up_buffer[" << i << "]: " << v1_up_buffer[i] << std::endl;
+            std::cout << "v_A1(" << i << ", 0) + v1_up_buffer[" << i << "]: " << v_A1(i, 0) + v1_up_buffer[i]
+                      << std::endl;
+            std::cout << std::endl;
+
+            std::cout << "v_A3(" << i << ", 0): " << v_A3(i, 0) << std::endl;
+            std::cout << "v3_up_buffer[" << i << "]: " << v3_up_buffer[i] << std::endl;
+            std::cout << "v_A3(" << i << ", 0) + v3_up_buffer[" << i << "]: " << v_A3(i, 0) + v3_up_buffer[i]
+                      << std::endl;
+            std::cout << std::endl;
+        }
+        std::cout << "right_down_corner_value_map[&A1]"
+                  << " : " << right_down_corner_value_map[&A1] << std::endl;
+        std::cout << "u_A4(0, ny - 1) : " << u_A4(0, ny - 1) << std::endl;
+        std::cout << "right_down_corner_value_map[&A1] - u_A4(0, ny - 1) : "
+                  << right_down_corner_value_map[&A1] - u_A4(0, ny - 1) << std::endl;
         std::cout << std::endl;
 
-        std::cout << "u_A3(0, j)" << " : " << u_A3(0, j) << std::endl;
-        std::cout << "u1_right_buffer" << " : " << u1_right_buffer[j] << std::endl;
-        std::cout << "u1_right_buffer[j] + u_A3(0, j)" << " : " << u1_right_buffer[j] + u_A3(0, j) << std::endl;
-        std::cout << "u1_right_buffer[j] - u_A2(0, j)" << " : " << u1_right_buffer[j] - u_A2(0, j) << std::endl;
+        std::cout << "left_up_corner_value_map[&A2]"
+                  << " : " << left_up_corner_value_map[&A2] << std::endl;
+        std::cout << "v1_up_buffer[nx - 1]: " << v1_up_buffer[nx - 1] << std::endl;
+        std::cout << "left_up_corner_value_map[&A2] - v1_up_buffer[nx - 1]: "
+                  << left_up_corner_value_map[&A2] - v1_up_buffer[nx - 1] << std::endl;
         std::cout << std::endl;
 
-        std::cout << "u2_right_buffer" << " : " << u2_right_buffer[j] << std::endl;
-        std::cout << "u2_right_buffer[j] - u_A3(0, j)" << " : " << u2_right_buffer[j] - u_A3(0, j) << std::endl;
-        std::cout << "u2_right_buffer[j] + u_A2(0, j)" << " : " << u2_right_buffer[j] + u_A2(0, j) << std::endl;
+        std::cout << "right_down_corner_value_map[&A2]"
+                  << " : " << right_down_corner_value_map[&A2] << std::endl;
+        std::cout << "u4_right_buffer[ny - 1]"
+                  << " : " << u4_right_buffer[ny - 1] << std::endl;
+        std::cout << "right_down_corner_value_map[&A2] - u4_right_buffer[ny - 1]: "
+                  << right_down_corner_value_map[&A2] - u4_right_buffer[ny - 1] << std::endl;
         std::cout << std::endl;
 
-        std::cout << "u_A4(0, j): " << u_A4(0, j) << std::endl;
-        std::cout << "u4_right_buffer: " << u4_right_buffer[j] << std::endl;
-        std::cout << "u_A4(0, j) + u5_left_buffer[j]: " << u_A4(0, j) + u5_left_buffer[j] << std::endl;
+        std::cout << "left_up_corner_value_map[&A3]"
+                  << " : " << left_up_corner_value_map[&A3] << std::endl;
+        std::cout << "v2_up_buffer[nx - 1]"
+                  << " : " << v2_up_buffer[nx - 1] << std::endl;
+        std::cout << "left_up_corner_value_map[&A3] - v2_up_buffer[nx - 1]: "
+                  << left_up_corner_value_map[&A3] - v2_up_buffer[nx - 1] << std::endl;
         std::cout << std::endl;
 
-        std::cout << "u_A5(0, j): " << u_A5(0, j) << std::endl;
-        std::cout << "u5_right_buffer: " << u5_right_buffer[j] << std::endl;
-        std::cout << "u_A5(0, j) + u5_right_buffer[j]: " << u_A5(0, j) + u5_right_buffer[j] << std::endl;
-        std::cout << std::endl;
-    }
-
-    for (int i = 0; i < 5; ++i)
-    {
-        std::cout << "v_A4(i, 0): " << v_A4(i, 0) << std::endl;
-        std::cout << "v5_up_buffer: " << v5_up_buffer[i] << std::endl;
-        std::cout << "v_A4(i, 0) + v5_up_buffer[i]: " << v_A4(i, 0) + v5_up_buffer[i] << std::endl;
+        std::cout << "left_up_corner_value_map[&A4]"
+                  << " : " << left_up_corner_value_map[&A4] << std::endl;
+        std::cout << "v_A1(nx - 1, 0)"
+                  << " : " << v_A1(nx - 1, 0) << std::endl;
+        std::cout << "left_up_corner_value_map[&A4] - v3_up_buffer[ny - 1]: "
+                  << left_up_corner_value_map[&A4] - v3_up_buffer[ny - 1] << std::endl;
         std::cout << std::endl;
 
-        std::cout << "v_A5(i, 0): " << v_A5(i, 0) << std::endl;
-        std::cout << "v4_up_buffer: " << v4_up_buffer[i] << std::endl;
-        std::cout << "v_A5(i, 0) + v4_up_buffer[i]: " << v_A5(i, 0) + v4_up_buffer[i] << std::endl;
-        std::cout << "v_A2(i, 0) - v4_up_buffer[i]: " << v_A2(i, 0) - v4_up_buffer[i] << std::endl;
-        std::cout << "v_A2(i, 0) + v2_up_buffer[i]" << " : " << v_A2(i, 0) + v2_up_buffer[i] << std::endl;
-
+        std::cout << "right_down_corner_value_map[&A5]"
+                  << " : " << right_down_corner_value_map[&A5] << std::endl;
+        std::cout << "u2_right_buffer[ny - 1]"
+                  << " : " << u2_right_buffer[ny - 1] << std::endl;
+        std::cout << "right_down_corner_value_map[&A5] - u2_right_buffer[ny - 1]: "
+                  << right_down_corner_value_map[&A5] - u2_right_buffer[ny - 1] << std::endl;
         std::cout << std::endl;
+    };
+    auto print_all_field = [&]() {
+        std::cout << "\n[Field Values]\n";
+        print_field_aligned(u_A1, "u_A1");
+        print_field_aligned(u_A3, "u_A3");
+        print_field_aligned(u_A5, "u_A5");
+        print_field_aligned(u_A2, "u_A2");
+        print_field_aligned(u_A4, "u_A4");
+        print_field_aligned(v_A1, "v_A1");
+        print_field_aligned(v_A3, "v_A3");
+        print_field_aligned(v_A5, "v_A5");
+        print_field_aligned(v_A2, "v_A2");
+        print_field_aligned(v_A4, "v_A4");
+        std::cout << std::setprecision(6) << std::scientific;
+        std::cout << "\n[ Symmetry Check]\n";
+        std::cout << "[NS Symmetry] L_inf(u_1 + u_3^R) = " << max_abs(u_diff_r_1_3) << "\n";
+        std::cout << "[NS Symmetry] L_inf(v_1 - v_3^R) = " << max_abs(v_diff_1_3) << "\n";
+        std::cout << "[NS Symmetry] L_inf(u_4 - u_5^R) = " << max_abs(u_diff_4_5) << "\n";
+        std::cout << "[NS Symmetry] L_inf(v_4 + v_5^R) = " << max_abs(v_diff_r_4_5) << "\n";
 
-        std::cout << "v_A1(i, 0): " << v_A1(i, 0) << std::endl;
-        std::cout << "v1_up_buffer: " << v1_up_buffer[i] << std::endl;
-        std::cout << "v_A1(i, 0) + v1_up_buffer[i]: " << v_A1(i, 0) + v1_up_buffer[i] << std::endl;
-        std::cout << std::endl;
+        // Pretty matrices for visual inspection
+        std::cout << "\n[Symmetry matrices]\n";
+        print_field_aligned(u_diff_r_1_3, "u_diff_r_1_3 = u_A1 + ReverseY(u_A3)");
+        print_field_aligned(v_diff_1_3, "v_diff_1_3   = v_A1 - ReverseY(v_A3)");
+        print_field_aligned(u_diff_4_5, "u_diff_4_5   = u_A4 - ReverseX(u_A5)");
+        print_field_aligned(v_diff_r_4_5, "v_diff_r_4_5 = v_A4 + ReverseX(v_A5)");
+    };
+    calc_diff_with_two_field_reversed_along_y(u_A1, u_A3, u_diff_r_1_3); // expect near 0
+    calc_diff_with_two_field_along_y(v_A1, v_A3, v_diff_1_3);            // expect near 0
+    calc_diff_with_two_field_along_x(u_A4, u_A5, u_diff_4_5);            // expect near 0
+    calc_diff_with_two_field_reversed_along_x(v_A4, v_A5, v_diff_r_4_5); // expect near 0
 
-        std::cout << "v_A3(i, 0): " << v_A3(i, 0) << std::endl;
-        std::cout << "v3_up_buffer: " << v3_up_buffer[i] << std::endl;
-        std::cout << "v_A3(i, 0) + v3_up_buffer[i]: " << v_A3(i, 0) + v3_up_buffer[i] << std::endl;
-        std::cout << std::endl;
-    }
+    std::cout << "--------print before solve--------" << std::endl;
+    print_buffer_info();
+    print_all_field();
+    // 生成时间戳目录
+    std::string nowtime_dir = "result/cross_ns_sym/" + IO::create_timestamp();
+    IO::create_directory(nowtime_dir);
 
+    IO::var_to_csv(u, nowtime_dir + "/u_init");
+    IO::var_to_csv(v, nowtime_dir + "/v_init");
+    IO::var_to_csv(p, nowtime_dir + "/p_init");
+
+    // NS
+    solver.euler_conv_diff_inner();
+    solver.euler_conv_diff_outer();
+    // update boundary for divu
+    solver.phys_boundary_update();
+    solver.nondiag_shared_boundary_update();
+    // divu
+    solver.velocity_div_inner();
+    solver.velocity_div_outer();
+    // update buffer for p
+    solver.pressure_buffer_update();
+    // p grad
+    solver.add_pressure_gradient();
+    
+    // Symmetry validation
+    calc_diff_with_two_field_reversed_along_y(u_A1, u_A3, u_diff_r_1_3); // expect near 0
+    calc_diff_with_two_field_along_y(v_A1, v_A3, v_diff_1_3);            // expect near 0
+    calc_diff_with_two_field_along_x(u_A4, u_A5, u_diff_4_5);            // expect near 0
+    calc_diff_with_two_field_reversed_along_x(v_A4, v_A5, v_diff_r_4_5); // expect near 0
+    std::cout << "--------print after solve--------" << std::endl;
+    print_all_field();
+
+    solver.phys_boundary_update();
+    solver.nondiag_shared_boundary_update();
+    solver.diag_shared_boundary_update();
+
+    print_buffer_info();
+    // Optional CSV outputs (uncomment if needed)
+    IO::var_to_csv(u, nowtime_dir + "/u");
+    IO::var_to_csv(v, nowtime_dir + "/v");
+    IO::var_to_csv(p, nowtime_dir + "/p");
+
+    // check boundary types
+    // for (auto* d : domains)
+    // {
+    //     for (auto loc : dirs)
+    //     {
+    //         auto& bound_type_map   = u.boundary_type_map[d];
+    //         auto& bound_type_map_v = v.boundary_type_map[d];
+    //         auto& bound_type_map_p = p.boundary_type_map[d];
+    //         std::cout << "Domain: " << d->name << ", Location: " << to_string(loc) << "\n";
+    //         std::cout << "  u boundary type: ";
+    //         if (bound_type_map.count(loc))
+    //             std::cout << to_string(bound_type_map[loc]) << "\n";
+    //         else
+    //             std::cout << "Not Set\n";
+    //         std::cout << "  v boundary type: ";
+    //         if (bound_type_map_v.count(loc))
+    //             std::cout << to_string(bound_type_map_v[loc]) << "\n";
+    //         else
+    //             std::cout << "Not Set\n";
+    //         std::cout << "  p boundary type: ";
+    //         if (bound_type_map_p.count(loc))
+    //             std::cout << to_string(bound_type_map_p[loc]) << "\n";
+    //         else
+    //             std::cout << "Not Set\n";
+    //     }
+    // }
     return 0;
 }

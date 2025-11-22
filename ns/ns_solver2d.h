@@ -18,6 +18,7 @@ class ConcatNSSolver2D
     // Simple: Only for single main domain geometry
 public:
     Variable *u_var = nullptr, *v_var = nullptr, *p_var = nullptr;
+    ConcatPoissonSolver2D* p_solver = nullptr;
 
     ConcatNSSolver2D(Variable*            in_u_var,
                      Variable*            in_v_var,
@@ -30,6 +31,7 @@ public:
     // void init();
     void variable_check();
     void solve();
+    void normalize_pressure();
     /**
      * Physics boundary update.
      *
@@ -92,33 +94,6 @@ public:
      */
     void diag_shared_boundary_update();
 
-private:
-    ConcatPoissonSolver2D* p_solver = nullptr;
-
-    std::vector<Domain2DUniform*>                                                            domains;
-    std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, Domain2DUniform*>> adjacency;
-
-    std::unordered_map<Domain2DUniform*, field2*> u_field_map, v_field_map, p_field_map;
-    std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, double*>> u_buffer_map, v_buffer_map,
-        p_buffer_map;
-    std::unordered_map<Domain2DUniform*, field2*> u_temp_field_map, v_temp_field_map;
-
-    std::unordered_map<Domain2DUniform*, double>& left_up_corner_value_map;
-    std::unordered_map<Domain2DUniform*, double>& right_down_corner_value_map;
-
-    EnvironmentConfig* env_config;
-
-    TimeAdvancingConfig* time_config;
-    double               dt;
-    int                  num_it;
-
-    PhysicsConfig* phy_config;
-    double         nu;
-
-
-
-
-
     /**
      * Euler convection and diffusion term inner calculation.
      *
@@ -141,4 +116,27 @@ private:
     void velocity_div_outer();
     void pressure_buffer_update();
     void add_pressure_gradient();
+
+private:
+
+    std::vector<Domain2DUniform*>                                                            domains;
+    std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, Domain2DUniform*>> adjacency;
+
+    std::unordered_map<Domain2DUniform*, field2*> u_field_map, v_field_map, p_field_map;
+    std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, double*>> u_buffer_map, v_buffer_map,
+        p_buffer_map;
+    std::unordered_map<Domain2DUniform*, field2*> u_temp_field_map, v_temp_field_map;
+
+    std::unordered_map<Domain2DUniform*, double>& left_up_corner_value_map;
+    std::unordered_map<Domain2DUniform*, double>& right_down_corner_value_map;
+
+    EnvironmentConfig* env_config;
+
+    TimeAdvancingConfig* time_config;
+    double               dt;
+    int                  num_it;
+
+    PhysicsConfig* phy_config;
+    double         nu;
+
 };
