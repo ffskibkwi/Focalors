@@ -3,6 +3,7 @@ project(Focalors)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # 構建型別（與 poisson_base 類似）
 set(CMAKE_CONFIGURATION_TYPES
@@ -44,6 +45,12 @@ file(GLOB_RECURSE SOLVER_SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/poisson_base/pe_mpi_distributed/*.cpp"
     "${CMAKE_SOURCE_DIR}/ns/*.cpp"
 )
+
+# 排除 pe/poisson_old 和 pe/concat_old 目录下所有 cpp 文件
+file(GLOB_RECURSE POISSON_OLD_SOURCE_FILES "${CMAKE_SOURCE_DIR}/pe/poisson_old/*.cpp")
+file(GLOB_RECURSE CONCAT_OLD_SOURCE_FILES "${CMAKE_SOURCE_DIR}/pe/concat_old/*.cpp")
+list(REMOVE_ITEM SOLVER_SOURCE_FILES ${POISSON_OLD_SOURCE_FILES})
+list(REMOVE_ITEM SOLVER_SOURCE_FILES ${CONCAT_OLD_SOURCE_FILES})
 
 add_library(Solver ${SOLVER_SOURCE_FILES} ${SOLVER_HEADER_FILES})
 target_include_directories(Solver PUBLIC

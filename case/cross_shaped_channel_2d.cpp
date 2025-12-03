@@ -38,18 +38,20 @@ int main(int argc, char* argv[])
 {
     // 参数读取与物理配置
     Geometry2D geo_cross;
+    double     h = 0.02;
 
-    EnvironmentConfig* env_config = new EnvironmentConfig();
-    env_config->showGmresRes      = true;
-
+    EnvironmentConfig* env_config    = new EnvironmentConfig();
+    env_config->showGmresRes         = false;
+    env_config->showCurrentStep      = false;
     TimeAdvancingConfig* time_config = new TimeAdvancingConfig();
-    time_config->dt                  = 0.001;
-    time_config->num_iterations      = 1e5;
-
+    time_config->dt                  = 1.0 / 10 * h; // CFL condition
+    time_config->num_iterations      = 70 * 1.5 / (time_config->dt);
+    // time_config->num_iterations   = 10;
     PhysicsConfig* physics_config = new PhysicsConfig();
     physics_config->set_Re(200);
-    
-    int step_to_save = 10000;
+
+    int step_to_save = time_config->num_iterations / 10;
+    // int step_to_save = 1;
 
     double lx2 = 1;
     double ly2 = 1;
@@ -57,7 +59,6 @@ int main(int argc, char* argv[])
     double lx3 = lx1;
     double ly4 = 60 * ly2;
     double ly5 = ly4;
-    double h   = 0.01;
 
     int nx2 = lx2 / h;
     int ny2 = ly2 / h;
@@ -74,6 +75,17 @@ int main(int argc, char* argv[])
     int ly3 = ly2;
     int lx4 = lx2;
     int lx5 = lx2;
+
+    std::cout << "Construct cross-shaped channel geometry..." << std::endl;
+    std::cout << "Domain A2: " << nx2 << " x " << ny2 << " (" << lx2 << " x " << ly2 << ")" << std::endl;
+    std::cout << "Domain A1: " << nx1 << " x " << ny1 << " (" << lx1 << " x " << ly1 << ")" << std::endl;
+    std::cout << "Domain A3: " << nx3 << " x " << ny3 << " (" << lx3 << " x " << ly3 << ")" << std::endl;
+    std::cout << "Domain A4: " << nx4 << " x " << ny4 << " (" << lx4 << " x " << ly4 << ")" << std::endl;
+    std::cout << "Domain A5: " << nx5 << " x " << ny5 << " (" << lx5 << " x " << ly5 << ")" << std::endl;
+
+    // 输出总网格数
+    int total_grid = nx1 * ny1 + nx2 * ny2 + nx3 * ny3 + nx4 * ny4 + nx5 * ny5;
+    std::cout << "Total grid points: " << total_grid << std::endl;
 
     Domain2DUniform A2(nx2, ny2, lx2, ly2, "A2");
     Domain2DUniform A1(nx1, ny1, lx1, ly1, "A1");
@@ -161,6 +173,7 @@ int main(int argc, char* argv[])
         u.boundary_value_map[&A1][LocationType::Left][j] = u_val;
     }
     set_dirichlet_zero(v, &A1, LocationType::Left);
+
     // A3 Right: u(y_norm) = -6*U0*y_norm*(1-y_norm)
     u.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Dirichlet);
     u.has_boundary_value_map[&A3][LocationType::Right] = true;
@@ -180,44 +193,55 @@ int main(int argc, char* argv[])
     set_neumann_zero(u, &A5, LocationType::Up);
     set_neumann_zero(v, &A5, LocationType::Up);
 
-    // Solve
     ConcatNSSolver2D ns_solver(&u, &v, &p, time_config, physics_config, env_config);
-    for (int iter = 0; iter < time_config->num_iterations; iter++)
+
+    ns_solver.p_solver->set_parameter(10, 1.e-7, 1000);
+    // Generate timestamp directory
+    std::string nowtime_dir = "result/cross_shaped_channel_2d/" + IO::create_timestamp();
+
+    IO::create_directory(nowtime_dir);
+
+    // ns_solver.phys_boundary_update();
+    // ns_solver.nondiag_shared_boundary_update();
+    // ns_solver.diag_shared_boundary_update();
+    // IO::var_to_csv(u, nowtime_dir + "/u_step_" + std::to_string(0));
+    // IO::var_to_csv(v, nowtime_dir + "/v_step_" + std::to_string(0));
+    // IO::var_to_csv(p, nowtime_dir + "/p_step_" + std::to_string(0));
+
+    // Solve
+    for (int step = 1; step <= time_config->num_iterations; step++)
     {
+        // 只在前5步和每200步输出残差
+        if (step % 200 == 0 || step <= 5)
+        {
+            env_config->showGmresRes = true;
+            std::cout << "step: " << step << "/" << time_config->num_iterations << "\n";
+        }
+        else
+        {
+            env_config->showGmresRes = false;
+        }
+        ns_solver.solve();
+        if (step % step_to_save == 0)
+        {
+            std::cout << "Saving step " << (step) << " to CSV files." << std::endl;
+            // update boundary for NS
+            ns_solver.phys_boundary_update();
+            ns_solver.nondiag_shared_boundary_update();
+            ns_solver.diag_shared_boundary_update();
+            IO::var_to_csv_full(u, nowtime_dir + "/u/u_" + std::to_string(step));
+            IO::var_to_csv_full(v, nowtime_dir + "/v/v_" + std::to_string(step));
+            IO::var_to_csv_full(p, nowtime_dir + "/p/p_" + std::to_string(step));
+        }
         if (std::isnan(u_A1(1, 1)))
         {
             std::cout << "=== DIVERGENCE ===" << std::endl;
-
             return -1;
         }
-        if (iter % 200 == 0)
-            std::cout << "iter: " << iter << "/" << time_config->num_iterations << "\n";
-        ns_solver.solve();
-        if (iter % step_to_save == 0)
-        {
-            std::cout << "Saving step " << iter << " to CSV files." << std::endl;
-            // Generate timestamp directory
-            std::string nowtime_dir = "result/cross_shaped_channel_2d/" + IO::create_timestamp();
-            IO::create_directory(nowtime_dir);
-
-            IO::var_to_csv(u, nowtime_dir + "/u_step_" + std::to_string(iter));
-            IO::var_to_csv(v, nowtime_dir + "/v_step_" + std::to_string(iter));
-            IO::var_to_csv(p, nowtime_dir + "/p_step_" + std::to_string(iter));
-        }
     }
-
-    // Final buffer update
-    ns_solver.phys_boundary_update();
-    ns_solver.nondiag_shared_boundary_update();
-    ns_solver.diag_shared_boundary_update();
     std::cout << "Simulation finished." << std::endl;
-
-    // Generate timestamp directory
-    std::string nowtime_dir = "result/cross_shaped_channel_2d/" + IO::create_timestamp();
-    IO::create_directory(nowtime_dir);
-
-    IO::var_to_csv(u, nowtime_dir + "/u_step_" + std::to_string(time_config->num_iterations));
-    IO::var_to_csv(v, nowtime_dir + "/v_step_" + std::to_string(time_config->num_iterations));
-    IO::var_to_csv(p, nowtime_dir + "/p_step_" + std::to_string(time_config->num_iterations));
+    IO::var_to_csv_full(u, nowtime_dir + "final/u_" + std::to_string(time_config->num_iterations));
+    IO::var_to_csv_full(v, nowtime_dir + "final/v_" + std::to_string(time_config->num_iterations));
+    IO::var_to_csv_full(p, nowtime_dir + "final/p_" + std::to_string(time_config->num_iterations));
     return 0;
 }

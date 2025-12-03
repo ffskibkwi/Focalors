@@ -1,6 +1,6 @@
-#include "ns_solver2d.h"
 #include "io/csv_writer_2d.h"
-
+#include "ns_solver2d.h"
+#include <iomanip>
 void ConcatNSSolver2D::velocity_div_inner()
 {
     for (auto& domain : domains)
@@ -66,15 +66,18 @@ void ConcatNSSolver2D::pressure_buffer_update()
 
                 Domain2DUniform* adj_domain = adjacency[domain][loc];
                 field2&          adj_p      = *p_field_map[adj_domain];
+                int              adj_nx     = adj_p.get_nx();
+                int              adj_ny     = adj_p.get_ny();
+                std::string      loc_str;
                 switch (loc)
                 {
                     case LocationType::Left:
                         for (int j = 0; j < ny; j++)
-                            p_buffer[j] = adj_p(nx - 1, j);
+                            p_buffer[j] = adj_p(adj_nx - 1, j);
                         break;
                     case LocationType::Down:
                         for (int i = 0; i < nx; i++)
-                            p_buffer[i] = adj_p(i, ny - 1);
+                            p_buffer[i] = adj_p(i, adj_ny - 1);
                         break;
                     default:
                         // For center pressure, only Left/Down buffers are owned; ignore Right/Up.
@@ -122,7 +125,7 @@ void ConcatNSSolver2D::add_pressure_gradient()
 }
 void ConcatNSSolver2D::normalize_pressure()
 {
-    double total_sum = 0.0;
+    double total_sum  = 0.0;
     size_t total_size = 0;
     for (auto& domain : domains)
     {
@@ -133,9 +136,9 @@ void ConcatNSSolver2D::normalize_pressure()
     double mean = total_sum / total_size;
     for (auto& domain : domains)
     {
-        field2& p = *p_field_map[domain];
-        int nx = p.get_nx();
-        int ny = p.get_ny();
+        field2& p  = *p_field_map[domain];
+        int     nx = p.get_nx();
+        int     ny = p.get_ny();
         for (int i = 0; i < nx; ++i)
             for (int j = 0; j < ny; ++j)
                 p(i, j) -= mean;

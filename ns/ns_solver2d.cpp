@@ -22,8 +22,9 @@ ConcatNSSolver2D::ConcatNSSolver2D(Variable*            in_u_var,
         // Maybe useful in future
     }
 
-    dt     = time_config->dt;
-    num_it = time_config->num_iterations;
+    dt      = time_config->dt;
+    num_it  = time_config->num_iterations;
+    corr_it = time_config->corr_iter;
 
     nu = phy_config->nu;
 
@@ -80,21 +81,21 @@ void ConcatNSSolver2D::variable_check()
 
 void ConcatNSSolver2D::solve()
 {
-    for (int it = 0; it < num_it; it++)
+    // update boundary for NS
+    phys_boundary_update();
+    nondiag_shared_boundary_update();
+    diag_shared_boundary_update();
+
+    // NS
+    euler_conv_diff_inner();
+    euler_conv_diff_outer();
+
+    // update boundary for divu
+    phys_boundary_update();
+    nondiag_shared_boundary_update();
+
+    for (int it = 0; it < corr_it; it++)
     {
-        // update boundary for NS
-        phys_boundary_update();
-        nondiag_shared_boundary_update();
-        diag_shared_boundary_update();
-
-        // NS
-        euler_conv_diff_inner();
-        euler_conv_diff_outer();
-
-        // update boundary for divu
-        phys_boundary_update();
-        nondiag_shared_boundary_update();
-
         // divu
         velocity_div_inner();
         velocity_div_outer();
