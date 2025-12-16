@@ -35,6 +35,7 @@ file(GLOB_RECURSE SOLVER_HEADER_FILES
     "${CMAKE_SOURCE_DIR}/poisson_base/pe/*.h"   "${CMAKE_SOURCE_DIR}/poisson_base/pe/*.hpp"
     "${CMAKE_SOURCE_DIR}/poisson_base/pe_mpi/*.h" "${CMAKE_SOURCE_DIR}/poisson_base/pe_mpi/*.hpp"
     "${CMAKE_SOURCE_DIR}/poisson_base/pe_mpi_distributed/*.h" "${CMAKE_SOURCE_DIR}/poisson_base/pe_mpi_distributed/*.hpp"
+    "${CMAKE_SOURCE_DIR}/poisson_base/instrumentor/*.h" "${CMAKE_SOURCE_DIR}/poisson_base/instrumentor/*.hpp"
     "${CMAKE_SOURCE_DIR}/ns/*.h"   "${CMAKE_SOURCE_DIR}/ns/*.hpp"
 )
 file(GLOB_RECURSE SOLVER_SOURCE_FILES
@@ -43,6 +44,7 @@ file(GLOB_RECURSE SOLVER_SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/poisson_base/pe/*.cpp"
     "${CMAKE_SOURCE_DIR}/poisson_base/pe_mpi/*.cpp"
     "${CMAKE_SOURCE_DIR}/poisson_base/pe_mpi_distributed/*.cpp"
+    "${CMAKE_SOURCE_DIR}/poisson_base/instrumentor/*.cpp"
     "${CMAKE_SOURCE_DIR}/ns/*.cpp"
 )
 
