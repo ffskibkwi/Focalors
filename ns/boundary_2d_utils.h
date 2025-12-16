@@ -22,3 +22,11 @@ void mirror_y_to_buffer(double* buffer, field2& f, int src, double* val_ptr, dou
 // Swap underlying data pointers of two same-typed fields (no shape/metadata change)
 void swap_field_data(field2& a, field2& b);
 void swap_field_data(field3& a, field3& b);
+
+double get_u_with_boundary(int i, int j, int nx, int ny, const field2& u, double* u_left_buffer,
+                           double* u_right_buffer, double* u_down_buffer, double* u_up_buffer,
+                           double right_down_corner_value);
+
+double get_v_with_boundary(int i, int j, int nx, int ny, const field2& v, double* v_left_buffer,
+                           double* v_right_buffer, double* v_down_buffer, double* v_up_buffer,
+                           double left_up_corner_value);

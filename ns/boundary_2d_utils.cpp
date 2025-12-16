@@ -139,3 +139,33 @@ void swap_field_data(field3& a, field3& b)
         throw std::runtime_error("swap_field_data(field3): size mismatch");
     std::swap(a.value, b.value);
 }
+
+double get_u_with_boundary(int i, int j, int nx, int ny, const field2& u, double* u_left_buffer, double* u_right_buffer,
+                           double* u_down_buffer, double* u_up_buffer, double right_down_corner_value)
+{
+    if (i >= 0 && i < nx && j >= 0 && j < ny)
+        return u(i, j);
+    if (j < 0)
+        return (i >= nx) ? right_down_corner_value : u_down_buffer[i];
+    if (j >= ny)
+        return u_up_buffer[i];
+    if (i >= nx)
+        return u_right_buffer[j];
+    // i < 0
+    return u_left_buffer[j];
+}
+
+double get_v_with_boundary(int i, int j, int nx, int ny, const field2& v, double* v_left_buffer, double* v_right_buffer,
+                           double* v_down_buffer, double* v_up_buffer, double left_up_corner_value)
+{
+    if (i >= 0 && i < nx && j >= 0 && j < ny)
+        return v(i, j);
+    if (i < 0)
+        return (j >= ny) ? left_up_corner_value : v_left_buffer[j];
+    if (i >= nx)
+        return v_right_buffer[j];
+    if (j >= ny)
+        return v_up_buffer[i];
+    // j < 0
+    return v_down_buffer[i];
+}

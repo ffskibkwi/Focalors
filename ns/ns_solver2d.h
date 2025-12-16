@@ -20,6 +20,9 @@ public:
     Variable *             u_var = nullptr, *v_var = nullptr, *p_var = nullptr;
     ConcatPoissonSolver2D* p_solver = nullptr;
 
+    // Non-Newtonian fields
+    Variable *mu_var = nullptr, *tau_xx_var = nullptr, *tau_yy_var = nullptr, *tau_xy_var = nullptr;
+
     ConcatNSSolver2D(Variable*            in_u_var,
                      Variable*            in_v_var,
                      Variable*            in_p_var,
@@ -32,6 +35,16 @@ public:
     void variable_check();
     void solve();
     void normalize_pressure();
+
+    // Non-Newtonian methods
+    void init_nonnewton(Variable* in_mu_var, Variable* in_tau_xx_var, Variable* in_tau_yy_var, Variable* in_tau_xy_var);
+    void solve_nonnewton();
+    void viscosity_update();
+    void stress_update();
+    void stress_buffer_update();
+    void euler_conv_diff_inner_nonnewton();
+    void euler_conv_diff_outer_nonnewton();
+
     /**
      * Physics boundary update.
      *
@@ -125,6 +138,15 @@ private:
     std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, double*>> u_buffer_map, v_buffer_map,
         p_buffer_map;
     std::unordered_map<Domain2DUniform*, field2*> u_temp_field_map, v_temp_field_map;
+
+    // Non-Newtonian field maps
+    std::unordered_map<Domain2DUniform*, field2*> mu_field_map;
+    std::unordered_map<Domain2DUniform*, field2*> tau_xx_field_map;
+    std::unordered_map<Domain2DUniform*, field2*> tau_yy_field_map;
+    std::unordered_map<Domain2DUniform*, field2*> tau_xy_field_map;
+
+    std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, double*>> tau_xx_buffer_map,
+        tau_yy_buffer_map;
 
     std::unordered_map<Domain2DUniform*, double>& left_up_corner_value_map;
     std::unordered_map<Domain2DUniform*, double>& right_down_corner_value_map;
