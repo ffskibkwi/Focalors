@@ -1,6 +1,9 @@
 #include "boundary_2d_utils.h"
 #include "ns_solver2d.h"
 
+/** @brief Minimum shear rate threshold to prevent singularity in power-law model */
+constexpr double GAMMA_DOT_MIN = 1.0e-4;
+
 void ConcatNSSolver2D::init_nonnewton(Variable* in_mu_var,
                                       Variable* in_tau_xx_var,
                                       Variable* in_tau_yy_var,
@@ -185,7 +188,7 @@ void ConcatNSSolver2D::viscosity_update()
                     double mu_min = phy_config->mu_min;
                     double mu_max = phy_config->mu_max;
                     if (n < 1.0)
-                        gamma_dot = std::max(gamma_dot, 1e-12); // protect against zero when exponent negative
+                        gamma_dot = std::max(gamma_dot, GAMMA_DOT_MIN); // protect against zero when exponent negative
                     // Avoid division by zero if gamma_dot is 0 and n < 1
                     mu_val = k * std::pow(gamma_dot, n - 1.0);
 
@@ -334,7 +337,7 @@ void ConcatNSSolver2D::stress_buffer_update()
                 double mu_min = phy_config->mu_min;
                 double mu_max = phy_config->mu_max;
                 if (n < 1.0)
-                    gamma_dot = std::max(gamma_dot, 1e-12);
+                    gamma_dot = std::max(gamma_dot, GAMMA_DOT_MIN);
                 mu_val = k * std::pow(gamma_dot, n - 1.0);
                 mu_val = std::max(mu_min, std::min(mu_val, mu_max));
             }
@@ -426,7 +429,7 @@ void ConcatNSSolver2D::stress_buffer_update()
                 double mu_min = phy_config->mu_min;
                 double mu_max = phy_config->mu_max;
                 if (n < 1.0)
-                    gamma_dot = std::max(gamma_dot, 1e-12);
+                    gamma_dot = std::max(gamma_dot, GAMMA_DOT_MIN);
                 mu_val = k * std::pow(gamma_dot, n - 1.0);
                 mu_val = std::max(mu_min, std::min(mu_val, mu_max));
             }

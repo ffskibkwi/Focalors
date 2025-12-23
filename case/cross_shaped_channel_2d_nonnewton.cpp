@@ -233,6 +233,7 @@ int main(int argc, char* argv[])
     const double U0 = case_param.U0;
 
     u.set_boundary_type(&A1, LocationType::Left, PDEBoundaryType::Dirichlet);
+    u.set_boundary_value(&A1, LocationType::Left, 0.0); // ← 添加这行来分配内存
     u.has_boundary_value_map[&A1][LocationType::Left] = true;
     set_dirichlet_zero(v, &A1, LocationType::Left);
     // A1 Left: u(y_norm) = +6*U0*y_norm*(1-y_norm)
@@ -247,6 +248,7 @@ int main(int argc, char* argv[])
     // A3 Right: u(y_norm) = -6*U0*y_norm*(1-y_norm)
     u.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Dirichlet);
     u.has_boundary_value_map[&A3][LocationType::Right] = true;
+    u.set_boundary_value(&A3, LocationType::Right, 0.0); // ← 添加这行来分配内存
     set_dirichlet_zero(v, &A3, LocationType::Right);
     for (int j = 0; j < u_A3.get_ny(); ++j)
     {
