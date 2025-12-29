@@ -41,7 +41,7 @@ int main(int argc, char* argv[])
     //
     // 测试不同的dx值
     // 选择能被所有尺寸整除的值: L1=2.0, L2=1.0, L3=3.0, H2=1.5, H4=2.0, H6=1.0
-    std::vector<double> dx_values = {0.1, 0.05, 0.025, 0.01, 0.01}; // 不同的网格间距
+    std::vector<double> dx_values = {0.1, 0.1 / 2, 0.1 / 4, 0.1 / 8, 0.1 / 16}; // 不同的网格间距
 
     // 参数同 test_pe/pe_analytical_full.m
     const double L1 = 2.0, L2 = 1.0, L3 = 3.0;
