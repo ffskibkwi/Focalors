@@ -146,7 +146,7 @@ int main(int argc, char* argv[])
     {
         // 创建dx命名的目录
         std::ostringstream dir_name;
-        dir_name << "result/dx" << dx_val;
+        dir_name << "result/H-shaped_pe_vali/dx" << dx_val;
         std::string output_dir = dir_name.str();
 
         // 目录由 IO::field_to_csv 自动创建
