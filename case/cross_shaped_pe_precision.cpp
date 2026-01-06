@@ -294,8 +294,6 @@ int main(int argc, char* argv[])
                 sum += H * H * diff * diff;
             }
         }
-
-        sum /= total_p_nodes;
         sum = std::sqrt(sum);
 
         std::cout << "acc_rank = " << acc_rank << " l2 norm = " << sum << '\n';
