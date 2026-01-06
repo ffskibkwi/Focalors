@@ -41,8 +41,8 @@ int main(int argc, char* argv[])
 {
     Geometry2D         geo_tee;
     EnvironmentConfig* env_config = new EnvironmentConfig();
-    env_config->showGmresRes      = false;
-    env_config->showCurrentStep   = false;
+    env_config->showGmresRes      = true;
+    env_config->showCurrentStep   = true;
 
     std::vector<double> acc_ranks = {1, 2, 4, 8, 16};
 
@@ -308,6 +308,112 @@ int main(int argc, char* argv[])
         sum = std::sqrt(sum);
 
         std::cout << "acc_rank = " << acc_rank << " l2 norm = " << sum << '\n';
+
+        // output diff
+
+        OPENMP_PARALLEL_FOR()
+        for (int i = 0; i < p_T1.get_nx(); i++)
+        {
+            for (int j = 0; j < p_T1.get_ny(); j++)
+            {
+                p_T1(i, j) -= p_analy((i + 1.) * H, (j + ny_T4 + 1.) * H);
+            }
+        }
+
+        OPENMP_PARALLEL_FOR()
+        for (int i = 0; i < p_T2.get_nx(); i++)
+        {
+            for (int j = 0; j < p_T2.get_ny(); j++)
+            {
+                p_T2(i, j) -= p_analy((i + nx_T1 + 1.) * H, (j + ny_T4 + 1.) * H);
+            }
+        }
+
+        OPENMP_PARALLEL_FOR()
+        for (int i = 0; i < p_T3.get_nx(); i++)
+        {
+            for (int j = 0; j < p_T3.get_ny(); j++)
+            {
+                p_T3(i, j) -= p_analy((i + nx_T1 + nx_T2 + 1.) * H, (j + ny_T4 + 1.) * H);
+            }
+        }
+
+        OPENMP_PARALLEL_FOR()
+        for (int i = 0; i < p_T4.get_nx(); i++)
+        {
+            for (int j = 0; j < p_T4.get_ny(); j++)
+            {
+                p_T4(i, j) -= p_analy((i + nx_T1 + 1.) * H, (j + 1.) * H);
+            }
+        }
+
+        OPENMP_PARALLEL_FOR()
+        for (int i = 0; i < p_T5.get_nx(); i++)
+        {
+            for (int j = 0; j < p_T5.get_ny(); j++)
+            {
+                p_T5(i, j) -= p_analy((i + nx_T1 + 1.) * H, (j + ny_T4 + ny_T2 + 1.) * H);
+            }
+        }
+
+        IO::field_to_csv(p_T1, output_dir + "/diff_T1");
+        IO::field_to_csv(p_T2, output_dir + "/diff_T2");
+        IO::field_to_csv(p_T3, output_dir + "/diff_T3");
+        IO::field_to_csv(p_T4, output_dir + "/diff_T4");
+        IO::field_to_csv(p_T5, output_dir + "/diff_T5");
+
+        // output analy
+
+        OPENMP_PARALLEL_FOR()
+        for (int i = 0; i < p_T1.get_nx(); i++)
+        {
+            for (int j = 0; j < p_T1.get_ny(); j++)
+            {
+                p_T1(i, j) = p_analy((i + 1.) * H, (j + ny_T4 + 1.) * H);
+            }
+        }
+
+        OPENMP_PARALLEL_FOR()
+        for (int i = 0; i < p_T2.get_nx(); i++)
+        {
+            for (int j = 0; j < p_T2.get_ny(); j++)
+            {
+                p_T2(i, j) = p_analy((i + nx_T1 + 1.) * H, (j + ny_T4 + 1.) * H);
+            }
+        }
+
+        OPENMP_PARALLEL_FOR()
+        for (int i = 0; i < p_T3.get_nx(); i++)
+        {
+            for (int j = 0; j < p_T3.get_ny(); j++)
+            {
+                p_T3(i, j) = p_analy((i + nx_T1 + nx_T2 + 1.) * H, (j + ny_T4 + 1.) * H);
+            }
+        }
+
+        OPENMP_PARALLEL_FOR()
+        for (int i = 0; i < p_T4.get_nx(); i++)
+        {
+            for (int j = 0; j < p_T4.get_ny(); j++)
+            {
+                p_T4(i, j) = p_analy((i + nx_T1 + 1.) * H, (j + 1.) * H);
+            }
+        }
+
+        OPENMP_PARALLEL_FOR()
+        for (int i = 0; i < p_T5.get_nx(); i++)
+        {
+            for (int j = 0; j < p_T5.get_ny(); j++)
+            {
+                p_T5(i, j) = p_analy((i + nx_T1 + 1.) * H, (j + ny_T4 + ny_T2 + 1.) * H);
+            }
+        }
+
+        IO::field_to_csv(p_T1, output_dir + "/analy_T1");
+        IO::field_to_csv(p_T2, output_dir + "/analy_T2");
+        IO::field_to_csv(p_T3, output_dir + "/analy_T3");
+        IO::field_to_csv(p_T4, output_dir + "/analy_T4");
+        IO::field_to_csv(p_T5, output_dir + "/analy_T5");
     }
 
     delete env_config;
