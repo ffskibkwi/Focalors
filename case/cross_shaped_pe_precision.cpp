@@ -16,6 +16,29 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+// 求解系数以确保 psi 在 K1, K1+K2, K1+K2+K3 处分别等于 pi, 2pi, 3pi
+void SolvePsiCoeffs(double K1, double K2, double K3, double A[4])
+{
+    double Kt2 = K1 + K2;
+    double Kt3 = K1 + K2 + K3;
+    A[1]       = M_PI / K1;
+    A[2]       = (2.0 * M_PI / Kt2 - A[1]) / K2;
+    A[3]       = (3.0 * M_PI / Kt3 - A[1] - A[2] * (Kt3 - K1)) / ((Kt3 - K1) * (Kt3 - Kt2));
+}
+
+// 计算多项式 psi 及其导数
+double ComputePsi(double t, double K1, double K2, const double A[4], int deriv)
+{
+    double K12 = K1 + K2;
+    if (deriv == 0)
+        return t * (A[1] + (A[2] + A[3] * (t - K12)) * (t - K1));
+    if (deriv == 1)
+        return A[1] + A[2] * (2 * t - K1) + A[3] * (3 * t * t - 2 * t * (K1 + K12) + K1 * K12);
+    if (deriv == 2)
+        return 2 * A[2] + A[3] * (6 * t - 2 * (K1 + K12));
+    return 0;
+}
+
 /**
  *
  * y
@@ -41,8 +64,8 @@ int main(int argc, char* argv[])
 {
     Geometry2D         geo_tee;
     EnvironmentConfig* env_config = new EnvironmentConfig();
-    env_config->showGmresRes      = true;
-    env_config->showCurrentStep   = true;
+    env_config->showGmresRes      = false;
+    env_config->showCurrentStep   = false;
 
     std::vector<double> acc_ranks = {1, 2, 4, 8, 16};
 
@@ -181,61 +204,29 @@ int main(int argc, char* argv[])
             }
         };
 
+        double Ax[4], Ay[4];
+        SolvePsiCoeffs(L1, L2, L3, Ax);
+        SolvePsiCoeffs(H4, H2, H5, Ay);
+
         std::function<double(double, double)> f_analy = [&](double x, double y) {
-            double A1_x           = M_PI / (2.0 * L1);
-            double A2_x           = (M_PI / L2 - A1_x) / (L1 + L2);
-            double numerator_A3_x = -((M_PI / L2 + M_PI / (2.0 * L3))) / (L2 + L3) - A2_x;
-            double A3_x           = numerator_A3_x / (L1 + L2 + L3);
+            double psx = ComputePsi(x, L1, L2, Ax, 0);
+            double psy = ComputePsi(y, H4, H2, Ay, 0);
+            double dx  = ComputePsi(x, L1, L2, Ax, 1);
+            double dy  = ComputePsi(y, H4, H2, Ay, 1);
+            double ddx = ComputePsi(x, L1, L2, Ax, 2);
+            double ddy = ComputePsi(y, H4, H2, Ay, 2);
 
-            double xi2_x    = A2_x + A3_x * (x - L1 - L2);
-            double xi1_x    = A1_x + xi2_x * (x - L1);
-            double psix_val = x * xi1_x;
+            // 对应：(∆u = f) 中的 f，PETSc 版本计算的是拉普拉斯算子作用于 sin(psx)*sin(psy)
+            double f = (ddx * std::cos(psx) * std::sin(psy) + ddy * std::cos(psy) * std::sin(psx)) -
+                       std::sin(psx) * std::sin(psy) * (dx * dx + dy * dy);
 
-            double xi1d_x     = xi2_x + A3_x * (x - L1);
-            double dpsix_val  = xi1_x + x * xi1d_x;
-            double ddpsix_val = 2.0 * xi1d_x + 2.0 * A3_x * x;
-
-            double A1_y           = M_PI / (2.0 * H4);
-            double A2_y           = (M_PI / H2 - A1_y) / (H4 + H2);
-            double numerator_A3_y = -((M_PI / H2 + M_PI / (2.0 * H5))) / (H2 + H5) - A2_y;
-            double A3_y           = numerator_A3_y / (H4 + H2 + H5);
-
-            double xi2_y    = A2_y + A3_y * (y - H4 - H2);
-            double xi1_y    = A1_y + xi2_y * (y - H4);
-            double psiy_val = y * xi1_y;
-
-            double xi1d_y     = xi2_y + A3_y * (y - H4);
-            double dpsiy_val  = xi1_y + y * xi1d_y;
-            double ddpsiy_val = 2.0 * xi1d_y + 2.0 * A3_y * y;
-
-            double p_ana_val   = std::sin(psix_val) * std::sin(psiy_val);
-            double pdd_ana_val = ddpsix_val * std::cos(psix_val) * std::sin(psiy_val) +
-                                 ddpsiy_val * std::cos(psiy_val) * std::sin(psix_val) -
-                                 p_ana_val * (dpsix_val * dpsix_val + dpsiy_val * dpsiy_val);
-            return pdd_ana_val * H * H;
+            return f * H * H; // 注意：in-house 求解器通常需要乘上 h^2
         };
 
         std::function<double(double, double)> p_analy = [&](double x, double y) {
-            double A1_x           = M_PI / (2.0 * L1);
-            double A2_x           = (M_PI / L2 - A1_x) / (L1 + L2);
-            double numerator_A3_x = -((M_PI / L2 + M_PI / (2.0 * L3))) / (L2 + L3) - A2_x;
-            double A3_x           = numerator_A3_x / (L1 + L2 + L3);
-
-            double xi2_x    = A2_x + A3_x * (x - L1 - L2);
-            double xi1_x    = A1_x + xi2_x * (x - L1);
-            double psix_val = x * xi1_x;
-
-            double A1_y           = M_PI / (2.0 * H4);
-            double A2_y           = (M_PI / H2 - A1_y) / (H4 + H2);
-            double numerator_A3_y = -((M_PI / H2 + M_PI / (2.0 * H5))) / (H2 + H5) - A2_y;
-            double A3_y           = numerator_A3_y / (H4 + H2 + H5);
-
-            double xi2_y    = A2_y + A3_y * (y - H4 - H2);
-            double xi1_y    = A1_y + xi2_y * (y - H4);
-            double psiy_val = y * xi1_y;
-
-            double p_ana_val = std::sin(psix_val) * std::sin(psiy_val);
-            return p_ana_val;
+            double psx = ComputePsi(x, L1, L2, Ax, 0);
+            double psy = ComputePsi(y, H4, H2, Ay, 0);
+            return std::sin(psx) * std::sin(psy);
         };
 
         // 填充右端项
