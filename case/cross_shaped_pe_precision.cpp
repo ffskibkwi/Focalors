@@ -251,7 +251,7 @@ int main(int argc, char* argv[])
             for (int j = 0; j < p_T1.get_ny(); j++)
             {
                 double diff = p_T1(i, j) - p_analy((i + 1.) * H, (j + ny_T4 + 1.) * H);
-                sum += diff * diff;
+                sum += H * H * diff * diff;
             }
         }
 
@@ -261,7 +261,7 @@ int main(int argc, char* argv[])
             for (int j = 0; j < p_T2.get_ny(); j++)
             {
                 double diff = p_T2(i, j) - p_analy((i + nx_T1 + 1.) * H, (j + ny_T4 + 1.) * H);
-                sum += diff * diff;
+                sum += H * H * diff * diff;
             }
         }
 
@@ -271,7 +271,7 @@ int main(int argc, char* argv[])
             for (int j = 0; j < p_T3.get_ny(); j++)
             {
                 double diff = p_T3(i, j) - p_analy((i + nx_T1 + nx_T2 + 1.) * H, (j + ny_T4 + 1.) * H);
-                sum += diff * diff;
+                sum += H * H * diff * diff;
             }
         }
 
@@ -281,7 +281,7 @@ int main(int argc, char* argv[])
             for (int j = 0; j < p_T4.get_ny(); j++)
             {
                 double diff = p_T4(i, j) - p_analy((i + nx_T1 + 1.) * H, (j + 1.) * H);
-                sum += diff * diff;
+                sum += H * H * diff * diff;
             }
         }
 
@@ -291,7 +291,7 @@ int main(int argc, char* argv[])
             for (int j = 0; j < p_T5.get_ny(); j++)
             {
                 double diff = p_T5(i, j) - p_analy((i + nx_T1 + 1.) * H, (j + ny_T4 + ny_T2 + 1.) * H);
-                sum += diff * diff;
+                sum += H * H * diff * diff;
             }
         }
 
