@@ -39,16 +39,16 @@ int main(int argc, char* argv[])
 {
     // 修正 EnvironmentConfig 构造
     EnvironmentConfig* env = new EnvironmentConfig();
-    env->showGmresRes      = false;
+    env->showGmresRes      = true;
     env->showCurrentStep   = false;
 
-    std::vector<double> acc_ranks = {1, 2, 4, 8, 16};
+    std::vector<double> acc_ranks = {4, 8, 16, 32};
 
     for (double rank : acc_ranks)
     {
         // 1. 几何参数计算
-        int    n1 = 4 * rank, n2 = 8 * rank, n3 = 16 * rank;
-        int    m4 = 8 * rank, m2 = 16 * rank, m5 = 4 * rank;
+        int    n1 = rank, n2 = 2 * rank, n3 = 4 * rank;
+        int    m4 = 2 * rank, m2 = 4 * rank, m5 = rank;
         double H  = 1.0 / (n1 + n2 + n3 + 1.0);
         double L1 = n1 * H, L2 = (n2 + 1) * H, L3 = n3 * H;
         double H4 = m4 * H, H2 = (m2 + 1) * H, H5 = m5 * H;
@@ -108,9 +108,9 @@ int main(int argc, char* argv[])
         };
         std::map<field2*, Offset> offsets = {{&p_T1, {H, H4 + H}},
                                              {&p_T2, {L1 + H, H4 + H}},
-                                             {&p_T3, {L1 + L2 + H, H4 + H}},
+                                             {&p_T3, {L1 + L2, H4 + H}},    //L2 = (N2 + 1) * H
                                              {&p_T4, {L1 + H, H}},
-                                             {&p_T5, {L1 + H, H4 + H2 + H}}};
+                                             {&p_T5, {L1 + H, H4 + H2}}};
 
         // 4. 设置边界条件 (修正 API 调用)
         p.set_boundary_type(&T1, LocationType::Left, PDEBoundaryType::Dirichlet);
@@ -158,6 +158,23 @@ int main(int argc, char* argv[])
             total_l2_sq += calc_err(*kv.first, kv.second.x, kv.second.y);
 
         std::cout << "rank: " << rank << " L2 Error: " << std::sqrt(total_l2_sq) << std::endl;
+
+        std::cout << "=== y = H + L4 (cal)===" << std::endl;
+        for (int i = 0; i < p_T1.get_nx(); i++)
+            std::cout << p_T1(i, 0) << " ";
+        for (int i = 0; i < p_T2.get_nx(); i++)
+            std::cout << p_T2(i, 0) << " ";
+        for (int i = 0; i < p_T3.get_nx(); i++)
+            std::cout << p_T3(i, 0) << " ";
+        std::cout << std::endl << "==================" << std::endl;
+        std::cout << "=== y = H + L4 (analy) ===" << std::endl;
+        for (int i = 0; i < p_T1.get_nx(); i++)
+            std::cout << p_analy(i * H + offsets[&p_T1].x, offsets[&p_T1].y) << " ";
+        for (int i = 0; i < p_T2.get_nx(); i++)
+            std::cout << p_analy(i * H + offsets[&p_T2].x, offsets[&p_T2].y) << " ";
+        for (int i = 0; i < p_T3.get_nx(); i++)
+            std::cout << p_analy(i * H + offsets[&p_T3].x, offsets[&p_T3].y) << " ";
+        std::cout << std::endl << "==================" << std::endl;
     }
     delete env;
     return 0;
