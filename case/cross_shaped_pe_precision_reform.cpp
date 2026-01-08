@@ -106,10 +106,10 @@ int main(int argc, char* argv[])
         {
             double x, y;
         };
-        std::map<field2*, Offset> offsets = {{&p_T1, {0, H4 + H}},
+        std::map<field2*, Offset> offsets = {{&p_T1, {H, H4 + H}},
                                              {&p_T2, {L1 + H, H4 + H}},
                                              {&p_T3, {L1 + L2 + H, H4 + H}},
-                                             {&p_T4, {L1 + H, 0}},
+                                             {&p_T4, {L1 + H, H}},
                                              {&p_T5, {L1 + H, H4 + H2 + H}}};
 
         // 4. 设置边界条件 (修正 API 调用)
