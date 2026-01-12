@@ -2,12 +2,14 @@
 #include "base/domain/geometry2d.h"
 #include "base/domain/variable.h"
 #include "base/field/field2.h"
+#include "io/config.h"
 #include "io/csv_writer_2d.h"
 #include "pe/concat/concat_solver2d.h"
 #include <cmath>
 #include <iostream>
 #include <map> // 补齐头文件
 #include <vector>
+
 
 // ---------------------------------------------------------------------
 // 物理函数封装 (保持与解析解一致)
