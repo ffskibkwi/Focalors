@@ -41,6 +41,13 @@ int main(int argc, char* argv[])
     EnvironmentConfig* env = new EnvironmentConfig();
     env->showGmresRes      = true;
     env->showCurrentStep   = false;
+    // Enable debug output
+    env->debugMode      = true;
+    env->debugOutputDir = "./debug_output";
+
+    // Create debug directory if it doesn't exist (Platform dependent, but using system command for simplicity or assume
+    // user created it) std::filesystem::create_directory("debug_output"); // C++17 feature, using system command is
+    // safer if unsure about C++ version support in user env, but here we just setting config.
 
     std::vector<double> acc_ranks = {4, 8, 16, 32};
 
@@ -108,7 +115,7 @@ int main(int argc, char* argv[])
         };
         std::map<field2*, Offset> offsets = {{&p_T1, {H, H4 + H}},
                                              {&p_T2, {L1 + H, H4 + H}},
-                                             {&p_T3, {L1 + L2, H4 + H}},    //L2 = (N2 + 1) * H
+                                             {&p_T3, {L1 + L2, H4 + H}}, // L2 = (N2 + 1) * H
                                              {&p_T4, {L1 + H, H}},
                                              {&p_T5, {L1 + H, H4 + H2}}};
 
@@ -159,22 +166,22 @@ int main(int argc, char* argv[])
 
         std::cout << "rank: " << rank << " L2 Error: " << std::sqrt(total_l2_sq) << std::endl;
 
-        std::cout << "=== y = H + L4 (cal)===" << std::endl;
-        for (int i = 0; i < p_T1.get_nx(); i++)
-            std::cout << p_T1(i, 0) << " ";
-        for (int i = 0; i < p_T2.get_nx(); i++)
-            std::cout << p_T2(i, 0) << " ";
-        for (int i = 0; i < p_T3.get_nx(); i++)
-            std::cout << p_T3(i, 0) << " ";
-        std::cout << std::endl << "==================" << std::endl;
-        std::cout << "=== y = H + L4 (analy) ===" << std::endl;
-        for (int i = 0; i < p_T1.get_nx(); i++)
-            std::cout << p_analy(i * H + offsets[&p_T1].x, offsets[&p_T1].y) << " ";
-        for (int i = 0; i < p_T2.get_nx(); i++)
-            std::cout << p_analy(i * H + offsets[&p_T2].x, offsets[&p_T2].y) << " ";
-        for (int i = 0; i < p_T3.get_nx(); i++)
-            std::cout << p_analy(i * H + offsets[&p_T3].x, offsets[&p_T3].y) << " ";
-        std::cout << std::endl << "==================" << std::endl;
+        // std::cout << "=== y = H + L4 (cal)===" << std::endl;
+        // for (int i = 0; i < p_T1.get_nx(); i++)
+        //     std::cout << p_T1(i, 0) << " ";
+        // for (int i = 0; i < p_T2.get_nx(); i++)
+        //     std::cout << p_T2(i, 0) << " ";
+        // for (int i = 0; i < p_T3.get_nx(); i++)
+        //     std::cout << p_T3(i, 0) << " ";
+        // std::cout << std::endl << "==================" << std::endl;
+        // std::cout << "=== y = H + L4 (analy) ===" << std::endl;
+        // for (int i = 0; i < p_T1.get_nx(); i++)
+        //     std::cout << p_analy(i * H + offsets[&p_T1].x, offsets[&p_T1].y) << " ";
+        // for (int i = 0; i < p_T2.get_nx(); i++)
+        //     std::cout << p_analy(i * H + offsets[&p_T2].x, offsets[&p_T2].y) << " ";
+        // for (int i = 0; i < p_T3.get_nx(); i++)
+        //     std::cout << p_analy(i * H + offsets[&p_T3].x, offsets[&p_T3].y) << " ";
+        // std::cout << std::endl << "==================" << std::endl;
     }
     delete env;
     return 0;
