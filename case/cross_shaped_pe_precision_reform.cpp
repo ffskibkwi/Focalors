@@ -43,9 +43,6 @@ int main(int argc, char* argv[])
     EnvironmentConfig* env = new EnvironmentConfig();
     env->showGmresRes      = true;
     env->showCurrentStep   = false;
-    // Enable debug output
-    env->debugMode      = true;
-    env->debugOutputDir = "./debug_output";
 
     // Create debug directory if it doesn't exist (Platform dependent, but using system command for simplicity or assume
     // user created it) std::filesystem::create_directory("debug_output"); // C++17 feature, using system command is
