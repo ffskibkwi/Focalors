@@ -10,7 +10,6 @@
 #include <map> // 补齐头文件
 #include <vector>
 
-
 // ---------------------------------------------------------------------
 // 物理函数封装 (保持与解析解一致)
 // ---------------------------------------------------------------------
@@ -45,13 +44,13 @@ int main(int argc, char* argv[])
     env->showCurrentStep   = false;
     // Enable debug output
     env->debugMode      = true;
-    env->debugOutputDir = "./debug_output";
+    env->debugOutputDir = "./result/debug_output";
 
     // Create debug directory if it doesn't exist (Platform dependent, but using system command for simplicity or assume
     // user created it) std::filesystem::create_directory("debug_output"); // C++17 feature, using system command is
     // safer if unsure about C++ version support in user env, but here we just setting config.
 
-    std::vector<double> acc_ranks = {4, 8, 16, 32};
+    std::vector<double> acc_ranks = {4, 8, 16, 32, 64};
 
     for (double rank : acc_ranks)
     {
@@ -63,11 +62,11 @@ int main(int argc, char* argv[])
         double H4 = m4 * H, H2 = (m2 + 1) * H, H5 = m5 * H;
 
         // 2. 构造多区域域
-        Domain2DUniform T1(n1, m2, L1, H2, "T1");
-        Domain2DUniform T2(n2, m2, L2, H2, "T2");
-        Domain2DUniform T3(n3, m2, L3, H2, "T3");
-        Domain2DUniform T4(n2, m4, L2, H4, "T4");
-        Domain2DUniform T5(n2, m5, L2, H5, "T5");
+        Domain2DUniform T1(n1, m2, L1, H2 - H, "T1");
+        Domain2DUniform T2(n2, m2, L2 - H, H2 - H, "T2");
+        Domain2DUniform T3(n3, m2, L3, H2 - H, "T3");
+        Domain2DUniform T4(n2, m4, L2 - H, H4, "T4");
+        Domain2DUniform T5(n2, m5, L2 - H, H5, "T5");
 
         Geometry2D geo;
         // 修正 add_domains 为 add_domain
