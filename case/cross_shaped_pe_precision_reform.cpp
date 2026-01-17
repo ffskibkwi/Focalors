@@ -62,20 +62,22 @@ int main(int argc, char* argv[])
         double H4 = m4 * H, H2 = (m2 + 1) * H, H5 = m5 * H;
 
         // 2. 构造多区域域
-        Domain2DUniform T1(n1, m2, L1, H2 - H, "T1");
-        Domain2DUniform T2(n2, m2, L2 - H, H2 - H, "T2");
-        Domain2DUniform T3(n3, m2, L3, H2 - H, "T3");
-        Domain2DUniform T4(n2, m4, L2 - H, H4, "T4");
-        Domain2DUniform T5(n2, m5, L2 - H, H5, "T5");
+        Domain2DUniform T1(n1, m2, "T1");
+        Domain2DUniform T2(n2, m2, "T2");
+        Domain2DUniform T3(n3, m2, "T3");
+        Domain2DUniform T4(n2, m4, "T4");
+        Domain2DUniform T5(n2, m5, "T5");
 
         Geometry2D geo;
         // 修正 add_domains 为 add_domain
-        geo.add_domain({&T1, &T2, &T3, &T4, &T5});
+        // geo.add_domain({&T1, &T2, &T3, &T4, &T5});
 
         geo.connect(T2, LocationType::Left, T1);
         geo.connect(T2, LocationType::Right, T3);
         geo.connect(T2, LocationType::Down, T4);
         geo.connect(T2, LocationType::Up, T5);
+
+        geo.set_global_spatial_step(H, H);
 
         // 3. 变量与场初始化 (修正 Variable 构造)
         Variable p("p");
@@ -117,21 +119,27 @@ int main(int argc, char* argv[])
                                              {&p_T5, {L1 + H, H4 + H2}}};
 
         // 4. 设置边界条件 (修正 API 调用)
-        p.set_boundary_type(&T1, LocationType::Left, PDEBoundaryType::Dirichlet);
-        p.set_boundary_type(&T1, LocationType::Up, PDEBoundaryType::Dirichlet);
-        p.set_boundary_type(&T1, LocationType::Down, PDEBoundaryType::Dirichlet);
-        p.set_boundary_type(&T3, LocationType::Right, PDEBoundaryType::Dirichlet);
-        p.set_boundary_type(&T3, LocationType::Up, PDEBoundaryType::Dirichlet);
-        p.set_boundary_type(&T3, LocationType::Down, PDEBoundaryType::Dirichlet);
-        p.set_boundary_type(&T4, LocationType::Left, PDEBoundaryType::Dirichlet);
-        p.set_boundary_type(&T4, LocationType::Right, PDEBoundaryType::Dirichlet);
-        p.set_boundary_type(&T4, LocationType::Down, PDEBoundaryType::Dirichlet);
-        p.set_boundary_type(&T5, LocationType::Left, PDEBoundaryType::Dirichlet);
-        p.set_boundary_type(&T5, LocationType::Right, PDEBoundaryType::Dirichlet);
-        p.set_boundary_type(&T5, LocationType::Up, PDEBoundaryType::Dirichlet);
+        // 4. 设置边界条件 (修正 API 调用)
+        p.set_boundary_type(&T1,
+                            {{LocationType::Left, PDEBoundaryType::Dirichlet},
+                             {LocationType::Up, PDEBoundaryType::Dirichlet},
+                             {LocationType::Down, PDEBoundaryType::Dirichlet}});
+        p.set_boundary_type(&T3,
+                            {{LocationType::Right, PDEBoundaryType::Dirichlet},
+                             {LocationType::Up, PDEBoundaryType::Dirichlet},
+                             {LocationType::Down, PDEBoundaryType::Dirichlet}});
+        p.set_boundary_type(&T4,
+                            {{LocationType::Left, PDEBoundaryType::Dirichlet},
+                             {LocationType::Right, PDEBoundaryType::Dirichlet},
+                             {LocationType::Down, PDEBoundaryType::Dirichlet}});
+        p.set_boundary_type(&T5,
+                            {{LocationType::Left, PDEBoundaryType::Dirichlet},
+                             {LocationType::Right, PDEBoundaryType::Dirichlet},
+                             {LocationType::Up, PDEBoundaryType::Dirichlet}});
 
         // 5. 右端项填充与求解 (修正 set_values 和 get_center_field)
         auto fill_f = [&](field2& f, double offx, double offy) {
+            OPENMP_PARALLEL_FOR()
             for (int i = 0; i < f.get_nx(); ++i)
                 for (int j = 0; j < f.get_ny(); ++j)
                     f(i, j) = f_rhs(offx + i * H, offy + j * H);
@@ -147,6 +155,7 @@ int main(int argc, char* argv[])
         double total_l2_sq = 0.0;
         auto   calc_err    = [&](field2& f, double offx, double offy) {
             double local_sum = 0;
+            OPENMP_PARALLEL_FOR(reduction(+ : local_sum))
             for (int i = 0; i < f.get_nx(); ++i)
             {
                 for (int j = 0; j < f.get_ny(); ++j)
