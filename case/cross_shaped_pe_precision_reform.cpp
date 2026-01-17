@@ -121,10 +121,10 @@ int main(int argc, char* argv[])
         // 2.2 由geometry来管理所有domain的offset
         // 2.3 提供全局偏移函数geo.global_move_x(double x)
         geo.axis(&T1, LocationType::Left);
-        geo.global_move_x(H);
+        geo.global_move_x(0.5 * H);
 
         geo.axis(&T4, LocationType::Down);
-        geo.global_move_y(H);
+        geo.global_move_y(0.5 * H);
 
         // 4. 设置边界条件
         p.set_boundary_type(&T1,
