@@ -151,11 +151,7 @@ int main(int argc, char* argv[])
     A5.set_ny(6);
     A5.set_ly(1.0);
 
-    geo_cross.add_domain(&A1);
-    geo_cross.add_domain(&A2);
-    geo_cross.add_domain(&A3);
-    geo_cross.add_domain(&A4);
-    geo_cross.add_domain(&A5);
+    geo_cross.add_domain({&A1, &A2, &A3, &A4, &A5});
 
     // Construct cross connectivity
     geo_cross.connect(A2, LocationType::Left, A1);

@@ -70,11 +70,7 @@ int main(int argc, char* argv[])
 
         Geometry2D geo;
         // 修正 add_domains 为 add_domain
-        geo.add_domain(&T1);
-        geo.add_domain(&T2);
-        geo.add_domain(&T3);
-        geo.add_domain(&T4);
-        geo.add_domain(&T5);
+        geo.add_domain({&T1, &T2, &T3, &T4, &T5});
 
         geo.connect(T2, LocationType::Left, T1);
         geo.connect(T2, LocationType::Right, T3);

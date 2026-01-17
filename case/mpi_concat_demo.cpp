@@ -1,7 +1,6 @@
 #include <iostream>
 #include <mpi.h>
 
-
 #include "base/domain/domain2d.h"
 #include "base/domain/geometry2d.h"
 #include "base/domain/geometry_tree.hpp"
@@ -9,10 +8,8 @@
 #include "base/field/field2.h"
 #include "base/location_boundary.h"
 
-
 #include "io/config.h"
 #include "io/csv_writer_2d.h"
-
 
 #include "pe_mpi/mpi_concat_poisson_solver2d.h"
 
@@ -51,12 +48,7 @@ int main(int argc, char* argv[])
     T6.set_lx(3.0);
 
     // Construct geometry
-    geo_tee.add_domain(&T1);
-    geo_tee.add_domain(&T2);
-    geo_tee.add_domain(&T3);
-    geo_tee.add_domain(&T4);
-    geo_tee.add_domain(&T5);
-    geo_tee.add_domain(&T6);
+    geo_tee.add_domain({&T1, &T2, &T3, &T4, &T5, &T6});
 
     geo_tee.connect(T2, LocationType::Left, T1);
     geo_tee.connect(T2, LocationType::Right, T3);
