@@ -34,7 +34,7 @@ double ComputePsi(double t, double K1, double K2, const double A[4], int deriv)
 }
 
 // ---------------------------------------------------------------------
-// 改进版主程序
+// 主程序
 // ---------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
@@ -45,10 +45,6 @@ int main(int argc, char* argv[])
     // Enable debug output
     env->debugMode      = true;
     env->debugOutputDir = "./result/debug_output";
-
-    // Create debug directory if it doesn't exist (Platform dependent, but using system command for simplicity or assume
-    // user created it) std::filesystem::create_directory("debug_output"); // C++17 feature, using system command is
-    // safer if unsure about C++ version support in user env, but here we just setting config.
 
     std::vector<double> acc_ranks = {4, 8, 16, 32, 64};
 
@@ -69,9 +65,6 @@ int main(int argc, char* argv[])
         Domain2DUniform T5(n2, m5, "T5");
 
         Geometry2D geo;
-        // 修正 add_domains 为 add_domain
-        // geo.add_domain({&T1, &T2, &T3, &T4, &T5});
-
         geo.connect(T2, LocationType::Left, T1);
         geo.connect(T2, LocationType::Right, T3);
         geo.connect(T2, LocationType::Down, T4);
@@ -108,18 +101,6 @@ int main(int argc, char* argv[])
         };
 
         // 定义区域坐标偏移映射，提高可读性
-        // struct Offset
-        // {
-        //     double x, y;
-        // };
-        // std::map<field2*, Offset> offsets = {{&p_T1, {H, H4 + H}},
-        //                                      {&p_T2, {L1 + H, H4 + H}},
-        //                                      {&p_T3, {L1 + L2, H4 + H}}, // L2 = (N2 + 1) * H
-        //                                      {&p_T4, {L1 + H, H}},
-        //                                      {&p_T5, {L1 + H, H4 + H2}}};
-
-        // 2.2 由geometry来管理所有domain的offset
-        // 2.3 提供全局偏移函数geo.global_move_x(double x)
         geo.axis(&T1, LocationType::Left);
         geo.global_move_x(0.5 * H);
 
