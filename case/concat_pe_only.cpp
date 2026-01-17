@@ -1,60 +1,73 @@
-#include "base/domain/geometry2d.h"
 #include "base/domain/domain2d.h"
+#include "base/domain/geometry2d.h"
+#include "base/domain/geometry_tree.hpp"
 #include "base/domain/variable.h"
 #include "base/field/field2.h"
-#include "base/domain/geometry_tree.hpp"
+
 
 #include "base/location_boundary.h"
 
 #include "pe/concat/concat_solver2d.h"
 
-#include "io/csv_writer_2d.h"
 #include "io/config.h"
+#include "io/csv_writer_2d.h"
+
 
 int main(int argc, char* argv[])
 {
-    Geometry2D geo_tee;
+    Geometry2D         geo_tee;
     EnvironmentConfig* env_config = new EnvironmentConfig();
-    env_config->showGmresRes = true;
-    env_config->showCurrentStep = true;
+    env_config->showGmresRes      = true;
+    env_config->showCurrentStep   = true;
 
     // Grid parameters
     Domain2DUniform T2(10, 10, 1.0, 1.0, "T2"); // 中心
-    Domain2DUniform T1("T1"); T1.set_nx(20); T1.set_lx(2.0);
-    Domain2DUniform T3("T3"); T3.set_nx(30); T3.set_lx(3.0);
-    Domain2DUniform T4("T4"); T4.set_ny(10); T4.set_ly(1.0);
-    Domain2DUniform T5("T5"); T5.set_ny(20); T5.set_ly(2.0);
-    Domain2DUniform T6("T6"); T6.set_nx(30); T6.set_lx(3.0);
+    Domain2DUniform T1("T1");
+    T1.set_nx(20);
+    T1.set_lx(2.0);
+    Domain2DUniform T3("T3");
+    T3.set_nx(30);
+    T3.set_lx(3.0);
+    Domain2DUniform T4("T4");
+    T4.set_ny(10);
+    T4.set_ly(1.0);
+    Domain2DUniform T5("T5");
+    T5.set_ny(20);
+    T5.set_ly(2.0);
+    Domain2DUniform T6("T6");
+    T6.set_nx(30);
+    T6.set_lx(3.0);
 
     // Set boundary on variable (new logic)
 
     // Construct geometry
-    geo_tee.add_domain(T1);
-    geo_tee.add_domain(T2);
-    geo_tee.add_domain(T3);
-    geo_tee.add_domain(T4);
-    geo_tee.add_domain(T5);
-    geo_tee.add_domain(T6);
+    geo_tee.add_domain(&T1);
+    geo_tee.add_domain(&T2);
+    geo_tee.add_domain(&T3);
+    geo_tee.add_domain(&T4);
+    geo_tee.add_domain(&T5);
+    geo_tee.add_domain(&T6);
 
-    geo_tee.connect(T2, LocationType::Left,  T1);
+    geo_tee.connect(T2, LocationType::Left, T1);
     geo_tee.connect(T2, LocationType::Right, T3);
-    geo_tee.connect(T2, LocationType::Down,  T4);
-    geo_tee.connect(T4, LocationType::Down,  T5);
+    geo_tee.connect(T2, LocationType::Down, T4);
+    geo_tee.connect(T4, LocationType::Down, T5);
     geo_tee.connect(T5, LocationType::Right, T6);
 
     // geo_tee.check();
     // geo_tee.solve_prepare();
     // std::cout << "tee optimal tree:" << std::endl;
     // TreeUtils::printTreeMap(geo_tee.tree_root, geo_tee.tree_map);
-    
+
     // if (geo_tee.tree_root)
     //     std::cout << "tee tree root: " << geo_tee.tree_root->name << std::endl;
-    
+
     // if (!geo_tee.parent_map.empty())
     // {
     //     for (auto &[key, value] : geo_tee.parent_map)
     //     {
-    //         std::cout << "parent of " << key->name << " is " << value.second->name << " on " << locationTypeToString(value.first) << std::endl;
+    //         std::cout << "parent of " << key->name << " is " << value.second->name << " on " <<
+    //         locationTypeToString(value.first) << std::endl;
     //     }
     //     std::cout << std::endl;
     // }
@@ -70,25 +83,25 @@ int main(int argc, char* argv[])
     v.set_center_field(&T6, v_T6);
 
     // 变量层面的边界条件设置（替代原先设置在 Domain 上的做法）
-    v.set_boundary_type(&T2, LocationType::Up,    PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T2, LocationType::Up, PDEBoundaryType::Dirichlet);
 
-    v.set_boundary_type(&T1, LocationType::Left,  PDEBoundaryType::Dirichlet);
-    v.set_boundary_type(&T1, LocationType::Up,    PDEBoundaryType::Dirichlet);
-    v.set_boundary_type(&T1, LocationType::Down,  PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T1, LocationType::Left, PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T1, LocationType::Up, PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T1, LocationType::Down, PDEBoundaryType::Dirichlet);
 
     v.set_boundary_type(&T3, LocationType::Right, PDEBoundaryType::Dirichlet);
-    v.set_boundary_type(&T3, LocationType::Up,    PDEBoundaryType::Dirichlet);
-    v.set_boundary_type(&T3, LocationType::Down,  PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T3, LocationType::Up, PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T3, LocationType::Down, PDEBoundaryType::Dirichlet);
 
-    v.set_boundary_type(&T4, LocationType::Left,  PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T4, LocationType::Left, PDEBoundaryType::Dirichlet);
     v.set_boundary_type(&T4, LocationType::Right, PDEBoundaryType::Dirichlet);
 
-    v.set_boundary_type(&T5, LocationType::Left,  PDEBoundaryType::Dirichlet);
-    v.set_boundary_type(&T5, LocationType::Down,  PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T5, LocationType::Left, PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T5, LocationType::Down, PDEBoundaryType::Dirichlet);
 
     v.set_boundary_type(&T6, LocationType::Right, PDEBoundaryType::Dirichlet);
-    v.set_boundary_type(&T6, LocationType::Up,    PDEBoundaryType::Dirichlet);
-    v.set_boundary_type(&T6, LocationType::Down,  PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T6, LocationType::Up, PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T6, LocationType::Down, PDEBoundaryType::Dirichlet);
 
     for (int i = 3; i < v_T4.get_nx() - 3; i++)
     {
@@ -97,7 +110,6 @@ int main(int argc, char* argv[])
             v_T4(i, j) = 1.0;
         }
     }
-
 
     ConcatPoissonSolver2D solver(&v, env_config);
     solver.solve();

@@ -151,11 +151,11 @@ int main(int argc, char* argv[])
     A5.set_ny(6);
     A5.set_ly(1.0);
 
-    geo_cross.add_domain(A1);
-    geo_cross.add_domain(A2);
-    geo_cross.add_domain(A3);
-    geo_cross.add_domain(A4);
-    geo_cross.add_domain(A5);
+    geo_cross.add_domain(&A1);
+    geo_cross.add_domain(&A2);
+    geo_cross.add_domain(&A3);
+    geo_cross.add_domain(&A4);
+    geo_cross.add_domain(&A5);
 
     // Construct cross connectivity
     geo_cross.connect(A2, LocationType::Left, A1);
@@ -643,7 +643,7 @@ int main(int argc, char* argv[])
     solver.pressure_buffer_update();
     // p grad
     solver.add_pressure_gradient();
-    
+
     // Symmetry validation
     calc_diff_with_two_field_reversed_along_y(u_A1, u_A3, u_diff_r_1_3); // expect near 0
     calc_diff_with_two_field_along_y(v_A1, v_A3, v_diff_1_3);            // expect near 0

@@ -1,9 +1,9 @@
+#include "case/cross_shaped_channel_2d.h"
 #include "base/domain/domain2d.h"
 #include "base/domain/geometry2d.h"
 #include "base/domain/variable.h"
 #include "base/field/field2.h"
 #include "base/location_boundary.h"
-#include "case/cross_shaped_channel_2d.h"
 #include "instrumentor/timer.h"
 #include "io/common.h"
 #include "io/config.h"
@@ -16,6 +16,7 @@
 #include <iomanip>
 #include <iostream>
 #include <string>
+
 /**
  *
  * y
@@ -58,13 +59,9 @@ int main(int argc, char* argv[])
     physics_config->set_Re(case_param.Re);
 
     // 计算循环输出步数间隔 pv_output_step（如果未指定则使用 num_iterations/10）
-    int pv_output_step = case_param.pv_output_step > 0
-                         ? case_param.pv_output_step
-                         : time_config->num_iterations / 10;
+    int pv_output_step = case_param.pv_output_step > 0 ? case_param.pv_output_step : time_config->num_iterations / 10;
     // 计算最终保存步数（如果未指定则使用 num_iterations）
-    int final_step_to_save = case_param.step_to_save > 0
-                             ? case_param.step_to_save
-                             : time_config->num_iterations;
+    int final_step_to_save = case_param.step_to_save > 0 ? case_param.step_to_save : time_config->num_iterations;
 
     double lx2 = case_param.lx_2;
     double ly2 = case_param.ly_2;
@@ -105,11 +102,11 @@ int main(int argc, char* argv[])
     Domain2DUniform A3(nx3, ny3, lx3, ly3, "A3");
     Domain2DUniform A4(nx4, ny4, lx4, ly4, "A4");
     Domain2DUniform A5(nx5, ny5, lx5, ly5, "A5");
-    geo_cross.add_domain(A1);
-    geo_cross.add_domain(A2);
-    geo_cross.add_domain(A3);
-    geo_cross.add_domain(A4);
-    geo_cross.add_domain(A5);
+    geo_cross.add_domain(&A1);
+    geo_cross.add_domain(&A2);
+    geo_cross.add_domain(&A3);
+    geo_cross.add_domain(&A4);
+    geo_cross.add_domain(&A5);
 
     // Construct cross connectivity
     geo_cross.connect(A2, LocationType::Left, A1);

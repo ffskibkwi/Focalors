@@ -186,13 +186,13 @@ int main(int argc, char* argv[])
 
         // 构造几何
         Geometry2D geo_tee;
-        geo_tee.add_domain(T1);
-        geo_tee.add_domain(T2);
-        geo_tee.add_domain(T3);
-        geo_tee.add_domain(T4);
-        geo_tee.add_domain(T5);
-        geo_tee.add_domain(T6);
-        geo_tee.add_domain(T7);
+        geo_tee.add_domain(&T1);
+        geo_tee.add_domain(&T2);
+        geo_tee.add_domain(&T3);
+        geo_tee.add_domain(&T4);
+        geo_tee.add_domain(&T5);
+        geo_tee.add_domain(&T6);
+        geo_tee.add_domain(&T7);
 
         geo_tee.connect(T2, LocationType::Left, T1);
         geo_tee.connect(T2, LocationType::Right, T3);
