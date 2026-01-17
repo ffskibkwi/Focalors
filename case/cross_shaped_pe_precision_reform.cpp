@@ -78,8 +78,6 @@ int main(int argc, char* argv[])
         geo.connect(T2, LocationType::Up, T5);
 
         geo.set_global_spatial_step(H, H);
-        geo.global_move_x(H);
-        geo.global_move_y(H);
 
         // 3. 变量与场初始化 (修正 Variable 构造)
         Variable p("p");
