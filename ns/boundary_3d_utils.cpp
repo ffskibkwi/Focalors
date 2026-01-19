@@ -2,15 +2,16 @@
 #include <stdexcept>
 #include <utility>
 
-void assign_x(field3& f, int dest, field2& val_ptr, double val_default)
+void assign_x(field3& f, int dest, field2* val_ptr, double val_default)
 {
-    if (val_ptr.get_size_n() > 0)
+    if (val_ptr != nullptr)
     {
+        field2& val = *val_ptr;
         for (int j = 0; j < f.get_ny(); j++)
         {
             for (int k = 0; k < f.get_nz(); k++)
             {
-                f(dest, j, k) = val_ptr(j, k);
+                f(dest, j, k) = val(j, k);
             }
         }
     }
@@ -26,15 +27,16 @@ void assign_x(field3& f, int dest, field2& val_ptr, double val_default)
     }
 }
 
-void assign_y(field3& f, int dest, field2& val_ptr, double val_default)
+void assign_y(field3& f, int dest, field2* val_ptr, double val_default)
 {
-    if (val_ptr.get_size_n() > 0)
+    if (val_ptr != nullptr)
     {
+        field2& val = *val_ptr;
         for (int i = 0; i < f.get_nx(); i++)
         {
             for (int k = 0; k < f.get_nz(); k++)
             {
-                f(i, dest, k) = val_ptr(i, k);
+                f(i, dest, k) = val(i, k);
             }
         }
     }
@@ -50,15 +52,16 @@ void assign_y(field3& f, int dest, field2& val_ptr, double val_default)
     }
 }
 
-void assign_z(field3& f, int dest, field2& val_ptr, double val_default)
+void assign_z(field3& f, int dest, field2* val_ptr, double val_default)
 {
-    if (val_ptr.get_size_n() > 0)
+    if (val_ptr != nullptr)
     {
+        field2& val = *val_ptr;
         for (int i = 0; i < f.get_nx(); i++)
         {
             for (int j = 0; j < f.get_ny(); j++)
             {
-                f(i, j, dest) = val_ptr(i, j);
+                f(i, j, dest) = val(i, j);
             }
         }
     }
@@ -107,15 +110,16 @@ void copy_z(field3& f, int src, int dest)
     }
 }
 
-void mirror_x(field3& f, int src, int dest, field2& val_ptr, double val_default)
+void mirror_x(field3& f, int src, int dest, field2* val_ptr, double val_default)
 {
-    if (val_ptr.get_size_n() > 0)
+    if (val_ptr != nullptr)
     {
+        field2& val = *val_ptr;
         for (int j = 0; j < f.get_ny(); j++)
         {
             for (int k = 0; k < f.get_nz(); k++)
             {
-                f(dest, j, k) = 2.0 * val_ptr(j, k) - f(src, j, k);
+                f(dest, j, k) = 2.0 * val(j, k) - f(src, j, k);
             }
         }
     }
@@ -131,15 +135,16 @@ void mirror_x(field3& f, int src, int dest, field2& val_ptr, double val_default)
     }
 }
 
-void mirror_y(field3& f, int src, int dest, field2& val_ptr, double val_default)
+void mirror_y(field3& f, int src, int dest, field2* val_ptr, double val_default)
 {
-    if (val_ptr.get_size_n() > 0)
+    if (val_ptr != nullptr)
     {
+        field2& val = *val_ptr;
         for (int i = 0; i < f.get_nx(); i++)
         {
             for (int k = 0; k < f.get_nz(); k++)
             {
-                f(i, dest, k) = 2.0 * val_ptr(i, k) - f(i, src, k);
+                f(i, dest, k) = 2.0 * val(i, k) - f(i, src, k);
             }
         }
     }
@@ -155,15 +160,16 @@ void mirror_y(field3& f, int src, int dest, field2& val_ptr, double val_default)
     }
 }
 
-void mirror_z(field3& f, int src, int dest, field2& val_ptr, double val_default)
+void mirror_z(field3& f, int src, int dest, field2* val_ptr, double val_default)
 {
-    if (val_ptr.get_size_n() > 0)
+    if (val_ptr != nullptr)
     {
+        field2& val = *val_ptr;
         for (int i = 0; i < f.get_nx(); i++)
         {
             for (int j = 0; j < f.get_ny(); j++)
             {
-                f(i, j, dest) = 2.0 * val_ptr(i, j) - f(i, j, src);
+                f(i, j, dest) = 2.0 * val(i, j) - f(i, j, src);
             }
         }
     }
@@ -179,23 +185,24 @@ void mirror_z(field3& f, int src, int dest, field2& val_ptr, double val_default)
     }
 }
 
-void assign_val_to_buffer(field2& buffer, field2& val_ptr, double val_default)
+void assign_val_to_buffer(field2& buffer, field2* val_ptr, double val_default)
 {
-    if (val_ptr.get_size_n() > 0)
+    if (val_ptr != nullptr)
     {
-        for (int i = 0; i < val_ptr.get_nx(); i++)
+        field2& val = *val_ptr;
+        for (int i = 0; i < val.get_nx(); i++)
         {
-            for (int j = 0; j < val_ptr.get_ny(); j++)
+            for (int j = 0; j < val.get_ny(); j++)
             {
-                buffer(i, j) = val_ptr(i, j);
+                buffer(i, j) = val(i, j);
             }
         }
     }
     else
     {
-        for (int i = 0; i < val_ptr.get_nx(); i++)
+        for (int i = 0; i < buffer.get_nx(); i++)
         {
-            for (int j = 0; j < val_ptr.get_ny(); j++)
+            for (int j = 0; j < buffer.get_ny(); j++)
             {
                 buffer(i, j) = val_default;
             }
@@ -235,15 +242,41 @@ void copy_z_to_buffer(field2& buffer, field3& f, int src)
         }
     }
 }
-void mirror_x_to_buffer(field2& buffer, field3& f, int src, field2& val_ptr, double val_default)
+
+void copy_x_to_buffer(double* buffer, field3& f, int src_y, int src_z)
 {
-    if (val_ptr.get_size_n() > 0)
+    for (int i = 0; i < f.get_nx(); i++)
     {
+        buffer[i] = f(i, src_y, src_z);
+    }
+}
+
+void copy_y_to_buffer(double* buffer, field3& f, int src_x, int src_z)
+{
+    for (int j = 0; j < f.get_ny(); j++)
+    {
+        buffer[j] = f(src_x, j, src_z);
+    }
+}
+
+void copy_z_to_buffer(double* buffer, field3& f, int src_x, int src_y)
+{
+    for (int k = 0; k < f.get_nz(); k++)
+    {
+        buffer[k] = f(src_x, src_y, k);
+    }
+}
+
+void mirror_x_to_buffer(field2& buffer, field3& f, int src, field2* val_ptr, double val_default)
+{
+    if (val_ptr != nullptr)
+    {
+        field2& val = *val_ptr;
         for (int j = 0; j < f.get_ny(); j++)
         {
             for (int k = 0; k < f.get_nz(); k++)
             {
-                buffer(j, k) = 2.0 * val_ptr(j, k) - f(src, j, k);
+                buffer(j, k) = 2.0 * val(j, k) - f(src, j, k);
             }
         }
     }
@@ -259,15 +292,16 @@ void mirror_x_to_buffer(field2& buffer, field3& f, int src, field2& val_ptr, dou
     }
 }
 
-void mirror_y_to_buffer(field2& buffer, field3& f, int src, field2& val_ptr, double val_default)
+void mirror_y_to_buffer(field2& buffer, field3& f, int src, field2* val_ptr, double val_default)
 {
-    if (val_ptr.get_size_n() > 0)
+    if (val_ptr != nullptr)
     {
+        field2& val = *val_ptr;
         for (int i = 0; i < f.get_nx(); i++)
         {
             for (int k = 0; k < f.get_nz(); k++)
             {
-                buffer(i, k) = 2.0 * val_ptr(i, k) - f(i, src, k);
+                buffer(i, k) = 2.0 * val(i, k) - f(i, src, k);
             }
         }
     }
@@ -283,15 +317,16 @@ void mirror_y_to_buffer(field2& buffer, field3& f, int src, field2& val_ptr, dou
     }
 }
 
-void mirror_z_to_buffer(field2& buffer, field3& f, int src, field2& val_ptr, double val_default)
+void mirror_z_to_buffer(field2& buffer, field3& f, int src, field2* val_ptr, double val_default)
 {
-    if (val_ptr.get_size_n() > 0)
+    if (val_ptr != nullptr)
     {
+        field2& val = *val_ptr;
         for (int i = 0; i < f.get_nx(); i++)
         {
             for (int j = 0; j < f.get_ny(); j++)
             {
-                buffer(i, j) = 2.0 * val_ptr(i, j) - f(i, j, src);
+                buffer(i, j) = 2.0 * val(i, j) - f(i, j, src);
             }
         }
     }
