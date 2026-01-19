@@ -35,10 +35,10 @@ int main(int argc, char* argv[])
         Domain2DUniform T3(m3, n2, "T3");
         Domain2DUniform T4(m3, n4, "T4");
         Domain2DUniform T5(m5, n2, "T5");
-        Domain2DUniform T5(m6, n2, "T6");
-        Domain2DUniform T5(m6, n7, "T7");
-        Domain2DUniform T5(m8, n2, "T8");
-        Domain2DUniform T5(m8, n9, "T9");
+        Domain2DUniform T6(m6, n2, "T6");
+        Domain2DUniform T7(m6, n7, "T7");
+        Domain2DUniform T8(m8, n2, "T8");
+        Domain2DUniform T9(m8, n9, "T9");
 
         Geometry2D geo;
         geo.connect(T1, LocationType::Up, T2);
