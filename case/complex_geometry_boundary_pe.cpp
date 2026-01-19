@@ -84,10 +84,10 @@ int main(int argc, char* argv[])
         p.set_boundary_type(&T1,
                             {{LocationType::Left, PDEBoundaryType::Dirichlet},
                              {LocationType::Right, PDEBoundaryType::Dirichlet},
-                             {LocationType::Up, PDEBoundaryType::Dirichlet}});
+                             {LocationType::Down, PDEBoundaryType::Dirichlet}});
         p.set_boundary_value_from_func_global(&T1, LocationType::Left, p_analy);
         p.set_boundary_value_from_func_global(&T1, LocationType::Right, p_analy);
-        p.set_boundary_value_from_func_global(&T1, LocationType::Up, p_analy);
+        p.set_boundary_value_from_func_global(&T1, LocationType::Down, p_analy);
 
         p.set_boundary_type(&T2,
                             {{LocationType::Left, PDEBoundaryType::Dirichlet},
