@@ -10,8 +10,11 @@
 #include "io/config.h"
 #include "pe/concat/concat_solver2d.h"
 
+#include <memory>
 #include <unordered_map>
 #include <vector>
+
+class MHDModule2D;
 
 class ConcatNSSolver2D
 {
@@ -152,6 +155,8 @@ private:
     std::unordered_map<Domain2DUniform*, double>& right_down_corner_value_map;
 
     EnvironmentConfig* env_config;
+
+    std::unique_ptr<MHDModule2D> mhd_module;
 
     TimeAdvancingConfig* time_config;
     double               dt;

@@ -1,3 +1,4 @@
+#include "boundary_2d_utils.h"
 #include "io/csv_writer_2d.h"
 #include "ns_solver2d.h"
 #include <iomanip>
@@ -125,22 +126,8 @@ void ConcatNSSolver2D::add_pressure_gradient()
 }
 void ConcatNSSolver2D::normalize_pressure()
 {
-    double total_sum  = 0.0;
-    size_t total_size = 0;
-    for (auto& domain : domains)
-    {
-        field2& p = *p_field_map[domain];
-        total_sum += p.sum();
-        total_size += p.get_size_n();
-    }
-    double mean = total_sum / total_size;
-    for (auto& domain : domains)
-    {
-        field2& p  = *p_field_map[domain];
-        int     nx = p.get_nx();
-        int     ny = p.get_ny();
-        for (int i = 0; i < nx; ++i)
-            for (int j = 0; j < ny; ++j)
-                p(i, j) -= mean;
-    }
+    if (!isAllNeumannBoundary(*p_var))
+        return;
+
+    normalizeRhsForNeumannBc(*p_var, domains, p_field_map);
 }
