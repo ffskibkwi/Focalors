@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
     env->showGmresRes      = true;
     env->showCurrentStep   = false;
     // Enable debug output
-    env->debugMode      = true;
+    env->debugMode      = false;
     env->debugOutputDir = "./result/debug_output";
 
     std::vector<double> acc_ranks = {4, 8, 16, 32, 64};
@@ -83,10 +83,10 @@ int main(int argc, char* argv[])
         // 4. 设置边界条件
         p.set_boundary_type(&T1,
                             {{LocationType::Left, PDEBoundaryType::Dirichlet},
-                             {LocationType::Down, PDEBoundaryType::Dirichlet},
+                             {LocationType::Right, PDEBoundaryType::Dirichlet},
                              {LocationType::Up, PDEBoundaryType::Dirichlet}});
         p.set_boundary_value_from_func_global(&T1, LocationType::Left, p_analy);
-        p.set_boundary_value_from_func_global(&T1, LocationType::Down, p_analy);
+        p.set_boundary_value_from_func_global(&T1, LocationType::Right, p_analy);
         p.set_boundary_value_from_func_global(&T1, LocationType::Up, p_analy);
 
         p.set_boundary_type(&T2,
