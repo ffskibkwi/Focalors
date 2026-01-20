@@ -1,5 +1,6 @@
 #include "ns_solver2d.h"
 #include "boundary_2d_utils.h"
+#include "mhd_module_2d.h"
 
 ConcatNSSolver2D::ConcatNSSolver2D(Variable*            in_u_var,
                                    Variable*            in_v_var,
@@ -89,6 +90,21 @@ void ConcatNSSolver2D::solve()
     // NS
     euler_conv_diff_inner();
     euler_conv_diff_outer();
+
+    // MHD: predictor step finished, before div(u) boundary update
+    if (phy_config->enable_mhd)
+    {
+        if (!mhd_module)
+            mhd_module = std::unique_ptr<MHDModule2D>(new MHDModule2D(u_var, v_var, phy_config, time_config, env_config));
+        mhd_module->init();
+        mhd_module->solveElectricPotential();
+        mhd_module->updateCurrentDensity();
+        mhd_module->applyLorentzForce();
+
+        // refresh predicted velocity boundary after applying Lorentz force
+        phys_boundary_update();
+        nondiag_shared_boundary_update();
+    }
 
     // update boundary for divu
     phys_boundary_update();

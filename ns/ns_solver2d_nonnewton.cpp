@@ -1,4 +1,5 @@
 #include "boundary_2d_utils.h"
+#include "mhd_module_2d.h"
 #include "ns_solver2d.h"
 
 /** @brief Minimum shear rate threshold to prevent singularity in power-law model */
@@ -43,6 +44,22 @@ void ConcatNSSolver2D::solve_nonnewton()
     // Replaces euler_conv_diff_inner/outer with Non-Newtonian versions
     euler_conv_diff_inner_nonnewton();
     euler_conv_diff_outer_nonnewton();
+
+    // MHD: predictor step finished, before div(u) boundary update
+    if (phy_config->enable_mhd)
+    {
+        if (!mhd_module)
+            mhd_module =
+                std::unique_ptr<MHDModule2D>(new MHDModule2D(u_var, v_var, phy_config, time_config, env_config));
+        mhd_module->init();
+        mhd_module->solveElectricPotential();
+        mhd_module->updateCurrentDensity();
+        mhd_module->applyLorentzForce();
+
+        // refresh predicted velocity boundary after applying Lorentz force
+        phys_boundary_update();
+        nondiag_shared_boundary_update();
+    }
 
     // 5. Update boundary for divu (Prepare for Pressure Projection)
     phys_boundary_update();
