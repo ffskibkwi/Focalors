@@ -157,13 +157,6 @@ void swap_field_data(field2& a, field2& b)
     std::swap(a.value, b.value);
 }
 
-void swap_field_data(field3& a, field3& b)
-{
-    if (a.get_size_n() != b.get_size_n())
-        throw std::runtime_error("swap_field_data(field3): size mismatch");
-    std::swap(a.value, b.value);
-}
-
 double get_u_with_boundary(int           i,
                            int           j,
                            int           nx,

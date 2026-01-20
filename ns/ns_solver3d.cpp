@@ -371,6 +371,7 @@ void ConcatNSSolver3D::euler_conv_diff_outer()
             w_temp(i, j, k) = w_ijk - dt * (conv_x + conv_y + conv_z - diffuse_x - diffuse_y - diffuse_z);
         };
 
+        OPENMP_PARALLEL_FOR()
         for (int j = 0; j < ny; j++)
         {
             for (int k = 0; k < nz; k++)
@@ -384,6 +385,8 @@ void ConcatNSSolver3D::euler_conv_diff_outer()
                 bound_cal_w(nx - 1, j, k);
             }
         }
+
+        OPENMP_PARALLEL_FOR()
         for (int i = 0; i < nx; i++)
         {
             for (int k = 0; k < nz; k++)
@@ -397,6 +400,8 @@ void ConcatNSSolver3D::euler_conv_diff_outer()
                 bound_cal_w(i, ny - 1, k);
             }
         }
+
+        OPENMP_PARALLEL_FOR()
         for (int i = 0; i < nx; i++)
         {
             for (int j = 0; j < ny; j++)
