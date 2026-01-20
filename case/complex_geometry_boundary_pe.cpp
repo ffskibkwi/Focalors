@@ -21,13 +21,13 @@ int main(int argc, char* argv[])
     env->debugMode      = false;
     env->debugOutputDir = "./result/debug_output";
 
-    std::vector<double> acc_ranks = {4, 8, 16, 32, 64};
+    std::vector<double> acc_ranks = {4, 8, 16, 32, 64, 128};
 
     for (double rank : acc_ranks)
     {
         // 1. 几何参数
         int    m1 = rank, m3 = rank * 2, m5 = rank, m6 = rank * 3, m8 = rank;     // x
-        int    n1 = rank, n2 = 2 * rank, n4 = 4 * rank, n7 = rank * 3, n9 = rank; // y
+        int    n1 = rank, n2 = 2 * rank, n4 = 4 * rank, n7 = rank, n9 = 2 * rank; // y
         double H = 1.0 / rank;
 
         // 2. 构造多区域�?
@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
         p.set_center_field(&T8, p_T8);
         p.set_center_field(&T9, p_T9);
 
-        double k = 0.1;
+        double k = 0.01;
 
         auto p_analy = [=](double x, double y) { return std::exp(-k * (x * x + y * y)); };
 
