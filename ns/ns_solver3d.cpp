@@ -287,12 +287,12 @@ void ConcatNSSolver3D::euler_conv_diff_outer()
             double u_kp1 = k == nz - 1 ? u_up_buffer(i, j) : u(i, j, k + 1);
 
             double v_im1_jp1 = i == 0 ? (j == ny - 1 ? v_corner_along_z[k] : v_left_buffer(j + 1, k)) :
-                                        (j == ny - 1 ? v_back_buffer(i, k) : v(i - 1, j + 1, k));
+                                        (j == ny - 1 ? v_back_buffer(i - 1, k) : v(i - 1, j + 1, k));
             double v_jp1     = j == ny - 1 ? v_back_buffer(i, k) : v(i, j + 1, k);
             double v_im1     = i == 0 ? v_left_buffer(j, k) : v(i - 1, j, k);
 
-            double w_im1_kp1 = i == 0 ? (k == nz - 1 ? w_corner_along_y[j] : w_left_buffer(j, k)) :
-                                        (k == nz - 1 ? w_up_buffer(i, j) : w(i - 1, j, k + 1));
+            double w_im1_kp1 = i == 0 ? (k == nz - 1 ? w_corner_along_y[j] : w_left_buffer(j, k + 1)) :
+                                        (k == nz - 1 ? w_up_buffer(i - 1, j) : w(i - 1, j, k + 1));
             double w_kp1     = k == nz - 1 ? w_up_buffer(i, j) : w(i, j, k + 1);
             double w_im1     = i == 0 ? w_left_buffer(j, k) : w(i - 1, j, k);
 
@@ -322,7 +322,7 @@ void ConcatNSSolver3D::euler_conv_diff_outer()
             double u_ip1     = i == nx - 1 ? u_right_buffer(j, k) : u(i + 1, j, k);
             double u_jm1     = j == 0 ? u_front_buffer(i, k) : u(i, j - 1, k);
 
-            double w_jm1_kp1 = j == 0 ? (k == nz - 1 ? w_corner_along_x[i] : w_front_buffer(i, k - 1)) :
+            double w_jm1_kp1 = j == 0 ? (k == nz - 1 ? w_corner_along_x[i] : w_front_buffer(i, k + 1)) :
                                         (k == nz - 1 ? w_up_buffer(i, j - 1) : w(i, j - 1, k + 1));
             double w_kp1     = k == nz - 1 ? w_up_buffer(i, j) : w(i, j, k + 1);
             double w_jm1     = j == 0 ? w_front_buffer(i, k) : w(i, j - 1, k);

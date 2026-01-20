@@ -12,6 +12,7 @@
 #include "pe/concat/concat_solver3d.h"
 #include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <cmath>
 #include <iomanip>
 #include <iostream>
@@ -19,6 +20,8 @@
 
 int main(int argc, char* argv[])
 {
+    auto main_start_time = std::chrono::steady_clock::now();
+
     // Geometry: Cross shape
     Geometry3D geo_cross;
 
@@ -30,11 +33,11 @@ int main(int argc, char* argv[])
     time_config->num_iterations      = 1e5;
 
     PhysicsConfig* physics_config = new PhysicsConfig();
-    physics_config->set_Re(1000);
+    physics_config->set_Re(200);
 
-    double lx1 = 10;
-    double lx2 = 40;
-    double ly1 = 10;
+    double lx1 = 0.5;
+    double lx2 = 0.5;
+    double ly1 = 0.5;
     double lz1 = 0.5;
     double lz3 = 0.5;
 
@@ -151,17 +154,40 @@ int main(int argc, char* argv[])
 
     ConcatNSSolver3D solver(&u, &v, &w, &p, time_config, physics_config, env_config);
 
-    for (int iter = 0; iter < time_config->num_iterations; iter++)
+    std::chrono::steady_clock::time_point iter_start_time, iter_end_time;
+
+    auto   main_end_time = std::chrono::steady_clock::now();
+    double total_elapsed = std::chrono::duration<double>(main_end_time - main_start_time).count();
+    std::cout << "Total init time: " << std::fixed << std::setprecision(2) << total_elapsed << " seconds.\n";
+
+    for (int iter = 0; iter <= time_config->num_iterations; iter++)
     {
         if (iter % 200 == 0)
-            std::cout << "iter: " << iter << "/" << time_config->num_iterations << "\n";
+        {
+            std::cout << "iter: " << iter << "/" << time_config->num_iterations;
+            iter_start_time = std::chrono::steady_clock::now();
+        }
 
         ConcatNSSolver3D ns_solver(&u, &v, &w, &p, time_config, physics_config, env_config);
         ns_solver.solve();
+
+        if (iter % 200 == 0)
+        {
+            iter_end_time = std::chrono::steady_clock::now();
+            total_elapsed = std::chrono::duration<double>(iter_end_time - iter_start_time).count();
+            std::cout << " iter wall time: " << std::fixed << std::setprecision(2) << total_elapsed << " seconds.\n";
+        }
+
+        if (iter % 10000 == 0 && iter != 0)
+        {
+            IO::var_to_csv(u, "result/" + std::to_string(iter) + "u");
+            IO::var_to_csv(v, "result/" + std::to_string(iter) + "v");
+            IO::var_to_csv(w, "result/" + std::to_string(iter) + "w");
+            IO::var_to_csv(p, "result/" + std::to_string(iter) + "p");
+        }
     }
 
-    IO::var_to_csv(u, "result/u");
-    IO::var_to_csv(v, "result/v");
-    IO::var_to_csv(w, "result/w");
-    IO::var_to_csv(p, "result/p");
+    main_end_time = std::chrono::steady_clock::now();
+    total_elapsed = std::chrono::duration<double>(main_end_time - main_start_time).count();
+    std::cout << "Total wall time: " << std::fixed << std::setprecision(2) << total_elapsed << " seconds.\n";
 }
