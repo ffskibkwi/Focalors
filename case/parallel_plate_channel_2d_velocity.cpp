@@ -107,11 +107,11 @@ int main(int argc, char* argv[])
     Geometry2D      geo;
     Domain2DUniform D1(nx1, ny, lx1, Ly, "D1");
     Domain2DUniform D2(nx2, ny, lx2, Ly, "D2");
-    geo.add_domain({&D1, &D2});
+    // geo.add_domain({&D1, &D2});
 
     // Connectivity
     // D1 Right -> D2 Left (Internal)
-    geo.connect(D1, LocationType::Right, D2);
+    geo.connect(&D1, LocationType::Right, &D2);
 
     // Variables
     Variable u("u"), v("v"), p("p");

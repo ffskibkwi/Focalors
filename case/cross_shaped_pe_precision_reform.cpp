@@ -65,10 +65,10 @@ int main(int argc, char* argv[])
         Domain2DUniform T5(n2, m5, "T5");
 
         Geometry2D geo;
-        geo.connect(T2, LocationType::Left, T1);
-        geo.connect(T2, LocationType::Right, T3);
-        geo.connect(T2, LocationType::Down, T4);
-        geo.connect(T2, LocationType::Up, T5);
+        geo.connect(&T2, LocationType::Left, &T1);
+        geo.connect(&T2, LocationType::Right, &T3);
+        geo.connect(&T2, LocationType::Down, &T4);
+        geo.connect(&T2, LocationType::Up, &T5);
 
         geo.set_global_spatial_step(H, H);
 

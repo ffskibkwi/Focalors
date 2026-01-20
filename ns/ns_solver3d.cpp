@@ -86,12 +86,12 @@ ConcatNSSolver3D::~ConcatNSSolver3D()
 
 void ConcatNSSolver3D::variable_check()
 {
-    if (u_var->position_type != VariablePositionType::XFaceCenter)
-        throw std::runtime_error("ConcatNSSolver3D: u->position_type is not XFaceCenter");
-    if (v_var->position_type != VariablePositionType::YFaceCenter)
-        throw std::runtime_error("ConcatNSSolver3D: v->position_type is not YFaceCenter");
-    if (w_var->position_type != VariablePositionType::ZFaceCenter)
-        throw std::runtime_error("ConcatNSSolver3D: w->position_type is not ZFaceCenter");
+    if (u_var->position_type != VariablePositionType::XFace)
+        throw std::runtime_error("ConcatNSSolver3D: u->position_type is not XFace");
+    if (v_var->position_type != VariablePositionType::YFace)
+        throw std::runtime_error("ConcatNSSolver3D: v->position_type is not YFace");
+    if (w_var->position_type != VariablePositionType::ZFace)
+        throw std::runtime_error("ConcatNSSolver3D: w->position_type is not ZFace");
     if (p_var->position_type != VariablePositionType::Center)
         throw std::runtime_error("ConcatNSSolver3D: p->position_type is not Center");
 }

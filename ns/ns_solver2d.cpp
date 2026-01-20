@@ -72,10 +72,10 @@ ConcatNSSolver2D::~ConcatNSSolver2D()
 
 void ConcatNSSolver2D::variable_check()
 {
-    if (u_var->position_type != VariablePositionType::XFaceCenter)
-        throw std::runtime_error("ConcatNSSolver2D: u->position_type is not XFaceCenter");
-    if (v_var->position_type != VariablePositionType::YFaceCenter)
-        throw std::runtime_error("ConcatNSSolver2D: v->position_type is not YFaceCenter");
+    if (u_var->position_type != VariablePositionType::XFace)
+        throw std::runtime_error("ConcatNSSolver2D: u->position_type is not XFace");
+    if (v_var->position_type != VariablePositionType::YFace)
+        throw std::runtime_error("ConcatNSSolver2D: v->position_type is not YFace");
     if (p_var->position_type != VariablePositionType::Center)
         throw std::runtime_error("ConcatNSSolver2D: p->position_type is not Center");
 }

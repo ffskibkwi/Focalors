@@ -188,12 +188,12 @@ int main(int argc, char* argv[])
         Geometry2D geo_tee;
         geo_tee.add_domain({&T1, &T2, &T3, &T4, &T5, &T6, &T7});
 
-        geo_tee.connect(T2, LocationType::Left, T1);
-        geo_tee.connect(T2, LocationType::Right, T3);
-        geo_tee.connect(T2, LocationType::Down, T4);
-        geo_tee.connect(T4, LocationType::Down, T6);
-        geo_tee.connect(T6, LocationType::Left, T5);
-        geo_tee.connect(T6, LocationType::Right, T7);
+        geo_tee.connect(&T2, LocationType::Left, &T1);
+        geo_tee.connect(&T2, LocationType::Right, &T3);
+        geo_tee.connect(&T2, LocationType::Down, &T4);
+        geo_tee.connect(&T4, LocationType::Down, &T6);
+        geo_tee.connect(&T6, LocationType::Left, &T5);
+        geo_tee.connect(&T6, LocationType::Right, &T7);
 
         // 设置变量和场
         Variable v("v");

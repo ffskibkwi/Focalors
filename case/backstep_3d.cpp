@@ -62,13 +62,13 @@ int main(int argc, char* argv[])
     Domain3DUniform A2(nx2, ny2, nz2, lx2, ly2, lz2, "A2");
     Domain3DUniform A3(nx3, ny3, nz3, lx3, ly3, lz3, "A3");
 
-    geo_cross.add_domain(A1);
-    geo_cross.add_domain(A2);
-    geo_cross.add_domain(A3);
+    geo_cross.add_domain(&A1);
+    geo_cross.add_domain(&A2);
+    geo_cross.add_domain(&A3);
 
     // Construct cross connectivity
-    geo_cross.connect(A2, LocationType::Left, A1);
-    geo_cross.connect(A2, LocationType::Down, A3);
+    geo_cross.connect(&A2, LocationType::Left, &A1);
+    geo_cross.connect(&A2, LocationType::Down, &A3);
 
     // Variables
     Variable3D u("u"), v("v"), w("w"), p("p");

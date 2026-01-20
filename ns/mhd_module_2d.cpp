@@ -351,7 +351,7 @@ void MHDModule2D::applyLorentzForce()
         // NOTE: At this point in NS predictor step, u/v have been swapped to u_temp/v_temp already.
         // We directly add to current u/v fields.
 
-        // u on XEdge: use Fx at adjacent centers (i-1, j) and (i, j)
+        // u on XFace: use Fx at adjacent centers (i-1, j) and (i, j)
         OPENMP_PARALLEL_FOR()
         for (int i = 0; i < nx; i++)
         {
@@ -364,7 +364,7 @@ void MHDModule2D::applyLorentzForce()
             }
         }
 
-        // v on YEdge: use Fy at adjacent centers (i, j-1) and (i, j)
+        // v on YFace: use Fy at adjacent centers (i, j-1) and (i, j)
         OPENMP_PARALLEL_FOR()
         for (int i = 0; i < nx; i++)
         {

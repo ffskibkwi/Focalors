@@ -105,10 +105,10 @@ int main(int argc, char* argv[])
     geo_cross.add_domain({&A1, &A2, &A3, &A4, &A5});
 
     // Construct cross connectivity
-    geo_cross.connect(A2, LocationType::Left, A1);
-    geo_cross.connect(A2, LocationType::Right, A3);
-    geo_cross.connect(A2, LocationType::Down, A4);
-    geo_cross.connect(A2, LocationType::Up, A5);
+    geo_cross.connect(&A2, LocationType::Left, &A1);
+    geo_cross.connect(&A2, LocationType::Right, &A3);
+    geo_cross.connect(&A2, LocationType::Down, &A4);
+    geo_cross.connect(&A2, LocationType::Up, &A5);
 
     Variable u("u"), v("v"), p("p");
     u.set_geometry(geo_cross);

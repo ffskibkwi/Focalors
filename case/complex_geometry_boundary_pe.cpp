@@ -42,14 +42,14 @@ int main(int argc, char* argv[])
         Domain2DUniform T9(m8, n9, "T9");
 
         Geometry2D geo;
-        geo.connect(T1, LocationType::Up, T2);
-        geo.connect(T2, LocationType::Right, T3);
-        geo.connect(T3, LocationType::Up, T4);
-        geo.connect(T3, LocationType::Right, T5);
-        geo.connect(T5, LocationType::Right, T6);
-        geo.connect(T6, LocationType::Down, T7);
-        geo.connect(T6, LocationType::Right, T8);
-        geo.connect(T8, LocationType::Up, T9);
+        geo.connect(&T1, LocationType::Up, &T2);
+        geo.connect(&T2, LocationType::Right, &T3);
+        geo.connect(&T3, LocationType::Up, &T4);
+        geo.connect(&T3, LocationType::Right, &T5);
+        geo.connect(&T5, LocationType::Right, &T6);
+        geo.connect(&T6, LocationType::Down, &T7);
+        geo.connect(&T6, LocationType::Right, &T8);
+        geo.connect(&T8, LocationType::Up, &T9);
 
         geo.set_global_spatial_step(H, H);
 

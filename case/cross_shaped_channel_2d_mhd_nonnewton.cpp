@@ -137,17 +137,17 @@ int main(int argc, char* argv[])
     Domain2DUniform A3(nx3, ny3, lx3, ly3, "A3");
     Domain2DUniform A4(nx4, ny4, lx4, ly4, "A4");
     Domain2DUniform A5(nx5, ny5, lx5, ly5, "A5");
-    geo_cross.add_domain(A1);
-    geo_cross.add_domain(A2);
-    geo_cross.add_domain(A3);
-    geo_cross.add_domain(A4);
-    geo_cross.add_domain(A5);
+    // geo_cross.add_domain(&A1);
+    // geo_cross.add_domain(&A2);
+    // geo_cross.add_domain(&A3);
+    // geo_cross.add_domain(&A4);
+    // geo_cross.add_domain(&A5);
 
     // Construct cross connectivity
-    geo_cross.connect(A2, LocationType::Left, A1);
-    geo_cross.connect(A2, LocationType::Right, A3);
-    geo_cross.connect(A2, LocationType::Down, A4);
-    geo_cross.connect(A2, LocationType::Up, A5);
+    geo_cross.connect(&A2, LocationType::Left, &A1);
+    geo_cross.connect(&A2, LocationType::Right, &A3);
+    geo_cross.connect(&A2, LocationType::Down, &A4);
+    geo_cross.connect(&A2, LocationType::Up, &A5);
 
     Variable u("u"), v("v"), p("p");
     u.set_geometry(geo_cross);

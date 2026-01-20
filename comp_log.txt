@@ -1,0 +1,162 @@
+/public/home/jzc/OpenSource/Focalors/case/H-shaped_pe_precision.cpp: In function ‘int main(int, char**)’:
+/public/home/jzc/OpenSource/Focalors/case/H-shaped_pe_precision.cpp:191:25: error: cannot convert ‘Domain2DUniform’ to ‘Domain2DUniform*’
+  191 |         geo_tee.connect(T2, LocationType::Left, T1);
+      |                         ^~
+      |                         |
+      |                         Domain2DUniform
+In file included from /public/home/jzc/OpenSource/Focalors/case/H-shaped_pe_precision.cpp:2:
+/public/home/jzc/OpenSource/Focalors/poisson_base/base/domain/geometry2d.h:38:35: note:   initializing argument 1 of ‘void Geometry2D::connect(Domain2DUniform*, LocationType, Domain2DUniform*)’
+   38 |     void connect(Domain2DUniform* a, LocationType dir, Domain2DUniform* b);
+      |                  ~~~~~~~~~~~~~~~~~^
+/public/home/jzc/OpenSource/Focalors/case/H-shaped_pe_precision.cpp:192:25: error: cannot convert ‘Domain2DUniform’ to ‘Domain2DUniform*’
+  192 |         geo_tee.connect(T2, LocationType::Right, T3);
+      |                         ^~
+      |                         |
+      |                         Domain2DUniform
+/public/home/jzc/OpenSource/Focalors/poisson_base/base/domain/geometry2d.h:38:35: note:   initializing argument 1 of ‘void Geometry2D::connect(Domain2DUniform*, LocationType, Domain2DUniform*)’
+   38 |     void connect(Domain2DUniform* a, LocationType dir, Domain2DUniform* b);
+      |                  ~~~~~~~~~~~~~~~~~^
+/public/home/jzc/OpenSource/Focalors/case/H-shaped_pe_precision.cpp:193:25: error: cannot convert ‘Domain2DUniform’ to ‘Domain2DUniform*’
+  193 |         geo_tee.connect(T2, LocationType::Down, T4);
+      |                         ^~
+      |                         |
+      |                         Domain2DUniform
+/public/home/jzc/OpenSource/Focalors/poisson_base/base/domain/geometry2d.h:38:35: note:   initializing argument 1 of ‘void Geometry2D::connect(Domain2DUniform*, LocationType, Domain2DUniform*)’
+   38 |     void connect(Domain2DUniform* a, LocationType dir, Domain2DUniform* b);
+      |                  ~~~~~~~~~~~~~~~~~^
+/public/home/jzc/OpenSource/Focalors/case/H-shaped_pe_precision.cpp:194:25: error: cannot convert ‘Domain2DUniform’ to ‘Domain2DUniform*’
+  194 |         geo_tee.connect(T4, LocationType::Down, T6);
+      |                         ^~
+      |                         |
+      |                         Domain2DUniform
+/public/home/jzc/OpenSource/Focalors/poisson_base/base/domain/geometry2d.h:38:35: note:   initializing argument 1 of ‘void Geometry2D::connect(Domain2DUniform*, LocationType, Domain2DUniform*)’
+   38 |     void connect(Domain2DUniform* a, LocationType dir, Domain2DUniform* b);
+      |                  ~~~~~~~~~~~~~~~~~^
+/public/home/jzc/OpenSource/Focalors/case/H-shaped_pe_precision.cpp:195:25: error: cannot convert ‘Domain2DUniform’ to ‘Domain2DUniform*’
+  195 |         geo_tee.connect(T6, LocationType::Left, T5);
+      |                         ^~
+      |                         |
+      |                         Domain2DUniform
+/public/home/jzc/OpenSource/Focalors/poisson_base/base/domain/geometry2d.h:38:35: note:   initializing argument 1 of ‘void Geometry2D::connect(Domain2DUniform*, LocationType, Domain2DUniform*)’
+   38 |     void connect(Domain2DUniform* a, LocationType dir, Domain2DUniform* b);
+      |                  ~~~~~~~~~~~~~~~~~^
+/public/home/jzc/OpenSource/Focalors/case/H-shaped_pe_precision.cpp:196:25: error: cannot convert ‘Domain2DUniform’ to ‘Domain2DUniform*’
+  196 |         geo_tee.connect(T6, LocationType::Right, T7);
+      |                         ^~
+      |                         |
+      |                         Domain2DUniform
+/public/home/jzc/OpenSource/Focalors/poisson_base/base/domain/geometry2d.h:38:35: note:   initializing argument 1 of ‘void Geometry2D::connect(Domain2DUniform*, LocationType, Domain2DUniform*)’
+   38 |     void connect(Domain2DUniform* a, LocationType dir, Domain2DUniform* b);
+      |                  ~~~~~~~~~~~~~~~~~^
+/public/home/jzc/OpenSource/Focalors/case/concat_pe_only.cpp: In function ‘int main(int, char**)’:
+/public/home/jzc/OpenSource/Focalors/case/concat_pe_only.cpp:44:21: error: cannot convert ‘Domain2DUniform’ to ‘Domain2DUniform*’
+   44 |     geo_tee.connect(T2, LocationType::Left, T1);
+      |                     ^~
+      |                     |
+      |                     Domain2DUniform
+In file included from /public/home/jzc/OpenSource/Focalors/case/concat_pe_only.cpp:2:
+/public/home/jzc/OpenSource/Focalors/poisson_base/base/domain/geometry2d.h:38:35: note:   initializing argument 1 of ‘void Geometry2D::connect(Domain2DUniform*, LocationType, Domain2DUniform*)’
+   38 |     void connect(Domain2DUniform* a, LocationType dir, Domain2DUniform* b);
+      |                  ~~~~~~~~~~~~~~~~~^
+/public/home/jzc/OpenSource/Focalors/case/concat_pe_only.cpp:45:21: error: cannot convert ‘Domain2DUniform’ to ‘Domain2DUniform*’
+   45 |     geo_tee.connect(T2, LocationType::Right, T3);
+      |                     ^~
+      |                     |
+      |                     Domain2DUniform
+/public/home/jzc/OpenSource/Focalors/poisson_base/base/domain/geometry2d.h:38:35: note:   initializing argument 1 of ‘void Geometry2D::connect(Domain2DUniform*, LocationType, Domain2DUniform*)’
+   38 |     void connect(Domain2DUniform* a, LocationType dir, Domain2DUniform* b);
+      |                  ~~~~~~~~~~~~~~~~~^
+/public/home/jzc/OpenSource/Focalors/case/concat_pe_only.cpp:46:21: error: cannot convert ‘Domain2DUniform’ to ‘Domain2DUniform*’
+   46 |     geo_tee.connect(T2, LocationType::Down, T4);
+      |                     ^~
+      |                     |
+      |                     Domain2DUniform
+/public/home/jzc/OpenSource/Focalors/poisson_base/base/domain/geometry2d.h:38:35: note:   initializing argument 1 of ‘void Geometry2D::connect(Domain2DUniform*, LocationType, Domain2DUniform*)’
+   38 |     void connect(Domain2DUniform* a, LocationType dir, Domain2DUniform* b);
+      |                  ~~~~~~~~~~~~~~~~~^
+/public/home/jzc/OpenSource/Focalors/case/concat_pe_only.cpp:47:21: error: cannot convert ‘Domain2DUniform’ to ‘Domain2DUniform*’
+   47 |     geo_tee.connect(T4, LocationType::Down, T5);
+      |                     ^~
+      |                     |
+      |                     Domain2DUniform
+/public/home/jzc/OpenSource/Focalors/poisson_base/base/domain/geometry2d.h:38:35: note:   initializing argument 1 of ‘void Geometry2D::connect(Domain2DUniform*, LocationType, Domain2DUniform*)’
+   38 |     void connect(Domain2DUniform* a, LocationType dir, Domain2DUniform* b);
+      |                  ~~~~~~~~~~~~~~~~~^
+/public/home/jzc/OpenSource/Focalors/case/concat_pe_only.cpp:48:21: error: cannot convert ‘Domain2DUniform’ to ‘Domain2DUniform*’
+   48 |     geo_tee.connect(T5, LocationType::Right, T6);
+      |                     ^~
+      |                     |
+      |                     Domain2DUniform
+/public/home/jzc/OpenSource/Focalors/poisson_base/base/domain/geometry2d.h:38:35: note:   initializing argument 1 of ‘void Geometry2D::connect(Domain2DUniform*, LocationType, Domain2DUniform*)’
+   38 |     void connect(Domain2DUniform* a, LocationType dir, Domain2DUniform* b);
+      |                  ~~~~~~~~~~~~~~~~~^
+/public/home/jzc/OpenSource/Focalors/case/backstep.cpp: In function ‘int main(int, char**)’:
+/public/home/jzc/OpenSource/Focalors/case/backstep.cpp:59:23: error: cannot convert ‘Domain2DUniform’ to ‘Domain2DUniform*’
+   59 |     geo_cross.connect(A2, LocationType::Left, A1);
+      |                       ^~
+      |                       |
+      |                       Domain2DUniform
+In file included from /public/home/jzc/OpenSource/Focalors/case/backstep.cpp:2:
+/public/home/jzc/OpenSource/Focalors/poisson_base/base/domain/geometry2d.h:38:35: note:   initializing argument 1 of ‘void Geometry2D::connect(Domain2DUniform*, LocationType, Domain2DUniform*)’
+   38 |     void connect(Domain2DUniform* a, LocationType dir, Domain2DUniform* b);
+      |                  ~~~~~~~~~~~~~~~~~^
+/public/home/jzc/OpenSource/Focalors/case/backstep.cpp:60:23: error: cannot convert ‘Domain2DUniform’ to ‘Domain2DUniform*’
+   60 |     geo_cross.connect(A2, LocationType::Down, A3);
+      |                       ^~
+      |                       |
+      |                       Domain2DUniform
+/public/home/jzc/OpenSource/Focalors/poisson_base/base/domain/geometry2d.h:38:35: note:   initializing argument 1 of ‘void Geometry2D::connect(Domain2DUniform*, LocationType, Domain2DUniform*)’
+   38 |     void connect(Domain2DUniform* a, LocationType dir, Domain2DUniform* b);
+      |                  ~~~~~~~~~~~~~~~~~^
+gmake[2]: *** [case/CMakeFiles/H-shaped_pe_precision.dir/H-shaped_pe_precision.cpp.o] Error 1
+gmake[1]: *** [case/CMakeFiles/H-shaped_pe_precision.dir/all] Error 2
+gmake[1]: *** Waiting for unfinished jobs....
+gmake[2]: *** [case/CMakeFiles/concat_pe_only.dir/concat_pe_only.cpp.o] Error 1
+gmake[1]: *** [case/CMakeFiles/concat_pe_only.dir/all] Error 2
+/public/home/jzc/OpenSource/Focalors/case/backstep_3d.cpp: In function ‘int main(int, char**)’:
+/public/home/jzc/OpenSource/Focalors/case/backstep_3d.cpp:65:26: error: cannot convert ‘Domain3DUniform*’ to ‘Domain3DUniform&’
+   65 |     geo_cross.add_domain(&A1);
+      |                          ^~~
+      |                          |
+      |                          Domain3DUniform*
+In file included from /public/home/jzc/OpenSource/Focalors/case/backstep_3d.cpp:2:
+/public/home/jzc/OpenSource/Focalors/poisson_base/base/domain/geometry3d.h:31:38: note:   initializing argument 1 of ‘void Geometry3D::add_domain(Domain3DUniform&)’
+   31 |     void add_domain(Domain3DUniform& s);
+      |                     ~~~~~~~~~~~~~~~~~^
+/public/home/jzc/OpenSource/Focalors/case/backstep_3d.cpp:66:26: error: cannot convert ‘Domain3DUniform*’ to ‘Domain3DUniform&’
+   66 |     geo_cross.add_domain(&A2);
+      |                          ^~~
+      |                          |
+      |                          Domain3DUniform*
+/public/home/jzc/OpenSource/Focalors/poisson_base/base/domain/geometry3d.h:31:38: note:   initializing argument 1 of ‘void Geometry3D::add_domain(Domain3DUniform&)’
+   31 |     void add_domain(Domain3DUniform& s);
+      |                     ~~~~~~~~~~~~~~~~~^
+/public/home/jzc/OpenSource/Focalors/case/backstep_3d.cpp:67:26: error: cannot convert ‘Domain3DUniform*’ to ‘Domain3DUniform&’
+   67 |     geo_cross.add_domain(&A3);
+      |                          ^~~
+      |                          |
+      |                          Domain3DUniform*
+/public/home/jzc/OpenSource/Focalors/poisson_base/base/domain/geometry3d.h:31:38: note:   initializing argument 1 of ‘void Geometry3D::add_domain(Domain3DUniform&)’
+   31 |     void add_domain(Domain3DUniform& s);
+      |                     ~~~~~~~~~~~~~~~~~^
+/public/home/jzc/OpenSource/Focalors/case/backstep_3d.cpp:70:23: error: cannot convert ‘Domain3DUniform*’ to ‘Domain3DUniform&’
+   70 |     geo_cross.connect(&A2, LocationType::Left, &A1);
+      |                       ^~~
+      |                       |
+      |                       Domain3DUniform*
+/public/home/jzc/OpenSource/Focalors/poisson_base/base/domain/geometry3d.h:32:35: note:   initializing argument 1 of ‘void Geometry3D::connect(Domain3DUniform&, LocationType, Domain3DUniform&)’
+   32 |     void connect(Domain3DUniform& a, LocationType dir, Domain3DUniform& b);
+      |                  ~~~~~~~~~~~~~~~~~^
+/public/home/jzc/OpenSource/Focalors/case/backstep_3d.cpp:71:23: error: cannot convert ‘Domain3DUniform*’ to ‘Domain3DUniform&’
+   71 |     geo_cross.connect(&A2, LocationType::Down, &A3);
+      |                       ^~~
+      |                       |
+      |                       Domain3DUniform*
+/public/home/jzc/OpenSource/Focalors/poisson_base/base/domain/geometry3d.h:32:35: note:   initializing argument 1 of ‘void Geometry3D::connect(Domain3DUniform&, LocationType, Domain3DUniform&)’
+   32 |     void connect(Domain3DUniform& a, LocationType dir, Domain3DUniform& b);
+      |                  ~~~~~~~~~~~~~~~~~^
+gmake[2]: *** [case/CMakeFiles/backstep.dir/backstep.cpp.o] Error 1
+gmake[1]: *** [case/CMakeFiles/backstep.dir/all] Error 2
+gmake[2]: *** [case/CMakeFiles/backstep_3d.dir/backstep_3d.cpp.o] Error 1
+gmake[1]: *** [case/CMakeFiles/backstep_3d.dir/all] Error 2
+gmake: *** [all] Error 2
