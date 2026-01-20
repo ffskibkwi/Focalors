@@ -160,8 +160,8 @@ int main(int argc, char* argv[])
         ns_solver.solve();
     }
 
-    // IO::var_to_csv(u, "result/u");
-    // IO::var_to_csv(v, "result/v");
-    // IO::var_to_csv(w, "result/w");
-    // IO::var_to_csv(p, "result/p");
+    IO::var_to_csv(u, "result/u");
+    IO::var_to_csv(v, "result/v");
+    IO::var_to_csv(w, "result/w");
+    IO::var_to_csv(p, "result/p");
 }
