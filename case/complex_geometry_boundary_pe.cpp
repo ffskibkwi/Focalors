@@ -7,13 +7,13 @@
 #include "pe/concat/concat_solver2d.h"
 #include <cmath>
 #include <iostream>
-#include <map> // 补齐头文�?
+#include <map> // 补齐头文�?
 #include <vector>
 #include <string>
 
 int main(int argc, char* argv[])
 {
-    // 修正 EnvironmentConfig 构�?
+    // 修正 EnvironmentConfig 构�?
     EnvironmentConfig* env = new EnvironmentConfig();
     env->showGmresRes      = false;
     env->showCurrentStep   = false;
@@ -30,7 +30,7 @@ int main(int argc, char* argv[])
         int    n1 = rank, n2 = 2 * rank, n4 = 4 * rank, n7 = rank * 3, n9 = rank; // y
         double H = 1.0 / rank;
 
-        // 2. 构造多区域�?
+        // 2. 构造多区域�?
         Domain2DUniform T1(m1, n1, "T1");
         Domain2DUniform T2(m1, n2, "T2");
         Domain2DUniform T3(m3, n2, "T3");
@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
 
         geo.set_global_spatial_step(H, H);
 
-        // 3. 变量与场初始�?(修正 Variable 构�?
+        // 3. 变量与场初始�?(修正 Variable 构�?
         Variable p("p");
         p.set_geometry(geo);
 
@@ -74,7 +74,7 @@ int main(int argc, char* argv[])
 
         auto f_rhs = [&](double x, double y) { return 4 * k * (k * (x * x + y * y) - 1) * p_analy(x, y); };
 
-        // 定义区域坐标偏移映射，提高可读�?
+        // 定义区域坐标偏移映射，提高可读�?
         geo.axis(&T1, LocationType::Left);
         // geo.global_move_x(0.5 * H);
 
@@ -151,8 +151,9 @@ int main(int argc, char* argv[])
         solver.solve();
 
         int         rank_int = static_cast<int>(rank);
-        std::string out_base = "output/p_rank_" + std::to_string(rank_int);
+        std::string out_base = "result/p_rank_" + std::to_string(rank_int);
         IO::var_to_csv(p, out_base);
+        IO::matlab_read_var(p, out_base + "_read.m");
 
         // 6. 误差统计 (修正 foreach 调用)
         double total_l2_sq = 0.0;
