@@ -34,7 +34,7 @@ double ComputePsi(double t, double K1, double K2, const double A[4], int deriv)
 }
 
 // ---------------------------------------------------------------------
-// 改进版主程序
+// 主程序
 // ---------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
@@ -45,10 +45,6 @@ int main(int argc, char* argv[])
     // Enable debug output
     env->debugMode      = true;
     env->debugOutputDir = "./result/debug_output";
-
-    // Create debug directory if it doesn't exist (Platform dependent, but using system command for simplicity or assume
-    // user created it) std::filesystem::create_directory("debug_output"); // C++17 feature, using system command is
-    // safer if unsure about C++ version support in user env, but here we just setting config.
 
     std::vector<double> acc_ranks = {4, 8, 16, 32, 64};
 
@@ -62,24 +58,19 @@ int main(int argc, char* argv[])
         double H4 = m4 * H, H2 = (m2 + 1) * H, H5 = m5 * H;
 
         // 2. 构造多区域域
-        Domain2DUniform T1(n1, m2, L1, H2 - H, "T1");
-        Domain2DUniform T2(n2, m2, L2 - H, H2 - H, "T2");
-        Domain2DUniform T3(n3, m2, L3, H2 - H, "T3");
-        Domain2DUniform T4(n2, m4, L2 - H, H4, "T4");
-        Domain2DUniform T5(n2, m5, L2 - H, H5, "T5");
+        Domain2DUniform T1(n1, m2, "T1");
+        Domain2DUniform T2(n2, m2, "T2");
+        Domain2DUniform T3(n3, m2, "T3");
+        Domain2DUniform T4(n2, m4, "T4");
+        Domain2DUniform T5(n2, m5, "T5");
 
         Geometry2D geo;
-        // 修正 add_domains 为 add_domain
-        geo.add_domain(T1);
-        geo.add_domain(T2);
-        geo.add_domain(T3);
-        geo.add_domain(T4);
-        geo.add_domain(T5);
-
         geo.connect(T2, LocationType::Left, T1);
         geo.connect(T2, LocationType::Right, T3);
         geo.connect(T2, LocationType::Down, T4);
         geo.connect(T2, LocationType::Up, T5);
+
+        geo.set_global_spatial_step(H, H);
 
         // 3. 变量与场初始化 (修正 Variable 构造)
         Variable p("p");
@@ -110,79 +101,62 @@ int main(int argc, char* argv[])
         };
 
         // 定义区域坐标偏移映射，提高可读性
-        struct Offset
-        {
-            double x, y;
-        };
-        std::map<field2*, Offset> offsets = {{&p_T1, {H, H4 + H}},
-                                             {&p_T2, {L1 + H, H4 + H}},
-                                             {&p_T3, {L1 + L2, H4 + H}}, // L2 = (N2 + 1) * H
-                                             {&p_T4, {L1 + H, H}},
-                                             {&p_T5, {L1 + H, H4 + H2}}};
+        geo.axis(&T1, LocationType::Left);
+        geo.global_move_x(0.5 * H);
 
-        // 4. 设置边界条件 (修正 API 调用)
-        p.set_boundary_type(&T1, LocationType::Left, PDEBoundaryType::Dirichlet);
-        p.set_boundary_type(&T1, LocationType::Up, PDEBoundaryType::Dirichlet);
-        p.set_boundary_type(&T1, LocationType::Down, PDEBoundaryType::Dirichlet);
-        p.set_boundary_type(&T3, LocationType::Right, PDEBoundaryType::Dirichlet);
-        p.set_boundary_type(&T3, LocationType::Up, PDEBoundaryType::Dirichlet);
-        p.set_boundary_type(&T3, LocationType::Down, PDEBoundaryType::Dirichlet);
-        p.set_boundary_type(&T4, LocationType::Left, PDEBoundaryType::Dirichlet);
-        p.set_boundary_type(&T4, LocationType::Right, PDEBoundaryType::Dirichlet);
-        p.set_boundary_type(&T4, LocationType::Down, PDEBoundaryType::Dirichlet);
-        p.set_boundary_type(&T5, LocationType::Left, PDEBoundaryType::Dirichlet);
-        p.set_boundary_type(&T5, LocationType::Right, PDEBoundaryType::Dirichlet);
-        p.set_boundary_type(&T5, LocationType::Up, PDEBoundaryType::Dirichlet);
+        geo.axis(&T4, LocationType::Down);
+        geo.global_move_y(0.5 * H);
 
-        // 5. 右端项填充与求解 (修正 set_values 和 get_center_field)
-        auto fill_f = [&](field2& f, double offx, double offy) {
-            for (int i = 0; i < f.get_nx(); ++i)
-                for (int j = 0; j < f.get_ny(); ++j)
-                    f(i, j) = f_rhs(offx + i * H, offy + j * H);
-        };
+        // 4. 设置边界条件
+        p.set_boundary_type(&T1,
+                            {{LocationType::Left, PDEBoundaryType::Dirichlet},
+                             {LocationType::Up, PDEBoundaryType::Dirichlet},
+                             {LocationType::Down, PDEBoundaryType::Dirichlet}});
+        p.set_boundary_type(&T3,
+                            {{LocationType::Right, PDEBoundaryType::Dirichlet},
+                             {LocationType::Up, PDEBoundaryType::Dirichlet},
+                             {LocationType::Down, PDEBoundaryType::Dirichlet}});
+        p.set_boundary_type(&T4,
+                            {{LocationType::Left, PDEBoundaryType::Dirichlet},
+                             {LocationType::Right, PDEBoundaryType::Dirichlet},
+                             {LocationType::Down, PDEBoundaryType::Dirichlet}});
+        p.set_boundary_type(&T5,
+                            {{LocationType::Left, PDEBoundaryType::Dirichlet},
+                             {LocationType::Right, PDEBoundaryType::Dirichlet},
+                             {LocationType::Up, PDEBoundaryType::Dirichlet}});
 
-        for (auto kv : offsets)
-            fill_f(*kv.first, kv.second.x, kv.second.y);
+        // 5. 右端项填充与求解
+        p.set_value_from_func_global(f_rhs);
 
         ConcatPoissonSolver2D solver(&p, env);
         solver.solve();
 
         // 6. 误差统计 (修正 foreach 调用)
         double total_l2_sq = 0.0;
-        auto   calc_err    = [&](field2& f, double offx, double offy) {
+        auto   calc_err    = [&](field2* f, Domain2DUniform* s) {
             double local_sum = 0;
-            for (int i = 0; i < f.get_nx(); ++i)
+            double offx      = s->get_offset_x();
+            double offy      = s->get_offset_y();
+
+            OPENMP_PARALLEL_FOR(reduction(+ : local_sum))
+            for (int i = 0; i < f->get_nx(); ++i)
             {
-                for (int j = 0; j < f.get_ny(); ++j)
+                for (int j = 0; j < f->get_ny(); ++j)
                 {
-                    double diff = f(i, j) - p_analy(offx + i * H, offy + j * H);
+                    double diff = (*f)(i, j) - p_analy(offx + (0.5 + i) * H, offy + (0.5 + j) * H);
                     local_sum += H * H * diff * diff;
                 }
             }
             return local_sum;
         };
 
-        for (auto kv : offsets)
-            total_l2_sq += calc_err(*kv.first, kv.second.x, kv.second.y);
+        total_l2_sq += calc_err(&p_T1, &T1);
+        total_l2_sq += calc_err(&p_T2, &T2);
+        total_l2_sq += calc_err(&p_T3, &T3);
+        total_l2_sq += calc_err(&p_T4, &T4);
+        total_l2_sq += calc_err(&p_T5, &T5);
 
         std::cout << "rank: " << rank << " L2 Error: " << std::sqrt(total_l2_sq) << std::endl;
-
-        // std::cout << "=== y = H + L4 (cal)===" << std::endl;
-        // for (int i = 0; i < p_T1.get_nx(); i++)
-        //     std::cout << p_T1(i, 0) << " ";
-        // for (int i = 0; i < p_T2.get_nx(); i++)
-        //     std::cout << p_T2(i, 0) << " ";
-        // for (int i = 0; i < p_T3.get_nx(); i++)
-        //     std::cout << p_T3(i, 0) << " ";
-        // std::cout << std::endl << "==================" << std::endl;
-        // std::cout << "=== y = H + L4 (analy) ===" << std::endl;
-        // for (int i = 0; i < p_T1.get_nx(); i++)
-        //     std::cout << p_analy(i * H + offsets[&p_T1].x, offsets[&p_T1].y) << " ";
-        // for (int i = 0; i < p_T2.get_nx(); i++)
-        //     std::cout << p_analy(i * H + offsets[&p_T2].x, offsets[&p_T2].y) << " ";
-        // for (int i = 0; i < p_T3.get_nx(); i++)
-        //     std::cout << p_analy(i * H + offsets[&p_T3].x, offsets[&p_T3].y) << " ";
-        // std::cout << std::endl << "==================" << std::endl;
     }
     delete env;
     return 0;

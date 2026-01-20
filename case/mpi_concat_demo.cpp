@@ -1,15 +1,15 @@
-#include <mpi.h>
 #include <iostream>
+#include <mpi.h>
 
-#include "base/domain/geometry2d.h"
 #include "base/domain/domain2d.h"
+#include "base/domain/geometry2d.h"
+#include "base/domain/geometry_tree.hpp"
 #include "base/domain/variable.h"
 #include "base/field/field2.h"
-#include "base/domain/geometry_tree.hpp"
 #include "base/location_boundary.h"
 
-#include "io/csv_writer_2d.h"
 #include "io/config.h"
+#include "io/csv_writer_2d.h"
 
 #include "pe_mpi/mpi_concat_poisson_solver2d.h"
 
@@ -31,24 +31,29 @@ int main(int argc, char* argv[])
 
     // Grid parameters
     Domain2DUniform T2(10, 10, 1.0, 1.0, "T2"); // 中心
-    Domain2DUniform T1("T1"); T1.set_nx(20); T1.set_lx(2.0);
-    Domain2DUniform T3("T3"); T3.set_nx(30); T3.set_lx(3.0);
-    Domain2DUniform T4("T4"); T4.set_ny(10); T4.set_ly(1.0);
-    Domain2DUniform T5("T5"); T5.set_ny(20); T5.set_ly(2.0);
-    Domain2DUniform T6("T6"); T6.set_nx(30); T6.set_lx(3.0);
+    Domain2DUniform T1("T1");
+    T1.set_nx(20);
+    T1.set_lx(2.0);
+    Domain2DUniform T3("T3");
+    T3.set_nx(30);
+    T3.set_lx(3.0);
+    Domain2DUniform T4("T4");
+    T4.set_ny(10);
+    T4.set_ly(1.0);
+    Domain2DUniform T5("T5");
+    T5.set_ny(20);
+    T5.set_ly(2.0);
+    Domain2DUniform T6("T6");
+    T6.set_nx(30);
+    T6.set_lx(3.0);
 
     // Construct geometry
-    geo_tee.add_domain(T1);
-    geo_tee.add_domain(T2);
-    geo_tee.add_domain(T3);
-    geo_tee.add_domain(T4);
-    geo_tee.add_domain(T5);
-    geo_tee.add_domain(T6);
+    geo_tee.add_domain({&T1, &T2, &T3, &T4, &T5, &T6});
 
-    geo_tee.connect(T2, LocationType::Left,  T1);
+    geo_tee.connect(T2, LocationType::Left, T1);
     geo_tee.connect(T2, LocationType::Right, T3);
-    geo_tee.connect(T2, LocationType::Down,  T4);
-    geo_tee.connect(T4, LocationType::Down,  T5);
+    geo_tee.connect(T2, LocationType::Down, T4);
+    geo_tee.connect(T4, LocationType::Down, T5);
     geo_tee.connect(T5, LocationType::Right, T6);
 
     // Variable and fields
@@ -63,25 +68,25 @@ int main(int argc, char* argv[])
     v.set_center_field(&T6, v_T6);
 
     // 边界条件（与串行示例一致；几何相邻处由 set_geometry 自动设为 Adjacented）
-    v.set_boundary_type(&T2, LocationType::Up,    PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T2, LocationType::Up, PDEBoundaryType::Dirichlet);
 
-    v.set_boundary_type(&T1, LocationType::Left,  PDEBoundaryType::Dirichlet);
-    v.set_boundary_type(&T1, LocationType::Up,    PDEBoundaryType::Dirichlet);
-    v.set_boundary_type(&T1, LocationType::Down,  PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T1, LocationType::Left, PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T1, LocationType::Up, PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T1, LocationType::Down, PDEBoundaryType::Dirichlet);
 
     v.set_boundary_type(&T3, LocationType::Right, PDEBoundaryType::Dirichlet);
-    v.set_boundary_type(&T3, LocationType::Up,    PDEBoundaryType::Dirichlet);
-    v.set_boundary_type(&T3, LocationType::Down,  PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T3, LocationType::Up, PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T3, LocationType::Down, PDEBoundaryType::Dirichlet);
 
-    v.set_boundary_type(&T4, LocationType::Left,  PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T4, LocationType::Left, PDEBoundaryType::Dirichlet);
     v.set_boundary_type(&T4, LocationType::Right, PDEBoundaryType::Dirichlet);
 
-    v.set_boundary_type(&T5, LocationType::Left,  PDEBoundaryType::Dirichlet);
-    v.set_boundary_type(&T5, LocationType::Down,  PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T5, LocationType::Left, PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T5, LocationType::Down, PDEBoundaryType::Dirichlet);
 
     v.set_boundary_type(&T6, LocationType::Right, PDEBoundaryType::Dirichlet);
-    v.set_boundary_type(&T6, LocationType::Up,    PDEBoundaryType::Dirichlet);
-    v.set_boundary_type(&T6, LocationType::Down,  PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T6, LocationType::Up, PDEBoundaryType::Dirichlet);
+    v.set_boundary_type(&T6, LocationType::Down, PDEBoundaryType::Dirichlet);
 
     // 在全局 root 上设置右端项（仅 v_T4 内部区域为 1.0）
     if (world_rank == 0)
@@ -113,5 +118,3 @@ int main(int argc, char* argv[])
     MPI_Finalize();
     return 0;
 }
-
-

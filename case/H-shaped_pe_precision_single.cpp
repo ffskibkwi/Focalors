@@ -193,7 +193,7 @@ int main(int argc, char* argv[])
         // geo_tee.add_domain(T2);
         // geo_tee.add_domain(T3);
         // geo_tee.add_domain(T4);
-        geo_tee.add_domain(T5);
+        geo_tee.add_domain(&T5);
         // geo_tee.add_domain(T6);
         // geo_tee.add_domain(T7);
 

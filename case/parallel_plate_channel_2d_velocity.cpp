@@ -107,8 +107,7 @@ int main(int argc, char* argv[])
     Geometry2D      geo;
     Domain2DUniform D1(nx1, ny, lx1, Ly, "D1");
     Domain2DUniform D2(nx2, ny, lx2, Ly, "D2");
-    geo.add_domain(D1);
-    geo.add_domain(D2);
+    geo.add_domain({&D1, &D2});
 
     // Connectivity
     // D1 Right -> D2 Left (Internal)
@@ -178,7 +177,8 @@ int main(int argc, char* argv[])
     // Inlet at D1 Left (Velocity Profile)
     u.set_boundary_type(&D1, LocationType::Left, PDEBoundaryType::Dirichlet);
     // CRITICAL FIX: Allocate memory for boundary values first!
-    //TODO  WHY if comment out the following line, u.boundary_value_map[&D1][LocationType::Left] will cause segfault later.
+    // TODO  WHY if comment out the following line, u.boundary_value_map[&D1][LocationType::Left] will cause segfault
+    // later.
     u.set_boundary_value(&D1, LocationType::Left, 0.0);
     u.has_boundary_value_map[&D1][LocationType::Left] = true;
     set_dirichlet_zero(v, &D1, LocationType::Left);

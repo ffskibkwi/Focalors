@@ -53,9 +53,7 @@ int main(int argc, char* argv[])
     Domain2DUniform A2(nx2, ny2, lx2, ly2, "A2");
     Domain2DUniform A3(nx3, ny3, lx3, ly3, "A3");
 
-    geo_cross.add_domain(A1);
-    geo_cross.add_domain(A2);
-    geo_cross.add_domain(A3);
+    geo_cross.add_domain({&A1, &A2, &A3});
 
     // Construct cross connectivity
     geo_cross.connect(A2, LocationType::Left, A1);
