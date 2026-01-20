@@ -96,6 +96,30 @@ void copy_y_to_buffer(double* buffer, field2& f, int src)
         buffer[i] = f(i, src);
 }
 
+void copy_src_x_to_buffer_x(field2& buffer, field2& f, int src, int dest)
+{
+    for (int j = 0; j < f.get_ny(); j++)
+        buffer(dest, j) = f(src, j);
+}
+
+void copy_src_y_to_buffer_y(field2& buffer, field2& f, int src, int dest)
+{
+    for (int i = 0; i < f.get_nx(); i++)
+        buffer(i, dest) = f(i, src);
+}
+
+void copy_src_x_to_buffer_y(field2& buffer, field2& f, int src, int dest)
+{
+    for (int j = 0; j < f.get_ny(); j++)
+        buffer(j, dest) = f(src, j);
+}
+
+void copy_src_y_to_buffer_x(field2& buffer, field2& f, int src, int dest)
+{
+    for (int i = 0; i < f.get_nx(); i++)
+        buffer(dest, i) = f(i, src);
+}
+
 void mirror_x_to_buffer(double* buffer, field2& f, int src, double* val_ptr, double val_default)
 {
     if (val_ptr)
@@ -133,15 +157,16 @@ void swap_field_data(field2& a, field2& b)
     std::swap(a.value, b.value);
 }
 
-void swap_field_data(field3& a, field3& b)
-{
-    if (a.get_size_n() != b.get_size_n())
-        throw std::runtime_error("swap_field_data(field3): size mismatch");
-    std::swap(a.value, b.value);
-}
-
-double get_u_with_boundary(int i, int j, int nx, int ny, const field2& u, double* u_left_buffer, double* u_right_buffer,
-                           double* u_down_buffer, double* u_up_buffer, double right_down_corner_value)
+double get_u_with_boundary(int           i,
+                           int           j,
+                           int           nx,
+                           int           ny,
+                           const field2& u,
+                           double*       u_left_buffer,
+                           double*       u_right_buffer,
+                           double*       u_down_buffer,
+                           double*       u_up_buffer,
+                           double        right_down_corner_value)
 {
     if (i >= 0 && i < nx && j >= 0 && j < ny)
         return u(i, j);
@@ -155,8 +180,16 @@ double get_u_with_boundary(int i, int j, int nx, int ny, const field2& u, double
     return u_left_buffer[j];
 }
 
-double get_v_with_boundary(int i, int j, int nx, int ny, const field2& v, double* v_left_buffer, double* v_right_buffer,
-                           double* v_down_buffer, double* v_up_buffer, double left_up_corner_value)
+double get_v_with_boundary(int           i,
+                           int           j,
+                           int           nx,
+                           int           ny,
+                           const field2& v,
+                           double*       v_left_buffer,
+                           double*       v_right_buffer,
+                           double*       v_down_buffer,
+                           double*       v_up_buffer,
+                           double        left_up_corner_value)
 {
     if (i >= 0 && i < nx && j >= 0 && j < ny)
         return v(i, j);
