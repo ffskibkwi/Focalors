@@ -38,8 +38,8 @@ int main(int argc, char* argv[])
     for (double rank : acc_ranks)
     {
         int nx1 = rank;
-        int ny1 = rank;
-        int nz1 = rank;
+        int ny1 = 2 * rank;
+        int nz1 = 3 * rank;
 
         double H = 1.0 / rank;
 
