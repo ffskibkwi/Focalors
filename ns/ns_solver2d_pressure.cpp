@@ -1,7 +1,9 @@
 #include "boundary_2d_utils.h"
 #include "io/csv_writer_2d.h"
 #include "ns_solver2d.h"
+
 #include <iomanip>
+
 void ConcatNSSolver2D::velocity_div_inner()
 {
     for (auto& domain : domains)
@@ -18,7 +20,7 @@ void ConcatNSSolver2D::velocity_div_inner()
         OPENMP_PARALLEL_FOR()
         for (int i = 0; i < nx - 1; i++)
             for (int j = 0; j < ny - 1; j++)
-                p(i, j) = (u(i + 1, j) - u(i, j)) * hy + (v(i, j + 1) - v(i, j)) * hx;
+                p(i, j) = (u(i + 1, j) - u(i, j)) / hx + (v(i, j + 1) - v(i, j)) / hy;
     }
 }
 
@@ -39,13 +41,13 @@ void ConcatNSSolver2D::velocity_div_outer()
         double hy = domain->hy;
 
         for (int i = 0; i < nx - 1; i++)
-            p(i, ny - 1) = (u(i + 1, ny - 1) - u(i, ny - 1)) * hy + (v_buffer_up[i] - v(i, ny - 1)) * hx;
+            p(i, ny - 1) = (u(i + 1, ny - 1) - u(i, ny - 1)) / hx + (v_buffer_up[i] - v(i, ny - 1)) / hy;
 
         for (int j = 0; j < ny - 1; j++)
-            p(nx - 1, j) = (u_buffer_right[j] - u(nx - 1, j)) * hy + (v(nx - 1, j + 1) - v(nx - 1, j)) * hx;
+            p(nx - 1, j) = (u_buffer_right[j] - u(nx - 1, j)) / hx + (v(nx - 1, j + 1) - v(nx - 1, j)) / hy;
 
         p(nx - 1, ny - 1) =
-            (u_buffer_right[ny - 1] - u(nx - 1, ny - 1)) * hy + (v_buffer_up[nx - 1] - v(nx - 1, ny - 1)) * hx;
+            (u_buffer_right[ny - 1] - u(nx - 1, ny - 1)) / hx + (v_buffer_up[nx - 1] - v(nx - 1, ny - 1)) / hy;
     }
 }
 
