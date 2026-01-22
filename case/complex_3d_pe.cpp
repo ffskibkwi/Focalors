@@ -1,6 +1,6 @@
 #include "base/domain/domain3d.h"
 #include "base/domain/geometry3d.h"
-#include "base/domain/variable.h"
+#include "base/domain/variable3d.h"
 #include "base/field/field3.h"
 #include "io/config.h"
 #include "io/csv_writer_3d.h"
@@ -32,15 +32,15 @@ int main(int argc, char* argv[])
         double H = 1.0 / rank;
 
         // 2. 构造多区域�?
-        Domain3DUniform T1(m1, l1, n1, "T1");
-        Domain3DUniform T2(m1, l1, n2, "T2");
-        Domain3DUniform T3(m3, l1, n2, "T3");
-        Domain3DUniform T4(m3, l1, n4, "T4");
-        Domain3DUniform T5(m5, l1, n2, "T5");
-        Domain3DUniform T6(m6, l1, n2, "T6");
-        Domain3DUniform T7(m6, l1, n7, "T7");
-        Domain3DUniform T8(m8, l1, n2, "T8");
-        Domain3DUniform T9(m8, l1, n9, "T9");
+        Domain3DUniform T1(m1, n1, l1, "T1");
+        Domain3DUniform T2(m1, n2, l1, "T2");
+        Domain3DUniform T3(m3, n2, l1, "T3");
+        Domain3DUniform T4(m3, n4, l1, "T4");
+        Domain3DUniform T5(m5, n2, l1, "T5");
+        Domain3DUniform T6(m6, n2, l1, "T6");
+        Domain3DUniform T7(m6, n7, l1, "T7");
+        Domain3DUniform T8(m8, n2, l1, "T8");
+        Domain3DUniform T9(m8, n9, l1, "T9");
 
         Geometry3D geo;
         geo.connect(&T1, LocationType::Up, &T2);
@@ -52,13 +52,14 @@ int main(int argc, char* argv[])
         geo.connect(&T6, LocationType::Right, &T8);
         geo.connect(&T8, LocationType::Up, &T9);
 
-        geo.set_global_spatial_step(H, H);
+        geo.set_global_spatial_step(H, H, H);
 
         // 3. 变量与场初始�?(修正 Variable 构�?
-        Variable p("p");
+        Variable3D p("p");
         p.set_geometry(geo);
 
-        field2 p_T1("p_T1"), p_T2("p_T2"), p_T3("p_T3"), p_T4("p_T4"), p_T5("p_T5"), p_T6("p_T6"), p_T7("p_T7"), p_T8("p_T8"), p_T9("p_T9");
+        field3 p_T1("p_T1"), p_T2("p_T2"), p_T3("p_T3"), p_T4("p_T4"), p_T5("p_T5"), p_T6("p_T6"), p_T7("p_T7"),
+            p_T8("p_T8"), p_T9("p_T9");
         p.set_center_field(&T1, p_T1);
         p.set_center_field(&T2, p_T2);
         p.set_center_field(&T3, p_T3);
@@ -73,7 +74,9 @@ int main(int argc, char* argv[])
 
         auto p_analy = [=](double x, double y, double z) { return std::exp(-k * (x * x + y * y + z * z)); };
 
-        auto f_rhs = [&](double x, double y, double z) { return 4 * k * (k * (x * x + y * y + z * z) - 1) * p_analy(x, y, z); };
+        auto f_rhs = [&](double x, double y, double z) {
+            return (-6.0 * k + 4.0 * k * k * (x * x + y * y + z * z)) * p_analy(x, y, z);
+        };
 
         // 定义区域坐标偏移映射，提高可读�?
         geo.axis(&T1, LocationType::Left);
@@ -160,10 +163,11 @@ int main(int argc, char* argv[])
 
         // 6. 误差统计 (修正 foreach 调用)
         double total_l2_sq = 0.0;
-        auto   calc_err    = [&](field2* f, Domain3DUniform* s) {
+        auto   calc_err    = [&](field3* f, Domain3DUniform* s) {
             double local_sum = 0;
             double offx      = s->get_offset_x();
             double offy      = s->get_offset_y();
+            double offz      = s->get_offset_z();
 
             OPENMP_PARALLEL_FOR(reduction(+ : local_sum))
             for (int i = 0; i < f->get_nx(); ++i)
@@ -172,8 +176,9 @@ int main(int argc, char* argv[])
                 {
                     for (int k = 0; k < f->get_nz(); ++k)
                     {
-                        double diff = (*f)(i, j, k) - p_analy(offx + (0.5 + i) * H, offy + (0.5 + j) * H, offz + (0.5 + k) * H);
-                        local_sum += H * H * diff * diff;
+                        double diff =
+                            (*f)(i, j, k) - p_analy(offx + (0.5 + i) * H, offy + (0.5 + j) * H, offz + (0.5 + k) * H);
+                        local_sum += H * H * H * diff * diff;
                     }
                 }
             }
