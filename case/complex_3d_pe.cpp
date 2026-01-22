@@ -16,7 +16,7 @@ int main(int argc, char* argv[])
     // 修正 EnvironmentConfig 构�?
     EnvironmentConfig* env = new EnvironmentConfig();
     env->showGmresRes      = false;
-    env->showCurrentStep   = false;
+    env->showCurrentStep   = true;
     // Enable debug output
     env->debugMode      = false;
     env->debugOutputDir = "./result/debug_output";
