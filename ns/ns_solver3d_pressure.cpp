@@ -1,5 +1,6 @@
 #include "boundary_3d_utils.h"
 #include "ns_solver3d.h"
+
 #include <iomanip>
 
 void ConcatNSSolver3D::velocity_div_inner()
@@ -22,8 +23,8 @@ void ConcatNSSolver3D::velocity_div_inner()
         for (int i = 0; i < nx - 1; i++)
             for (int j = 0; j < ny - 1; j++)
                 for (int k = 0; k < nz - 1; k++)
-                    p(i, j, k) = (u(i + 1, j, k) - u(i, j, k)) * hy * hz + (v(i, j + 1, k) - v(i, j, k)) * hx * hz +
-                                 (w(i, j, k + 1) - w(i, j, k)) * hx * hy;
+                    p(i, j, k) = (u(i + 1, j, k) - u(i, j, k)) / hx + (v(i, j + 1, k) - v(i, j, k)) / hy +
+                                 (w(i, j, k + 1) - w(i, j, k)) / hz;
     }
 }
 
@@ -50,46 +51,45 @@ void ConcatNSSolver3D::velocity_div_outer()
         OPENMP_PARALLEL_FOR()
         for (int i = 0; i < nx - 1; i++)
             for (int j = 0; j < ny - 1; j++)
-                p(i, j, nz - 1) = (u(i + 1, j, nz - 1) - u(i, j, nz - 1)) * hy * hz +
-                                  (v(i, j + 1, nz - 1) - v(i, j, nz - 1)) * hx * hz +
-                                  (w_buffer_up(i, j) - w(i, j, nz - 1)) * hx * hy;
+                p(i, j, nz - 1) = (u(i + 1, j, nz - 1) - u(i, j, nz - 1)) / hx +
+                                  (v(i, j + 1, nz - 1) - v(i, j, nz - 1)) / hy +
+                                  (w_buffer_up(i, j) - w(i, j, nz - 1)) / hz;
 
         OPENMP_PARALLEL_FOR()
         for (int i = 0; i < nx - 1; i++)
             for (int k = 0; k < nz - 1; k++)
-                p(i, ny - 1, k) = (u(i + 1, ny - 1, k) - u(i, ny - 1, k)) * hy * hz +
-                                  (v_buffer_back(i, k) - v(i, ny - 1, k)) * hx * hz +
-                                  (w(i, ny - 1, k + 1) - w(i, ny - 1, k)) * hx * hy;
+                p(i, ny - 1, k) = (u(i + 1, ny - 1, k) - u(i, ny - 1, k)) / hx +
+                                  (v_buffer_back(i, k) - v(i, ny - 1, k)) / hy +
+                                  (w(i, ny - 1, k + 1) - w(i, ny - 1, k)) / hz;
 
         OPENMP_PARALLEL_FOR()
         for (int j = 0; j < ny - 1; j++)
             for (int k = 0; k < nz - 1; k++)
-                p(nx - 1, j, k) = (u_buffer_right(j, k) - u(nx - 1, j, k)) * hy * hz +
-                                  (v(nx - 1, j + 1, k) - v(nx - 1, j, k)) * hx * hz +
-                                  (w(nx - 1, j, k + 1) - w(nx - 1, j, k)) * hx * hy;
+                p(nx - 1, j, k) = (u_buffer_right(j, k) - u(nx - 1, j, k)) / hx +
+                                  (v(nx - 1, j + 1, k) - v(nx - 1, j, k)) / hy +
+                                  (w(nx - 1, j, k + 1) - w(nx - 1, j, k)) / hz;
 
         for (int i = 0; i < nx - 1; i++)
-            p(i, ny - 1, nz - 1) = (u(i + 1, ny - 1, nz - 1) - u(i, ny - 1, nz - 1)) * hy * hz +
-                                   (v_buffer_back(i, nz - 1) - v(i, ny - 1, nz - 1)) * hx * hz +
-                                   (w_buffer_up(i, ny - 1) - w(i, ny - 1, nz - 1)) * hx * hy;
+            p(i, ny - 1, nz - 1) = (u(i + 1, ny - 1, nz - 1) - u(i, ny - 1, nz - 1)) / hx +
+                                   (v_buffer_back(i, nz - 1) - v(i, ny - 1, nz - 1)) / hy +
+                                   (w_buffer_up(i, ny - 1) - w(i, ny - 1, nz - 1)) / hz;
 
         for (int j = 0; j < ny - 1; j++)
-            p(nx - 1, j, nz - 1) = (u_buffer_right(j, nz - 1) - u(nx - 1, j, nz - 1)) * hy * hz +
-                                   (v(nx - 1, j + 1, nz - 1) - v(nx - 1, j, nz - 1)) * hx * hz +
-                                   (w_buffer_up(nx - 1, j) - w(nx - 1, j, nz - 1)) * hx * hy;
+            p(nx - 1, j, nz - 1) = (u_buffer_right(j, nz - 1) - u(nx - 1, j, nz - 1)) / hx +
+                                   (v(nx - 1, j + 1, nz - 1) - v(nx - 1, j, nz - 1)) / hy +
+                                   (w_buffer_up(nx - 1, j) - w(nx - 1, j, nz - 1)) / hz;
 
         for (int k = 0; k < nz - 1; k++)
-            p(nx - 1, ny - 1, k) = (u_buffer_right(ny - 1, k) - u(nx - 1, ny - 1, k)) * hy * hz +
-                                   (v_buffer_back(nx - 1, k) - v(nx - 1, ny - 1, k)) * hx * hz +
-                                   (w(nx - 1, ny - 1, k + 1) - w(nx - 1, ny - 1, k)) * hx * hy;
+            p(nx - 1, ny - 1, k) = (u_buffer_right(ny - 1, k) - u(nx - 1, ny - 1, k)) / hx +
+                                   (v_buffer_back(nx - 1, k) - v(nx - 1, ny - 1, k)) / hy +
+                                   (w(nx - 1, ny - 1, k + 1) - w(nx - 1, ny - 1, k)) / hz;
 
-        p(nx - 1, ny - 1, nz - 1) = (u_buffer_right(ny - 1, nz - 1) - u(nx - 1, ny - 1, nz - 1)) * hy * hz +
-                                    (v_buffer_back(nx - 1, nz - 1) - v(nx - 1, ny - 1, nz - 1)) * hx * hz +
-                                    (w_buffer_up(nx - 1, nx - 1) - w(nx - 1, ny - 1, nz - 1)) * hx * hy;
+        p(nx - 1, ny - 1, nz - 1) = (u_buffer_right(ny - 1, nz - 1) - u(nx - 1, ny - 1, nz - 1)) / hx +
+                                    (v_buffer_back(nx - 1, nz - 1) - v(nx - 1, ny - 1, nz - 1)) / hy +
+                                    (w_buffer_up(nx - 1, nx - 1) - w(nx - 1, ny - 1, nz - 1)) / hz;
     }
 }
 
-// TODO:
 void ConcatNSSolver3D::pressure_buffer_update()
 {
     // Only adjacented boundaries
