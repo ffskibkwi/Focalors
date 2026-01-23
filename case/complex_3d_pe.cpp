@@ -33,9 +33,9 @@ int main(int argc, char* argv[])
 
         // 2. 构造多区域�?
         Domain3DUniform T1(m1, n1, l1, "T1");
-        // Domain3DUniform T2(m1, n2, l1, "T2");
-        // Domain3DUniform T3(m3, n2, l1, "T3");
-        // Domain3DUniform T4(m3, n4, l1, "T4");
+        Domain3DUniform T2(m1, n2, l1, "T2");
+        Domain3DUniform T3(m3, n2, l1, "T3");
+        Domain3DUniform T4(m3, n4, l1, "T4");
         // Domain3DUniform T5(m5, n2, l1, "T5");
         // Domain3DUniform T6(m6, n2, l1, "T6");
         // Domain3DUniform T7(m6, n7, l1, "T7");
@@ -44,8 +44,8 @@ int main(int argc, char* argv[])
 
         Geometry3D geo;
         geo.connect(&T1, LocationType::Up, &T2);
-        // geo.connect(&T2, LocationType::Right, &T3);
-        // geo.connect(&T3, LocationType::Up, &T4);
+        geo.connect(&T2, LocationType::Right, &T3);
+        geo.connect(&T3, LocationType::Up, &T4);
         // geo.connect(&T3, LocationType::Right, &T5);
         // geo.connect(&T5, LocationType::Right, &T6);
         // geo.connect(&T6, LocationType::Down, &T7);
@@ -61,9 +61,9 @@ int main(int argc, char* argv[])
         field3 p_T1("p_T1"), p_T2("p_T2"), p_T3("p_T3"), p_T4("p_T4"), p_T5("p_T5"), p_T6("p_T6"), p_T7("p_T7"),
             p_T8("p_T8"), p_T9("p_T9");
         p.set_center_field(&T1, p_T1);
-        // p.set_center_field(&T2, p_T2);
-        // p.set_center_field(&T3, p_T3);
-        // p.set_center_field(&T4, p_T4);
+        p.set_center_field(&T2, p_T2);
+        p.set_center_field(&T3, p_T3);
+        p.set_center_field(&T4, p_T4);
         // p.set_center_field(&T5, p_T5);
         // p.set_center_field(&T6, p_T6);
         // p.set_center_field(&T7, p_T7);
