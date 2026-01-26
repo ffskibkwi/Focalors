@@ -300,10 +300,10 @@ int main(int argc, char* argv[])
             ns_solver.phys_boundary_update();
             ns_solver.nondiag_shared_boundary_update();
             ns_solver.diag_shared_boundary_update();
-            IO::var_to_csv_full(u, nowtime_dir + "/u/u_" + std::to_string(step));
-            IO::var_to_csv_full(v, nowtime_dir + "/v/v_" + std::to_string(step));
-            IO::var_to_csv_full(p, nowtime_dir + "/p/p_" + std::to_string(step));
-            IO::var_to_csv_full(mu, nowtime_dir + "/mu/mu_" + std::to_string(step));
+            IO::write_csv(u, nowtime_dir + "/u/u_" + std::to_string(step));
+            IO::write_csv(v, nowtime_dir + "/v/v_" + std::to_string(step));
+            IO::write_csv(p, nowtime_dir + "/p/p_" + std::to_string(step));
+            IO::write_csv(mu, nowtime_dir + "/mu/mu_" + std::to_string(step));
         }
         if (std::isnan(u_A1(1, 1)))
         {
@@ -313,9 +313,9 @@ int main(int argc, char* argv[])
     }
     std::cout << "Simulation finished." << std::endl;
     // 使用 step_to_save 控制最终保存
-    IO::var_to_csv_full(u, nowtime_dir + "/final/u_" + std::to_string(final_step_to_save));
-    IO::var_to_csv_full(v, nowtime_dir + "/final/v_" + std::to_string(final_step_to_save));
-    IO::var_to_csv_full(p, nowtime_dir + "/final/p_" + std::to_string(final_step_to_save));
-    IO::var_to_csv_full(mu, nowtime_dir + "/final/mu_" + std::to_string(final_step_to_save));
+    IO::write_csv(u, nowtime_dir + "/final/u_" + std::to_string(final_step_to_save));
+    IO::write_csv(v, nowtime_dir + "/final/v_" + std::to_string(final_step_to_save));
+    IO::write_csv(p, nowtime_dir + "/final/p_" + std::to_string(final_step_to_save));
+    IO::write_csv(mu, nowtime_dir + "/final/mu_" + std::to_string(final_step_to_save));
     return 0;
 }

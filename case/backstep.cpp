@@ -134,7 +134,7 @@ int main(int argc, char* argv[])
         ns_solver.solve();
     }
 
-    IO::var_to_csv(u, "result/u");
-    IO::var_to_csv(v, "result/v");
-    IO::var_to_csv(p, "result/p");
+    IO::write_csv(u, "result/u");
+    IO::write_csv(v, "result/v");
+    IO::write_csv(p, "result/p");
 }

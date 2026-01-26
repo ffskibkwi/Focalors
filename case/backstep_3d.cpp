@@ -180,10 +180,10 @@ int main(int argc, char* argv[])
 
         if (iter % 10000 == 0 && iter != 0)
         {
-            IO::var_to_csv(u, "result/" + std::to_string(iter) + "u");
-            IO::var_to_csv(v, "result/" + std::to_string(iter) + "v");
-            IO::var_to_csv(w, "result/" + std::to_string(iter) + "w");
-            IO::var_to_csv(p, "result/" + std::to_string(iter) + "p");
+            IO::write_csv(u, "result/" + std::to_string(iter) + "u");
+            IO::write_csv(v, "result/" + std::to_string(iter) + "v");
+            IO::write_csv(w, "result/" + std::to_string(iter) + "w");
+            IO::write_csv(p, "result/" + std::to_string(iter) + "p");
         }
     }
 

@@ -156,7 +156,7 @@ int main(int argc, char* argv[])
 
         int         rank_int = static_cast<int>(rank);
         std::string out_base = "result/p_rank_" + std::to_string(rank_int);
-        // IO::var_to_csv(p, out_base);
+        // IO::write_csv(p, out_base);
         // IO::matlab_read_var(p, out_base + "_read.m");
 
         // 6. 误差统计 (修正 foreach 调用)

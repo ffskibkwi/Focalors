@@ -149,7 +149,7 @@ int main(int argc, char* argv[])
         dir_name << "result/H-shaped_pe_vali/dx" << dx_val;
         std::string output_dir = dir_name.str();
 
-        // 目录由 IO::field_to_csv 自动创建
+        // 目录由 IO::write_csv 自动创建
 
         std::cout << "\n========================================" << std::endl;
         std::cout << "测试网格间距: dx=" << dx_val << std::endl;
@@ -245,13 +245,13 @@ int main(int argc, char* argv[])
         solver.solve();
 
         // 输出结果
-        IO::field_to_csv(v_T1, output_dir + "/v_T1");
-        IO::field_to_csv(v_T2, output_dir + "/v_T2");
-        IO::field_to_csv(v_T3, output_dir + "/v_T3");
-        IO::field_to_csv(v_T4, output_dir + "/v_T4");
-        IO::field_to_csv(v_T5, output_dir + "/v_T5");
-        IO::field_to_csv(v_T6, output_dir + "/v_T6");
-        IO::field_to_csv(v_T7, output_dir + "/v_T7");
+        IO::write_csv(v_T1, output_dir + "/v_T1");
+        IO::write_csv(v_T2, output_dir + "/v_T2");
+        IO::write_csv(v_T3, output_dir + "/v_T3");
+        IO::write_csv(v_T4, output_dir + "/v_T4");
+        IO::write_csv(v_T5, output_dir + "/v_T5");
+        IO::write_csv(v_T6, output_dir + "/v_T6");
+        IO::write_csv(v_T7, output_dir + "/v_T7");
 
         std::cout << "结果已保存到: " << output_dir << "\n" << std::endl;
     }

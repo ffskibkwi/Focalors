@@ -1,5 +1,5 @@
 function plot_var(domains)
-%PLOT_VAR Plot var_to_csv domains using a colored scatter heatmap.
+%PLOT_VAR Plot write_csv domains using a colored scatter heatmap.
 % Usage:
 %   run('output/p_rank_32_read.m');
 %   plot_var(domains);

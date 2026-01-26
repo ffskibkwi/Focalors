@@ -622,9 +622,9 @@ int main(int argc, char* argv[])
     std::string nowtime_dir = "result/cross_ns_sym/" + IO::create_timestamp();
     IO::create_directory(nowtime_dir);
 
-    IO::var_to_csv(u, nowtime_dir + "/u_init");
-    IO::var_to_csv(v, nowtime_dir + "/v_init");
-    IO::var_to_csv(p, nowtime_dir + "/p_init");
+    IO::write_csv(u, nowtime_dir + "/u_init");
+    IO::write_csv(v, nowtime_dir + "/v_init");
+    IO::write_csv(p, nowtime_dir + "/p_init");
 
     // NS
     solver.euler_conv_diff_inner();
@@ -654,9 +654,9 @@ int main(int argc, char* argv[])
 
     print_buffer_info();
     // Optional CSV outputs (uncomment if needed)
-    IO::var_to_csv(u, nowtime_dir + "/u");
-    IO::var_to_csv(v, nowtime_dir + "/v");
-    IO::var_to_csv(p, nowtime_dir + "/p");
+    IO::write_csv(u, nowtime_dir + "/u");
+    IO::write_csv(v, nowtime_dir + "/v");
+    IO::write_csv(p, nowtime_dir + "/p");
 
     // check boundary types
     // for (auto* d : domains)
