@@ -7,18 +7,16 @@
 #include "pe/concat/concat_solver3d.h"
 #include <cmath>
 #include <iostream>
-#include <map> // 补齐头文�?
-#include <vector>
+#include <map>
 #include <string>
+#include <vector>
 
 int main(int argc, char* argv[])
 {
-    // 修正 EnvironmentConfig 构�?
     EnvironmentConfig* env = new EnvironmentConfig();
     env->showGmresRes      = false;
     env->showCurrentStep   = true;
     // Enable debug output
-    env->debugMode      = false;
     env->debugOutputDir = "./result/debug_output";
 
     std::vector<double> acc_ranks = {4, 8, 16};
@@ -29,7 +27,7 @@ int main(int argc, char* argv[])
         int    m1 = rank, m3 = rank * 2, m5 = rank, m6 = rank * 3, m8 = rank;     // x
         int    n1 = rank, n2 = 2 * rank, n4 = 4 * rank, n7 = rank * 3, n9 = rank; // y
         int    l1 = rank;
-        double H = 1.0 / rank;
+        double H  = 1.0 / rank;
 
         // 2. 构造多区域�?
         Domain3DUniform T1(m1, n1, l1, "T1");
@@ -200,6 +198,3 @@ int main(int argc, char* argv[])
     delete env;
     return 0;
 }
-
-
-
