@@ -7,8 +7,8 @@
 #include <cmath>
 #include <stdexcept>
 
-MHDModule2D::MHDModule2D(Variable*            in_u_var,
-                         Variable*            in_v_var,
+MHDModule2D::MHDModule2D(Variable2D*          in_u_var,
+                         Variable2D*          in_v_var,
                          PhysicsConfig*       in_phy_config,
                          TimeAdvancingConfig* in_time_config,
                          EnvironmentConfig*   in_env_config)
@@ -43,7 +43,7 @@ MHDModule2D::MHDModule2D(Variable*            in_u_var,
 
 MHDModule2D::~MHDModule2D() = default;
 
-void MHDModule2D::init(Variable* phi_var)
+void MHDModule2D::init(Variable2D* phi_var)
 {
     if (m_initialized)
         return;
@@ -61,13 +61,13 @@ void MHDModule2D::init(Variable* phi_var)
     else
     {
         // Create internal phi variable with default Neumann boundary conditions
-        m_phiVar = std::unique_ptr<Variable>(new Variable("phi"));
+        m_phiVar = std::unique_ptr<Variable2D>(new Variable2D("phi"));
         m_phiVar->set_geometry(*geo);
     }
 
-    m_jxVar = std::unique_ptr<Variable>(new Variable("jx"));
-    m_jyVar = std::unique_ptr<Variable>(new Variable("jy"));
-    m_jzVar = std::unique_ptr<Variable>(new Variable("jz"));
+    m_jxVar = std::unique_ptr<Variable2D>(new Variable2D("jx"));
+    m_jyVar = std::unique_ptr<Variable2D>(new Variable2D("jy"));
+    m_jzVar = std::unique_ptr<Variable2D>(new Variable2D("jz"));
 
     m_jxVar->set_geometry(*geo);
     m_jyVar->set_geometry(*geo);
@@ -89,7 +89,7 @@ void MHDModule2D::init(Variable* phi_var)
 
         if (externalPhi)
         {
-            // External phi: fields already exist in the passed Variable, just reference them
+            // External phi: fields already exist in the passed Variable2D, just reference them
             // No need to allocate storage or set boundary conditions
         }
         else

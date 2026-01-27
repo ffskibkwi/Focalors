@@ -3,7 +3,7 @@
 #include "base/domain/domain2d.h"
 #include "base/domain/geometry2d.h"
 #include "base/domain/geometry_tree.hpp"
-#include "base/domain/variable.h"
+#include "base/domain/variable2d.h"
 #include "base/location_boundary.h"
 #include "base/pch.h"
 
@@ -20,15 +20,15 @@ class ConcatNSSolver2D
 {
     // Simple: Only for single main domain geometry
 public:
-    Variable *             u_var = nullptr, *v_var = nullptr, *p_var = nullptr;
+    Variable2D *           u_var = nullptr, *v_var = nullptr, *p_var = nullptr;
     ConcatPoissonSolver2D* p_solver = nullptr;
 
     // Non-Newtonian fields
-    Variable *mu_var = nullptr, *tau_xx_var = nullptr, *tau_yy_var = nullptr, *tau_xy_var = nullptr;
+    Variable2D *mu_var = nullptr, *tau_xx_var = nullptr, *tau_yy_var = nullptr, *tau_xy_var = nullptr;
 
-    ConcatNSSolver2D(Variable*            in_u_var,
-                     Variable*            in_v_var,
-                     Variable*            in_p_var,
+    ConcatNSSolver2D(Variable2D*          in_u_var,
+                     Variable2D*          in_v_var,
+                     Variable2D*          in_p_var,
                      TimeAdvancingConfig* in_time_config,
                      PhysicsConfig*       in_physics_config,
                      EnvironmentConfig*   in_env_config = nullptr);
@@ -40,7 +40,10 @@ public:
     void normalize_pressure();
 
     // Non-Newtonian methods
-    void init_nonnewton(Variable* in_mu_var, Variable* in_tau_xx_var, Variable* in_tau_yy_var, Variable* in_tau_xy_var);
+    void init_nonnewton(Variable2D* in_mu_var,
+                        Variable2D* in_tau_xx_var,
+                        Variable2D* in_tau_yy_var,
+                        Variable2D* in_tau_xy_var);
     void solve_nonnewton();
     void viscosity_update();
     void stress_update();

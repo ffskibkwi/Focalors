@@ -2,7 +2,7 @@
 
 #include "base/domain/domain2d.h"
 #include "base/domain/geometry2d.h"
-#include "base/domain/variable.h"
+#include "base/domain/variable2d.h"
 #include "base/field/field2.h"
 #include "base/location_boundary.h"
 #include "io/config.h"
@@ -17,7 +17,7 @@ class ConcatNSSolver2D;
 
 /**
  * @brief MHD module for 2D quasi-static/induced electric potential method
- * 
+ *
  * Implements the following algorithm:
  * 1. Solve Poisson equation for electric potential phi: div(u×B) = RHS
  * 2. Update current density: J = -∇phi + u×B
@@ -26,8 +26,8 @@ class ConcatNSSolver2D;
 class MHDModule2D
 {
 public:
-    MHDModule2D(Variable*            in_u_var,
-                Variable*            in_v_var,
+    MHDModule2D(Variable2D*          in_u_var,
+                Variable2D*          in_v_var,
                 PhysicsConfig*       in_phy_config,
                 TimeAdvancingConfig* in_time_config,
                 EnvironmentConfig*   in_env_config = nullptr);
@@ -41,11 +41,11 @@ public:
      * @param phi_var Optional pre-configured phi variable (with boundary conditions).
      *                If nullptr, creates internal phi variable with default Neumann BCs.
      */
-    void init(Variable* phi_var = nullptr);
+    void init(Variable2D* phi_var = nullptr);
 
     /**
      * @brief Solve Poisson equation for electric potential
-     * 
+     *
      * Computes RHS = div(u×B) = Bz*(dv/dx - du/dy) using conservative discretization
      * Solves for phi (solution unique up to a constant due to Neumann BC)
      */
@@ -53,17 +53,17 @@ public:
 
     /**
      * @brief Update current density based on Ohm's law
-     * 
+     *
      * Computes J = -∇phi + u×B at cell centers
      * - jx = -dphi/dx + (u×B)_x
-     * - jy = -dphi/dy + (u×B)_y  
+     * - jy = -dphi/dy + (u×B)_y
      * - jz = -dphi/dz + (u×B)_z = u*By - v*Bx (2D case)
      */
     void updateCurrentDensity();
 
     /**
      * @brief Apply Lorentz force to predicted velocity
-     * 
+     *
      * Adds dt*(Ha^2/Re)*(J×B) to the predicted velocity fields (u_temp, v_temp)
      * Forces computed at centers are interpolated to edges (MAC grid staggering)
      */
@@ -73,14 +73,14 @@ private:
     void buffer_update();
 
     // Reference to NS velocity variables (for geometry and fields)
-    Variable* m_uVar;
-    Variable* m_vVar;
+    Variable2D* m_uVar;
+    Variable2D* m_vVar;
 
     // MHD-specific variables (all at cell centers)
-    std::unique_ptr<Variable> m_phiVar; // Electric potential
-    std::unique_ptr<Variable> m_jxVar;  // Current density X
-    std::unique_ptr<Variable> m_jyVar;  // Current density Y
-    std::unique_ptr<Variable> m_jzVar;  // Current density Z
+    std::unique_ptr<Variable2D> m_phiVar; // Electric potential
+    std::unique_ptr<Variable2D> m_jxVar;  // Current density X
+    std::unique_ptr<Variable2D> m_jyVar;  // Current density Y
+    std::unique_ptr<Variable2D> m_jzVar;  // Current density Z
 
     // Poisson solver for electric potential
     std::unique_ptr<ConcatPoissonSolver2D> m_phiSolver;
@@ -91,7 +91,7 @@ private:
     EnvironmentConfig*   m_envConfig;
 
     // Cached parameters
-    std::vector<Domain2DUniform*> m_domains;
+    std::vector<Domain2DUniform*>                                                            m_domains;
     std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, Domain2DUniform*>> m_adjacency;
 
     double m_Bx          = 0.0;

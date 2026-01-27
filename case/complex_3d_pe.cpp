@@ -52,7 +52,7 @@ int main(int argc, char* argv[])
 
         geo.set_global_spatial_step(H, H, H);
 
-        // 3. 变量与场初始�?(修正 Variable 构�?
+        // 3. 变量与场初始�?(修正 Variable2D 构�?
         Variable3D p("p");
         p.set_geometry(geo);
 

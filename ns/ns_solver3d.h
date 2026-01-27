@@ -3,7 +3,7 @@
 #include "base/domain/domain3d.h"
 #include "base/domain/geometry3d.h"
 #include "base/domain/geometry_tree.hpp"
-#include "base/domain/variable.h"
+#include "base/domain/variable2d.h"
 #include "base/location_boundary.h"
 #include "base/pch.h"
 

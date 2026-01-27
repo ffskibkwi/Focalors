@@ -185,7 +185,7 @@ void swap_field_data(field2& a, field2& b)
     std::swap(a.value, b.value);
 }
 
-bool isAllNeumannBoundary(const Variable& var)
+bool isAllNeumannBoundary(const Variable2D& var)
 {
     if (var.geometry == nullptr)
         return false;
@@ -216,7 +216,7 @@ bool isAllNeumannBoundary(const Variable& var)
     return true;
 }
 
-double normalizeRhsForNeumannBc(const Variable&                                      var,
+double normalizeRhsForNeumannBc(const Variable2D&                                    var,
                                 const std::vector<Domain2DUniform*>&                 domains,
                                 const std::unordered_map<Domain2DUniform*, field2*>& fieldMap)
 {

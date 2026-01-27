@@ -1,6 +1,6 @@
 #include "base/domain/domain2d.h"
 #include "base/domain/geometry2d.h"
-#include "base/domain/variable.h"
+#include "base/domain/variable2d.h"
 #include "base/field/field2.h"
 #include "io/config.h"
 #include "io/csv_writer_2d.h"
@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
 
         geo.set_global_spatial_step(H, H);
 
-        Variable p("p");
+        Variable2D p("p");
         p.set_geometry(geo);
 
         field2 p_T1("p_T1"), p_T2("p_T2"), p_T3("p_T3"), p_T4("p_T4"), p_T5("p_T5"), p_T6("p_T6"), p_T7("p_T7");

@@ -5,10 +5,10 @@
 /** @brief Minimum shear rate threshold to prevent singularity in power-law model */
 constexpr double GAMMA_DOT_MIN = 1.0e-4;
 
-void ConcatNSSolver2D::init_nonnewton(Variable* in_mu_var,
-                                      Variable* in_tau_xx_var,
-                                      Variable* in_tau_yy_var,
-                                      Variable* in_tau_xy_var)
+void ConcatNSSolver2D::init_nonnewton(Variable2D* in_mu_var,
+                                      Variable2D* in_tau_xx_var,
+                                      Variable2D* in_tau_yy_var,
+                                      Variable2D* in_tau_xy_var)
 {
     mu_var     = in_mu_var;
     tau_xx_var = in_tau_xx_var;

@@ -70,7 +70,7 @@ int main(int argc, char* argv[])
     geo_cross.connect(&A2, LocationType::Left, &A1);
     geo_cross.connect(&A2, LocationType::Down, &A3);
 
-    // Variables
+    // Variable2Ds
     Variable3D u("u"), v("v"), w("w"), p("p");
     u.set_geometry(geo_cross);
     v.set_geometry(geo_cross);

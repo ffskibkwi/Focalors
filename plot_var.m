@@ -21,6 +21,6 @@ function plot_var(domains)
     colorbar;
     xlabel('x');
     ylabel('y');
-    title('Variable field');
+    title('Variable2D field');
     hold off;
 end

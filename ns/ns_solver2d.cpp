@@ -2,9 +2,9 @@
 #include "boundary_2d_utils.h"
 #include "mhd_module_2d.h"
 
-ConcatNSSolver2D::ConcatNSSolver2D(Variable*            in_u_var,
-                                   Variable*            in_v_var,
-                                   Variable*            in_p_var,
+ConcatNSSolver2D::ConcatNSSolver2D(Variable2D*          in_u_var,
+                                   Variable2D*          in_v_var,
+                                   Variable2D*          in_p_var,
                                    TimeAdvancingConfig* in_time_config,
                                    PhysicsConfig*       in_physics_config,
                                    EnvironmentConfig*   in_env_config)
@@ -95,7 +95,8 @@ void ConcatNSSolver2D::solve()
     if (phy_config->enable_mhd)
     {
         if (!mhd_module)
-            mhd_module = std::unique_ptr<MHDModule2D>(new MHDModule2D(u_var, v_var, phy_config, time_config, env_config));
+            mhd_module =
+                std::unique_ptr<MHDModule2D>(new MHDModule2D(u_var, v_var, phy_config, time_config, env_config));
         mhd_module->init();
         mhd_module->solveElectricPotential();
         mhd_module->updateCurrentDensity();

@@ -1,6 +1,6 @@
 #include "base/domain/domain2d.h"
 #include "base/domain/geometry2d.h"
-#include "base/domain/variable.h"
+#include "base/domain/variable2d.h"
 #include "base/field/field2.h"
 #include "base/location_boundary.h"
 #include "io/common.h"
@@ -159,8 +159,8 @@ int main(int argc, char* argv[])
     geo_cross.connect(&A2, LocationType::Down, &A4);
     geo_cross.connect(&A2, LocationType::Up, &A5);
 
-    // Variables
-    Variable u("u"), v("v"), p("p");
+    // Variable2Ds
+    Variable2D u("u"), v("v"), p("p");
     u.set_geometry(geo_cross);
     v.set_geometry(geo_cross);
     p.set_geometry(geo_cross);
@@ -187,11 +187,11 @@ int main(int argc, char* argv[])
     p.set_center_field(&A5, p_A5);
 
     // Helper setters
-    auto set_dirichlet_zero = [](Variable& var, Domain2DUniform* d, LocationType loc) {
+    auto set_dirichlet_zero = [](Variable2D& var, Domain2DUniform* d, LocationType loc) {
         var.set_boundary_type(d, loc, PDEBoundaryType::Dirichlet);
         var.set_boundary_value(d, loc, 0.0);
     };
-    auto set_neumann_zero = [](Variable& var, Domain2DUniform* d, LocationType loc) {
+    auto set_neumann_zero = [](Variable2D& var, Domain2DUniform* d, LocationType loc) {
         var.set_boundary_type(d, loc, PDEBoundaryType::Neumann);
     };
     auto is_adjacented = [&](Domain2DUniform* d, LocationType loc) {

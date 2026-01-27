@@ -1,7 +1,7 @@
 #include "base/domain/domain2d.h"
 #include "base/domain/geometry2d.h"
 #include "base/domain/geometry_tree.hpp"
-#include "base/domain/variable.h"
+#include "base/domain/variable2d.h"
 #include "base/field/field2.h"
 
 #include "base/location_boundary.h"
@@ -196,7 +196,7 @@ int main(int argc, char* argv[])
         geo_tee.connect(&T6, LocationType::Right, &T7);
 
         // 设置变量和场
-        Variable v("v");
+        Variable2D v("v");
         v.set_geometry(geo_tee);
         field2 v_T1("v_T1"), v_T2("v_T2"), v_T3("v_T3"), v_T4("v_T4"), v_T5("v_T5"), v_T6("v_T6"), v_T7("v_T7");
         v.set_center_field(&T1, v_T1);

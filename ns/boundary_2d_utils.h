@@ -1,7 +1,7 @@
 #pragma once
 
 #include "base/domain/domain2d.h"
-#include "base/domain/variable.h"
+#include "base/domain/variable2d.h"
 #include "base/field/field2.h"
 #include "base/field/field3.h"
 #include "base/location_boundary.h"
@@ -45,11 +45,11 @@ void swap_field_data(field2& a, field2& b);
 
 // Check whether all physical boundaries of a variable are Neumann.
 // Return true iff all non-Adjacented boundaries are Neumann or Periodic.
-bool isAllNeumannBoundary(const Variable& var);
+bool isAllNeumannBoundary(const Variable2D& var);
 
 // Subtract global mean of (RHS + Neumann boundary contributions) for pure Neumann Poisson problems.
 // Return the subtracted mean value.
-double normalizeRhsForNeumannBc(const Variable&                                      var,
+double normalizeRhsForNeumannBc(const Variable2D&                                    var,
                                 const std::vector<Domain2DUniform*>&                 domains,
                                 const std::unordered_map<Domain2DUniform*, field2*>& fieldMap);
 
