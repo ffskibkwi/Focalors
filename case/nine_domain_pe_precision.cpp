@@ -49,8 +49,7 @@ int main(int argc, char* argv[])
         Variable2D p("p");
         p.set_geometry(geo);
 
-        field2 p_T1("p_T1"), p_T2("p_T2"), p_T3("p_T3"), p_T4("p_T4"), p_T5("p_T5"), p_T6("p_T6"), p_T7("p_T7"),
-            p_T8("p_T8"), p_T9("p_T9");
+        field2 p_T1, p_T2, p_T3, p_T4, p_T5, p_T6, p_T7, p_T8, p_T9;
         p.set_center_field(&T1, p_T1);
         p.set_center_field(&T2, p_T2);
         p.set_center_field(&T3, p_T3);

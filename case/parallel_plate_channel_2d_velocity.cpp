@@ -127,8 +127,8 @@ int main(int argc, char* argv[])
     tau_xy.set_geometry(geo);
 
     // Fields
-    field2 u_D1("u_D1"), v_D1("v_D1"), p_D1("p_D1");
-    field2 u_D2("u_D2"), v_D2("v_D2"), p_D2("p_D2");
+    field2 u_D1, v_D1, p_D1;
+    field2 u_D2, v_D2, p_D2;
 
     u.set_x_edge_field(&D1, u_D1);
     u.set_x_edge_field(&D2, u_D2);
@@ -137,8 +137,8 @@ int main(int argc, char* argv[])
     p.set_center_field(&D1, p_D1);
     p.set_center_field(&D2, p_D2);
 
-    field2 mu_D1("mu_D1"), txx_D1("txx_D1"), tyy_D1("tyy_D1"), txy_D1("txy_D1");
-    field2 mu_D2("mu_D2"), txx_D2("txx_D2"), tyy_D2("tyy_D2"), txy_D2("txy_D2");
+    field2 mu_D1, txx_D1, tyy_D1, txy_D1;
+    field2 mu_D2, txx_D2, tyy_D2, txy_D2;
 
     mu.set_corner_field(&D1, mu_D1);
     mu.set_corner_field(&D2, mu_D2);

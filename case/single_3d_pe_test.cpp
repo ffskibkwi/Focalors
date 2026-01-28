@@ -45,7 +45,7 @@ int main(int argc, char* argv[])
     Variable3D p("p");
     p.set_geometry(geo);
 
-    field3 p_A1("p_A1");
+    field3 p_A1;
     p.set_center_field(&A1, p_A1);
 
     geo.axis(&A1, LocationType::Left);

@@ -66,9 +66,9 @@ int main(int argc, char* argv[])
     p.set_geometry(geo_cross);
 
     // Fields on each domain
-    field2 u_A1("u_A1"), u_A2("u_A2"), u_A3("u_A3");
-    field2 v_A1("v_A1"), v_A2("v_A2"), v_A3("v_A3");
-    field2 p_A1("p_A1"), p_A2("p_A2"), p_A3("p_A3");
+    field2 u_A1, u_A2, u_A3;
+    field2 v_A1, v_A2, v_A3;
+    field2 p_A1, p_A2, p_A3;
 
     u.set_x_edge_field(&A1, u_A1);
     u.set_x_edge_field(&A2, u_A2);
