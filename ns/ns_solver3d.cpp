@@ -73,16 +73,7 @@ ConcatNSSolver3D::ConcatNSSolver3D(Variable3D*          in_u_var,
     p_solver = new ConcatPoissonSolver3D(p_var, env_config);
 }
 
-ConcatNSSolver3D::~ConcatNSSolver3D()
-{
-    for (auto& [domain, field] : u_field_map)
-        delete u_temp_field_map[domain];
-    for (auto& [domain, field] : v_field_map)
-        delete v_temp_field_map[domain];
-    for (auto& [domain, field] : w_field_map)
-        delete w_temp_field_map[domain];
-    delete p_solver;
-}
+ConcatNSSolver3D::~ConcatNSSolver3D() { delete p_solver; }
 
 void ConcatNSSolver3D::variable_check()
 {

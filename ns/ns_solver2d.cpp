@@ -61,14 +61,7 @@ ConcatNSSolver2D::ConcatNSSolver2D(Variable2D*          in_u_var,
     p_solver = new ConcatPoissonSolver2D(p_var, env_config);
 }
 
-ConcatNSSolver2D::~ConcatNSSolver2D()
-{
-    for (auto& [domain, field] : u_field_map)
-        delete u_temp_field_map[domain];
-    for (auto& [domain, field] : v_field_map)
-        delete v_temp_field_map[domain];
-    delete p_solver;
-}
+ConcatNSSolver2D::~ConcatNSSolver2D() { delete p_solver; }
 
 void ConcatNSSolver2D::variable_check()
 {
