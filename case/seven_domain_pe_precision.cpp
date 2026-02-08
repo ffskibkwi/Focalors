@@ -2,9 +2,11 @@
 #include "base/domain/geometry2d.h"
 #include "base/domain/variable2d.h"
 #include "base/field/field2.h"
+#include "instrumentor/timer.h"
 #include "io/config.h"
 #include "io/csv_writer_2d.h"
 #include "pe/concat/concat_solver2d.h"
+
 #include <cmath>
 #include <iostream>
 #include <map>
@@ -77,6 +79,10 @@ int main(int argc, char* argv[])
         {
             p.set_value_from_func_global(f_rhs);
             solver.solve();
+
+            double total_time = TimerSingleton::Get().GetAcc(env_cfg.pe_solve_total_name);
+            std::cout << "[Concat] Solve total (exclude boundary/scale) = " << total_time << "s" << std::endl;
+            TimerSingleton::Get().clearAcc();
         }
 
         int         rank_int = static_cast<int>(rank);

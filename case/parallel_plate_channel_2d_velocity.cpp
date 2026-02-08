@@ -214,7 +214,6 @@ int main(int argc, char* argv[])
     ns_solver.p_solver->set_parameter(case_param.gmres_m, case_param.gmres_tol, case_param.gmres_max_iter);
 
     std::string nowtime_dir = case_param.root_dir;
-    TimerSingleton::Get().RegisterStdCout("step_time");
 
     std::cout << "Starting simulation..." << std::endl;
 
@@ -223,18 +222,16 @@ int main(int argc, char* argv[])
     {
         if (step % 200 == 0)
         {
-            TimerSingleton::Get().EnableStdCout(true);
             env_cfg.showGmresRes = true;
             std::cout << "step: " << step << "/" << time_cfg.num_iterations << "\n";
         }
         else
         {
-            TimerSingleton::Get().EnableStdCout(false);
             env_cfg.showGmresRes = (step <= 5);
         }
 
         {
-            Timer step_timer("step_time");
+            Timer step_timer("step_time", TimeRecordType::None, step % 200 == 0);
             ns_solver.solve_nonnewton();
         }
 

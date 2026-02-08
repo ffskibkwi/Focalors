@@ -324,9 +324,6 @@ int main(int argc, char* argv[])
     // Generate timestamp directory
     std::string nowtime_dir = case_param.root_dir;
 
-    // 注册计时器用于输出
-    TimerSingleton::Get().RegisterStdCout("step_time");
-
     std::cout << "Starting MHD + Non-Newtonian simulation..." << std::endl;
 
     // Solve
@@ -335,18 +332,16 @@ int main(int argc, char* argv[])
         // 每200步启用计时输出
         if (step % 200 == 0)
         {
-            TimerSingleton::Get().EnableStdCout(true);
             env_cfg.showGmresRes = true;
             std::cout << "step: " << step << "/" << time_cfg.num_iterations << "\n";
         }
         else
         {
-            TimerSingleton::Get().EnableStdCout(false);
             env_cfg.showGmresRes = (step <= 5);
         }
 
         {
-            Timer step_timer("step_time");
+            Timer step_timer("step_time", TimeRecordType::None, step % 200 == 0);
             // Non-Newtonian solve
             ns_solver.solve_nonnewton();
 
