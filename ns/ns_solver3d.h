@@ -24,13 +24,7 @@ public:
     Variable3D *mu_var = nullptr, *tau_xx_var = nullptr, *tau_yy_var = nullptr, *tau_zz_var = nullptr,
                *tau_xy_var = nullptr, *tau_xz_var = nullptr, *tau_yz_var = nullptr;
 
-    ConcatNSSolver3D(Variable3D*          in_u_var,
-                     Variable3D*          in_v_var,
-                     Variable3D*          in_w_var,
-                     Variable3D*          in_p_var,
-                     TimeAdvancingConfig* in_time_config,
-                     PhysicsConfig*       in_physics_config,
-                     EnvironmentConfig*   in_env_config = nullptr);
+    ConcatNSSolver3D(Variable3D* in_u_var, Variable3D* in_v_var, Variable3D* in_w_var, Variable3D* in_p_var);
     ~ConcatNSSolver3D();
 
     // void init();
@@ -148,13 +142,8 @@ private:
     std::unordered_map<Domain3DUniform*, double*>&v_corner_value_map_x, v_corner_value_map_z;
     std::unordered_map<Domain3DUniform*, double*>&w_corner_value_map_x, w_corner_value_map_y;
 
-    EnvironmentConfig* env_config;
-
-    TimeAdvancingConfig* time_config;
-    double               dt;
-    int                  num_it;
-    int                  corr_it;
-
-    PhysicsConfig* phy_config;
-    double         nu;
+    double dt;
+    int    num_it;
+    int    corr_it;
+    double nu;
 };

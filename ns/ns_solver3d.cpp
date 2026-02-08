@@ -1,20 +1,14 @@
 #include "ns_solver3d.h"
 #include "boundary_3d_utils.h"
 
-ConcatNSSolver3D::ConcatNSSolver3D(Variable3D*          in_u_var,
-                                   Variable3D*          in_v_var,
-                                   Variable3D*          in_w_var,
-                                   Variable3D*          in_p_var,
-                                   TimeAdvancingConfig* in_time_config,
-                                   PhysicsConfig*       in_physics_config,
-                                   EnvironmentConfig*   in_env_config)
+ConcatNSSolver3D::ConcatNSSolver3D(Variable3D* in_u_var,
+                                   Variable3D* in_v_var,
+                                   Variable3D* in_w_var,
+                                   Variable3D* in_p_var)
     : u_var(in_u_var)
     , v_var(in_v_var)
     , w_var(in_w_var)
     , p_var(in_p_var)
-    , time_config(in_time_config)
-    , phy_config(in_physics_config)
-    , env_config(in_env_config)
     , u_corner_value_map_y(u_var->corner_value_map_y)
     , u_corner_value_map_z(u_var->corner_value_map_z)
     , v_corner_value_map_x(v_var->corner_value_map_x)
@@ -22,17 +16,14 @@ ConcatNSSolver3D::ConcatNSSolver3D(Variable3D*          in_u_var,
     , w_corner_value_map_x(w_var->corner_value_map_x)
     , w_corner_value_map_y(w_var->corner_value_map_y)
 {
-    // config load
-    if (in_env_config)
-    {
-        // Maybe useful in future
-    }
+    TimeAdvancingConfig& time_cfg    = TimeAdvancingConfig::Get();
+    PhysicsConfig&       physics_cfg = PhysicsConfig::Get();
 
-    dt      = time_config->dt;
-    num_it  = time_config->num_iterations;
-    corr_it = time_config->corr_iter;
+    dt      = time_cfg.dt;
+    num_it  = time_cfg.num_iterations;
+    corr_it = time_cfg.corr_iter;
 
-    nu = phy_config->nu;
+    nu = physics_cfg.nu;
 
     // check u v p share one geometry
     if (u_var->geometry != v_var->geometry || u_var->geometry != w_var->geometry || u_var->geometry != p_var->geometry)
@@ -70,7 +61,7 @@ ConcatNSSolver3D::ConcatNSSolver3D(Variable3D*          in_u_var,
         w_temp_field_map[domain] =
             new field3(field->get_nx(), field->get_ny(), field->get_nz(), field->get_name() + "_temp");
 
-    p_solver = new ConcatPoissonSolver3D(p_var, env_config);
+    p_solver = new ConcatPoissonSolver3D(p_var);
 }
 
 ConcatNSSolver3D::~ConcatNSSolver3D() { delete p_solver; }

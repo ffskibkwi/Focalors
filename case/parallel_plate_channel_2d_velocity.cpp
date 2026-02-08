@@ -50,22 +50,19 @@ int main(int argc, char* argv[])
     double Lx = case_param.Lx;
     double Ly = case_param.Ly;
 
-    // Configuration
-    EnvironmentConfig* env_config = new EnvironmentConfig();
-    env_config->showGmresRes      = false;
-    env_config->showCurrentStep   = false;
+    EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
 
-    TimeAdvancingConfig* time_config = new TimeAdvancingConfig();
-    time_config->dt                  = case_param.dt_factor * h;
-    time_config->set_t_max(case_param.T_total);
+    TimeAdvancingConfig& time_cfg = TimeAdvancingConfig::Get();
+    time_cfg.dt                   = case_param.dt_factor * h;
+    time_cfg.set_t_max(case_param.T_total);
 
-    PhysicsConfig* physics_config = new PhysicsConfig();
-    physics_config->set_Re(case_param.Re);
-    physics_config->set_model_type(case_param.model_type);
+    PhysicsConfig& physics_cfg = PhysicsConfig::Get();
+    physics_cfg.set_Re(case_param.Re);
+    physics_cfg.set_model_type(case_param.model_type);
 
     if (case_param.model_type == 1) // Power Law
     {
-        physics_config->set_power_law_dimensionless(
+        physics_cfg.set_power_law_dimensionless(
             case_param.Re_PL, case_param.n_index, case_param.mu_min_pl, case_param.mu_max_pl);
         std::cout << "Configuring Power Law Model (Dimensionless):" << std::endl;
         std::cout << "  Re_PL:     " << case_param.Re_PL << std::endl;
@@ -75,7 +72,7 @@ int main(int argc, char* argv[])
     }
     else if (case_param.model_type == 2) // Carreau
     {
-        physics_config->set_carreau_dimensionless(
+        physics_cfg.set_carreau_dimensionless(
             case_param.Re_0, case_param.Re_inf, case_param.Wi, case_param.a, case_param.n_index);
         std::cout << "Configuring Carreau Model (Dimensionless):" << std::endl;
         std::cout << "  Re_0:   " << case_param.Re_0 << std::endl;
@@ -87,8 +84,8 @@ int main(int argc, char* argv[])
 
     // Output stepping
     int pv_output_step =
-        case_param.pv_output_step > 0 ? case_param.pv_output_step : std::max(1, time_config->num_iterations / 10);
-    int final_step_to_save = case_param.step_to_save > 0 ? case_param.step_to_save : time_config->num_iterations;
+        case_param.pv_output_step > 0 ? case_param.pv_output_step : std::max(1, time_cfg.num_iterations / 10);
+    int final_step_to_save = case_param.step_to_save > 0 ? case_param.step_to_save : time_cfg.num_iterations;
 
     // Grid construction - Split into two domains D1 (Left) and D2 (Right)
     int nx_total = static_cast<int>(Lx / h);
@@ -212,7 +209,7 @@ int main(int argc, char* argv[])
     set_dirichlet_zero(p, &D2, LocationType::Right); // Pressure outlet p=0
 
     // Solver Initialization
-    ConcatNSSolver2D ns_solver(&u, &v, &p, time_config, physics_config, env_config);
+    ConcatNSSolver2D ns_solver(&u, &v, &p);
     ns_solver.init_nonnewton(&mu, &tau_xx, &tau_yy, &tau_xy);
     ns_solver.p_solver->set_parameter(case_param.gmres_m, case_param.gmres_tol, case_param.gmres_max_iter);
 
@@ -222,18 +219,18 @@ int main(int argc, char* argv[])
     std::cout << "Starting simulation..." << std::endl;
 
     // Simulation Loop
-    for (int step = 1; step <= time_config->num_iterations; step++)
+    for (int step = 1; step <= time_cfg.num_iterations; step++)
     {
         if (step % 200 == 0)
         {
             TimerSingleton::Get().EnableStdCout(true);
-            env_config->showGmresRes = true;
-            std::cout << "step: " << step << "/" << time_config->num_iterations << "\n";
+            env_cfg.showGmresRes = true;
+            std::cout << "step: " << step << "/" << time_cfg.num_iterations << "\n";
         }
         else
         {
             TimerSingleton::Get().EnableStdCout(false);
-            env_config->showGmresRes = (step <= 5);
+            env_cfg.showGmresRes = (step <= 5);
         }
 
         {

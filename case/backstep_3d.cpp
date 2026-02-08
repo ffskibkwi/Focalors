@@ -25,15 +25,15 @@ int main(int argc, char* argv[])
     // Geometry: Cross shape
     Geometry3D geo_cross;
 
-    EnvironmentConfig* env_config = new EnvironmentConfig();
-    env_config->showGmresRes      = true;
+    EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
+    env_cfg.showGmresRes       = true;
 
-    TimeAdvancingConfig* time_config = new TimeAdvancingConfig();
-    time_config->dt                  = 0.001;
-    time_config->num_iterations      = 1e5;
+    TimeAdvancingConfig& time_cfg = TimeAdvancingConfig::Get();
+    time_cfg.dt                   = 0.001;
+    time_cfg.num_iterations       = 1e5;
 
-    PhysicsConfig* physics_config = new PhysicsConfig();
-    physics_config->set_Re(200);
+    PhysicsConfig& physics_cfg = PhysicsConfig::Get();
+    physics_cfg.set_Re(200);
 
     double lx1 = 0.5;
     double lx2 = 0.5;
@@ -152,7 +152,7 @@ int main(int argc, char* argv[])
     w.set_boundary_type(&A2, LocationType::Right, PDEBoundaryType::Neumann);
     w.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Neumann);
 
-    ConcatNSSolver3D solver(&u, &v, &w, &p, time_config, physics_config, env_config);
+    ConcatNSSolver3D solver(&u, &v, &w, &p);
 
     std::chrono::steady_clock::time_point iter_start_time, iter_end_time;
 
@@ -160,15 +160,15 @@ int main(int argc, char* argv[])
     double total_elapsed = std::chrono::duration<double>(main_end_time - main_start_time).count();
     std::cout << "Total init time: " << std::fixed << std::setprecision(2) << total_elapsed << " seconds.\n";
 
-    for (int iter = 0; iter <= time_config->num_iterations; iter++)
+    for (int iter = 0; iter <= time_cfg.num_iterations; iter++)
     {
         if (iter % 200 == 0)
         {
-            std::cout << "iter: " << iter << "/" << time_config->num_iterations;
+            std::cout << "iter: " << iter << "/" << time_cfg.num_iterations;
             iter_start_time = std::chrono::steady_clock::now();
         }
 
-        ConcatNSSolver3D ns_solver(&u, &v, &w, &p, time_config, physics_config, env_config);
+        ConcatNSSolver3D ns_solver(&u, &v, &w, &p);
         ns_solver.solve();
 
         if (iter % 200 == 0)

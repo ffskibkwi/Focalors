@@ -19,9 +19,9 @@
 int main(int argc, char* argv[])
 {
     Geometry2D         geo_tee;
-    EnvironmentConfig* env_config = new EnvironmentConfig();
-    env_config->showGmresRes      = true;
-    env_config->showCurrentStep   = true;
+    EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
+    env_cfg.showGmresRes       = true;
+    env_cfg.showCurrentStep    = true;
 
     // Geometry layout:
     // +-----------+-----------+-----------+
@@ -241,7 +241,7 @@ int main(int argc, char* argv[])
         fill_field(T7, v_T7, L1 + L2, 0.0);
 
         // 创建求解器并求解
-        ConcatPoissonSolver2D solver(&v, env_config);
+        ConcatPoissonSolver2D solver(&v);
         solver.solve();
 
         // 输出结果
@@ -256,6 +256,5 @@ int main(int argc, char* argv[])
         std::cout << "结果已保存到: " << output_dir << "\n" << std::endl;
     }
 
-    delete env_config;
     return 0;
 }

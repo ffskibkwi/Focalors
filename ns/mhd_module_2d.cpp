@@ -7,16 +7,9 @@
 #include <cmath>
 #include <stdexcept>
 
-MHDModule2D::MHDModule2D(Variable2D*          in_u_var,
-                         Variable2D*          in_v_var,
-                         PhysicsConfig*       in_phy_config,
-                         TimeAdvancingConfig* in_time_config,
-                         EnvironmentConfig*   in_env_config)
+MHDModule2D::MHDModule2D(Variable2D* in_u_var, Variable2D* in_v_var)
     : m_uVar(in_u_var)
     , m_vVar(in_v_var)
-    , m_phyConfig(in_phy_config)
-    , m_timeConfig(in_time_config)
-    , m_envConfig(in_env_config)
 {
     if (m_uVar == nullptr || m_vVar == nullptr)
         throw std::runtime_error("MHDModule2D: u/v variable is null");
@@ -24,9 +17,6 @@ MHDModule2D::MHDModule2D(Variable2D*          in_u_var,
         throw std::runtime_error("MHDModule2D: u/v geometry is null");
     if (m_uVar->geometry != m_vVar->geometry)
         throw std::runtime_error("MHDModule2D: u/v do not share one geometry");
-
-    if (m_phyConfig == nullptr || m_timeConfig == nullptr)
-        throw std::runtime_error("MHDModule2D: config pointer is null");
 
     Geometry2D* geo = m_uVar->geometry;
     if (!geo->is_checked)
@@ -128,15 +118,18 @@ void MHDModule2D::init(Variable2D* phi_var)
     m_jyFieldMap  = m_jyVar->field_map;
     m_jzFieldMap  = m_jzVar->field_map;
 
-    m_phiSolver = std::unique_ptr<ConcatPoissonSolver2D>(new ConcatPoissonSolver2D(m_phiVar.get(), m_envConfig));
+    m_phiSolver = std::unique_ptr<ConcatPoissonSolver2D>(new ConcatPoissonSolver2D(m_phiVar.get()));
+
+    TimeAdvancingConfig& time_cfg    = TimeAdvancingConfig::Get();
+    PhysicsConfig&       physics_cfg = PhysicsConfig::Get();
 
     // Cache constant parameters (avoid repeated config reads in each step).
-    m_Bx = m_phyConfig->Bx;
-    m_By = m_phyConfig->By;
-    m_Bz = m_phyConfig->Bz;
-    m_Ha = m_phyConfig->Ha;
-    m_Re = m_phyConfig->Re;
-    m_dt = m_timeConfig->dt;
+    m_Bx = physics_cfg.Bx;
+    m_By = physics_cfg.By;
+    m_Bz = physics_cfg.Bz;
+    m_Ha = physics_cfg.Ha;
+    m_Re = physics_cfg.Re;
+    m_dt = time_cfg.dt;
     if (m_Re != 0.0)
         m_lorentzCoef = m_dt * (m_Ha * m_Ha) / m_Re;
     else

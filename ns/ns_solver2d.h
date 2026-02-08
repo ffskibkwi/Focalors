@@ -26,12 +26,7 @@ public:
     // Non-Newtonian fields
     Variable2D *mu_var = nullptr, *tau_xx_var = nullptr, *tau_yy_var = nullptr, *tau_xy_var = nullptr;
 
-    ConcatNSSolver2D(Variable2D*          in_u_var,
-                     Variable2D*          in_v_var,
-                     Variable2D*          in_p_var,
-                     TimeAdvancingConfig* in_time_config,
-                     PhysicsConfig*       in_physics_config,
-                     EnvironmentConfig*   in_env_config = nullptr);
+    ConcatNSSolver2D(Variable2D* in_u_var, Variable2D* in_v_var, Variable2D* in_p_var);
     ~ConcatNSSolver2D();
 
     // void init();
@@ -157,15 +152,10 @@ private:
     std::unordered_map<Domain2DUniform*, double>& left_up_corner_value_map;
     std::unordered_map<Domain2DUniform*, double>& right_down_corner_value_map;
 
-    EnvironmentConfig* env_config;
-
     std::unique_ptr<MHDModule2D> mhd_module;
 
-    TimeAdvancingConfig* time_config;
-    double               dt;
-    int                  num_it;
-    int                  corr_it;
-
-    PhysicsConfig* phy_config;
-    double         nu;
+    double dt;
+    int    num_it;
+    int    corr_it;
+    double nu;
 };

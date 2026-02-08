@@ -13,11 +13,10 @@
 
 int main(int argc, char* argv[])
 {
-    EnvironmentConfig* env = new EnvironmentConfig();
-    env->showGmresRes      = false;
-    env->showCurrentStep   = true;
-    // Enable debug output
-    env->debugOutputDir = "./result/debug_output";
+    EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
+    env_cfg.showGmresRes       = false;
+    env_cfg.showCurrentStep    = true;
+    env_cfg.debugOutputDir     = "./result/debug_output";
 
     std::vector<double> acc_ranks = {4, 8, 16};
 
@@ -150,7 +149,7 @@ int main(int argc, char* argv[])
         // 5. 右端项填充与求解
         p.set_value_from_func_global(f_rhs);
 
-        ConcatPoissonSolver3D solver(&p, env);
+        ConcatPoissonSolver3D solver(&p);
         solver.solve();
 
         int         rank_int = static_cast<int>(rank);
@@ -194,6 +193,5 @@ int main(int argc, char* argv[])
 
         std::cout << "rank: " << rank << " L2 Error: " << std::sqrt(total_l2_sq) << std::endl;
     }
-    delete env;
     return 0;
 }

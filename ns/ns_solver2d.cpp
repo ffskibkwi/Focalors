@@ -2,32 +2,21 @@
 #include "boundary_2d_utils.h"
 #include "mhd_module_2d.h"
 
-ConcatNSSolver2D::ConcatNSSolver2D(Variable2D*          in_u_var,
-                                   Variable2D*          in_v_var,
-                                   Variable2D*          in_p_var,
-                                   TimeAdvancingConfig* in_time_config,
-                                   PhysicsConfig*       in_physics_config,
-                                   EnvironmentConfig*   in_env_config)
+ConcatNSSolver2D::ConcatNSSolver2D(Variable2D* in_u_var, Variable2D* in_v_var, Variable2D* in_p_var)
     : u_var(in_u_var)
     , v_var(in_v_var)
     , p_var(in_p_var)
-    , time_config(in_time_config)
-    , phy_config(in_physics_config)
-    , env_config(in_env_config)
     , left_up_corner_value_map(v_var->left_up_corner_value_map)
     , right_down_corner_value_map(u_var->right_down_corner_value_map)
 {
-    // config load
-    if (in_env_config)
-    {
-        // Maybe useful in future
-    }
+    TimeAdvancingConfig& time_cfg    = TimeAdvancingConfig::Get();
+    PhysicsConfig&       physics_cfg = PhysicsConfig::Get();
 
-    dt      = time_config->dt;
-    num_it  = time_config->num_iterations;
-    corr_it = time_config->corr_iter;
+    dt      = time_cfg.dt;
+    num_it  = time_cfg.num_iterations;
+    corr_it = time_cfg.corr_iter;
 
-    nu = phy_config->nu;
+    nu = physics_cfg.nu;
 
     // check u v p share one geometry
     if (u_var->geometry != v_var->geometry || u_var->geometry != p_var->geometry)
@@ -58,7 +47,7 @@ ConcatNSSolver2D::ConcatNSSolver2D(Variable2D*          in_u_var,
     for (auto& [domain, field] : v_field_map)
         v_temp_field_map[domain] = new field2(field->get_nx(), field->get_ny(), field->get_name() + "_temp");
 
-    p_solver = new ConcatPoissonSolver2D(p_var, env_config);
+    p_solver = new ConcatPoissonSolver2D(p_var);
 }
 
 ConcatNSSolver2D::~ConcatNSSolver2D() { delete p_solver; }
@@ -75,6 +64,8 @@ void ConcatNSSolver2D::variable_check()
 
 void ConcatNSSolver2D::solve()
 {
+    PhysicsConfig& physics_cfg = PhysicsConfig::Get();
+
     // update boundary for NS
     phys_boundary_update();
     nondiag_shared_boundary_update();
@@ -85,11 +76,10 @@ void ConcatNSSolver2D::solve()
     euler_conv_diff_outer();
 
     // MHD: predictor step finished, before div(u) boundary update
-    if (phy_config->enable_mhd)
+    if (physics_cfg.enable_mhd)
     {
         if (!mhd_module)
-            mhd_module =
-                std::unique_ptr<MHDModule2D>(new MHDModule2D(u_var, v_var, phy_config, time_config, env_config));
+            mhd_module = std::unique_ptr<MHDModule2D>(new MHDModule2D(u_var, v_var));
         mhd_module->init();
         mhd_module->solveElectricPotential();
         mhd_module->updateCurrentDensity();

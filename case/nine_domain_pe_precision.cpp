@@ -13,8 +13,8 @@
 
 int main(int argc, char* argv[])
 {
-    EnvironmentConfig* env         = new EnvironmentConfig();
-    env->track_pe_solve_total_time = true;
+    EnvironmentConfig& env_cfg        = EnvironmentConfig::Get();
+    env_cfg.track_pe_solve_total_time = true;
 
     std::vector<double> acc_ranks = {4, 8, 16, 32, 64};
 
@@ -77,7 +77,7 @@ int main(int argc, char* argv[])
         p.fill_boundary_type(PDEBoundaryType::Dirichlet);
         p.fill_boundary_value_from_func_global(p_analy);
 
-        ConcatPoissonSolver2D solver(&p, env);
+        ConcatPoissonSolver2D solver(&p);
 
         for (int i = 0; i < 100; i++)
         {
@@ -120,6 +120,5 @@ int main(int argc, char* argv[])
 
         std::cout << "rank: " << rank << " L2 Error: " << std::sqrt(total_l2_sq) << std::endl;
     }
-    delete env;
     return 0;
 }

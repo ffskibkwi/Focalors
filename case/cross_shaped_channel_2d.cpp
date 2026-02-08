@@ -48,20 +48,20 @@ int main(int argc, char* argv[])
     Geometry2D geo_cross;
     double     h = case_param.h;
 
-    EnvironmentConfig* env_config    = new EnvironmentConfig();
-    env_config->showGmresRes         = false;
-    env_config->showCurrentStep      = false;
-    TimeAdvancingConfig* time_config = new TimeAdvancingConfig();
-    time_config->dt                  = case_param.dt_factor * h; // CFL condition
-    time_config->set_t_max(case_param.T_total);
-    // time_config->num_iterations   = 10;
-    PhysicsConfig* physics_config = new PhysicsConfig();
-    physics_config->set_Re(case_param.Re);
+    EnvironmentConfig& env_cfg    = EnvironmentConfig::Get();
+    env_cfg.showGmresRes          = false;
+    env_cfg.showCurrentStep       = false;
+    TimeAdvancingConfig& time_cfg = TimeAdvancingConfig::Get();
+    time_cfg.dt                   = case_param.dt_factor * h; // CFL condition
+    time_cfg.set_t_max(case_param.T_total);
+    // time_cfg.num_iterations   = 10;
+    PhysicsConfig& physics_cfg = PhysicsConfig::Get();
+    physics_cfg.set_Re(case_param.Re);
 
     // 计算循环输出步数间隔 pv_output_step（如果未指定则使用 num_iterations/10）
-    int pv_output_step = case_param.pv_output_step > 0 ? case_param.pv_output_step : time_config->num_iterations / 10;
+    int pv_output_step = case_param.pv_output_step > 0 ? case_param.pv_output_step : time_cfg.num_iterations / 10;
     // 计算最终保存步数（如果未指定则使用 num_iterations）
-    int final_step_to_save = case_param.step_to_save > 0 ? case_param.step_to_save : time_config->num_iterations;
+    int final_step_to_save = case_param.step_to_save > 0 ? case_param.step_to_save : time_cfg.num_iterations;
 
     double lx2 = case_param.lx_2;
     double ly2 = case_param.ly_2;
@@ -201,7 +201,7 @@ int main(int argc, char* argv[])
     set_neumann_zero(u, &A5, LocationType::Up);
     set_neumann_zero(v, &A5, LocationType::Up);
 
-    ConcatNSSolver2D ns_solver(&u, &v, &p, time_config, physics_config, env_config);
+    ConcatNSSolver2D ns_solver(&u, &v, &p);
 
     ns_solver.p_solver->set_parameter(case_param.gmres_m, case_param.gmres_tol, case_param.gmres_max_iter);
     // Generate timestamp directory
@@ -218,19 +218,19 @@ int main(int argc, char* argv[])
     TimerSingleton::Get().RegisterStdCout("step_time");
 
     // Solve
-    for (int step = 1; step <= time_config->num_iterations; step++)
+    for (int step = 1; step <= time_cfg.num_iterations; step++)
     {
         // 每200步启用计时输出
         if (step % 200 == 0)
         {
             TimerSingleton::Get().EnableStdCout(true);
-            env_config->showGmresRes = true;
-            std::cout << "step: " << step << "/" << time_config->num_iterations << "\n";
+            env_cfg.showGmresRes = true;
+            std::cout << "step: " << step << "/" << time_cfg.num_iterations << "\n";
         }
         else
         {
             TimerSingleton::Get().EnableStdCout(false);
-            env_config->showGmresRes = (step <= 5);
+            env_cfg.showGmresRes = (step <= 5);
         }
 
         {

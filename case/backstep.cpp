@@ -22,15 +22,15 @@ int main(int argc, char* argv[])
     // Geometry: Cross shape
     Geometry2D geo_cross;
 
-    EnvironmentConfig* env_config = new EnvironmentConfig();
-    env_config->showGmresRes      = true;
+    EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
+    env_cfg.showGmresRes       = true;
 
-    TimeAdvancingConfig* time_config = new TimeAdvancingConfig();
-    time_config->dt                  = 0.001;
-    time_config->num_iterations      = 1e5;
+    TimeAdvancingConfig& time_cfg = TimeAdvancingConfig::Get();
+    time_cfg.dt                   = 0.001;
+    time_cfg.num_iterations       = 1e5;
 
-    PhysicsConfig* physics_config = new PhysicsConfig();
-    physics_config->set_Re(1000);
+    PhysicsConfig& physics_cfg = PhysicsConfig::Get();
+    physics_cfg.set_Re(1000);
 
     double lx1 = 10;
     double lx2 = 40;
@@ -123,14 +123,14 @@ int main(int argc, char* argv[])
     v.set_boundary_type(&A2, LocationType::Right, PDEBoundaryType::Neumann);
     v.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Neumann);
 
-    ConcatNSSolver2D solver(&u, &v, &p, time_config, physics_config, env_config);
+    ConcatNSSolver2D solver(&u, &v, &p);
 
-    for (int iter = 0; iter < time_config->num_iterations; iter++)
+    for (int iter = 0; iter < time_cfg.num_iterations; iter++)
     {
         if (iter % 200 == 0)
-            std::cout << "iter: " << iter << "/" << time_config->num_iterations << "\n";
+            std::cout << "iter: " << iter << "/" << time_cfg.num_iterations << "\n";
 
-        ConcatNSSolver2D ns_solver(&u, &v, &p, time_config, physics_config, env_config);
+        ConcatNSSolver2D ns_solver(&u, &v, &p);
         ns_solver.solve();
     }
 

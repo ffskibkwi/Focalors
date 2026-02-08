@@ -26,6 +26,8 @@ void ConcatNSSolver2D::init_nonnewton(Variable2D* in_mu_var,
 
 void ConcatNSSolver2D::solve_nonnewton()
 {
+    PhysicsConfig& physics_cfg = PhysicsConfig::Get();
+
     // 1. Update boundary for NS (Ghost Cells / Buffers)
     phys_boundary_update();
     nondiag_shared_boundary_update();
@@ -46,11 +48,10 @@ void ConcatNSSolver2D::solve_nonnewton()
     euler_conv_diff_outer_nonnewton();
 
     // MHD: predictor step finished, before div(u) boundary update
-    if (phy_config->enable_mhd)
+    if (physics_cfg.enable_mhd)
     {
         if (!mhd_module)
-            mhd_module =
-                std::unique_ptr<MHDModule2D>(new MHDModule2D(u_var, v_var, phy_config, time_config, env_config));
+            mhd_module = std::unique_ptr<MHDModule2D>(new MHDModule2D(u_var, v_var));
         mhd_module->init();
         mhd_module->solveElectricPotential();
         mhd_module->updateCurrentDensity();
@@ -86,6 +87,8 @@ void ConcatNSSolver2D::solve_nonnewton()
 
 void ConcatNSSolver2D::viscosity_update()
 {
+    PhysicsConfig& physics_cfg = PhysicsConfig::Get();
+
     for (auto& domain : domains)
     {
         field2& u  = *u_field_map[domain];
@@ -196,14 +199,14 @@ void ConcatNSSolver2D::viscosity_update()
                 double gamma_dot = std::sqrt(2.0 * (du_dx * du_dx + dv_dy * dv_dy) + (du_dy + dv_dx) * (du_dy + dv_dx));
 
                 // 4. Update Viscosity
-                double mu_val = phy_config->nu;
+                double mu_val = physics_cfg.nu;
 
-                if (phy_config->model_type == 1) // Power Law
+                if (physics_cfg.model_type == 1) // Power Law
                 {
-                    double k      = phy_config->k;
-                    double n      = phy_config->n;
-                    double mu_min = phy_config->mu_min;
-                    double mu_max = phy_config->mu_max;
+                    double k      = physics_cfg.k;
+                    double n      = physics_cfg.n;
+                    double mu_min = physics_cfg.mu_min;
+                    double mu_max = physics_cfg.mu_max;
                     if (n < 1.0)
                         gamma_dot = std::max(gamma_dot, GAMMA_DOT_MIN); // protect against zero when exponent negative
                     // Avoid division by zero if gamma_dot is 0 and n < 1
@@ -212,13 +215,13 @@ void ConcatNSSolver2D::viscosity_update()
                     // Enforce limits
                     mu_val = std::max(mu_min, std::min(mu_val, mu_max));
                 }
-                else if (phy_config->model_type == 2) // Carreau
+                else if (physics_cfg.model_type == 2) // Carreau
                 {
-                    double mu_0   = phy_config->mu_0;
-                    double mu_inf = phy_config->mu_inf;
-                    double lambda = phy_config->lambda;
-                    double n      = phy_config->n;
-                    double a      = phy_config->a;
+                    double mu_0   = physics_cfg.mu_0;
+                    double mu_inf = physics_cfg.mu_inf;
+                    double lambda = physics_cfg.lambda;
+                    double n      = physics_cfg.n;
+                    double a      = physics_cfg.a;
 
                     mu_val = mu_inf + (mu_0 - mu_inf) * std::pow(1.0 + std::pow(lambda * gamma_dot, a), (n - 1.0) / a);
                 }
@@ -231,6 +234,8 @@ void ConcatNSSolver2D::viscosity_update()
 
 void ConcatNSSolver2D::stress_buffer_update()
 {
+    PhysicsConfig& physics_cfg = PhysicsConfig::Get();
+
     for (auto& domain : domains)
     {
         field2& u = *u_field_map[domain];
@@ -346,25 +351,25 @@ void ConcatNSSolver2D::stress_buffer_update()
                                          (du_dy_ghost + dv_dx_ghost) * (du_dy_ghost + dv_dx_ghost));
 
             // 6. Viscosity
-            double mu_val = phy_config->nu;
-            if (phy_config->model_type == 1) // Power Law
+            double mu_val = physics_cfg.nu;
+            if (physics_cfg.model_type == 1) // Power Law
             {
-                double k      = phy_config->k;
-                double n      = phy_config->n;
-                double mu_min = phy_config->mu_min;
-                double mu_max = phy_config->mu_max;
+                double k      = physics_cfg.k;
+                double n      = physics_cfg.n;
+                double mu_min = physics_cfg.mu_min;
+                double mu_max = physics_cfg.mu_max;
                 if (n < 1.0)
                     gamma_dot = std::max(gamma_dot, GAMMA_DOT_MIN);
                 mu_val = k * std::pow(gamma_dot, n - 1.0);
                 mu_val = std::max(mu_min, std::min(mu_val, mu_max));
             }
-            else if (phy_config->model_type == 2) // Carreau
+            else if (physics_cfg.model_type == 2) // Carreau
             {
-                double mu_0   = phy_config->mu_0;
-                double mu_inf = phy_config->mu_inf;
-                double lambda = phy_config->lambda;
-                double n      = phy_config->n;
-                double a      = phy_config->a;
+                double mu_0   = physics_cfg.mu_0;
+                double mu_inf = physics_cfg.mu_inf;
+                double lambda = physics_cfg.lambda;
+                double n      = physics_cfg.n;
+                double a      = physics_cfg.a;
                 mu_val = mu_inf + (mu_0 - mu_inf) * std::pow(1.0 + std::pow(lambda * gamma_dot, a), (n - 1.0) / a);
             }
 
@@ -438,25 +443,25 @@ void ConcatNSSolver2D::stress_buffer_update()
                                          (du_dy_ghost + dv_dx_ghost) * (du_dy_ghost + dv_dx_ghost));
 
             // 6. Viscosity
-            double mu_val = phy_config->nu;
-            if (phy_config->model_type == 1) // Power Law
+            double mu_val = physics_cfg.nu;
+            if (physics_cfg.model_type == 1) // Power Law
             {
-                double k      = phy_config->k;
-                double n      = phy_config->n;
-                double mu_min = phy_config->mu_min;
-                double mu_max = phy_config->mu_max;
+                double k      = physics_cfg.k;
+                double n      = physics_cfg.n;
+                double mu_min = physics_cfg.mu_min;
+                double mu_max = physics_cfg.mu_max;
                 if (n < 1.0)
                     gamma_dot = std::max(gamma_dot, GAMMA_DOT_MIN);
                 mu_val = k * std::pow(gamma_dot, n - 1.0);
                 mu_val = std::max(mu_min, std::min(mu_val, mu_max));
             }
-            else if (phy_config->model_type == 2) // Carreau
+            else if (physics_cfg.model_type == 2) // Carreau
             {
-                double mu_0   = phy_config->mu_0;
-                double mu_inf = phy_config->mu_inf;
-                double lambda = phy_config->lambda;
-                double n      = phy_config->n;
-                double a      = phy_config->a;
+                double mu_0   = physics_cfg.mu_0;
+                double mu_inf = physics_cfg.mu_inf;
+                double lambda = physics_cfg.lambda;
+                double n      = physics_cfg.n;
+                double a      = physics_cfg.a;
                 mu_val = mu_inf + (mu_0 - mu_inf) * std::pow(1.0 + std::pow(lambda * gamma_dot, a), (n - 1.0) / a);
             }
 

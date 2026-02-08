@@ -121,16 +121,16 @@ int main(int argc, char* argv[])
     // Geometry: Cross shape
     Geometry2D geo_cross;
 
-    EnvironmentConfig* env_config = new EnvironmentConfig();
-    env_config->showGmresRes      = true;
-    env_config->showCurrentStep   = true;
+    EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
+    env_cfg.showGmresRes       = true;
+    env_cfg.showCurrentStep    = true;
 
-    TimeAdvancingConfig* time_config = new TimeAdvancingConfig();
-    time_config->dt                  = 0.001;
-    time_config->num_iterations      = 1; // one NS step for validation
+    TimeAdvancingConfig& time_cfg = TimeAdvancingConfig::Get();
+    time_cfg.dt                   = 0.001;
+    time_cfg.num_iterations       = 1; // one NS step for validation
 
-    PhysicsConfig* physics_config = new PhysicsConfig();
-    physics_config->nu            = 0.01;
+    PhysicsConfig& physics_cfg = PhysicsConfig::Get();
+    physics_cfg.nu             = 0.01;
 
     // Center domain
     Domain2DUniform A2(6, 6, 1.0, 1.0, "A2");
@@ -407,7 +407,7 @@ int main(int argc, char* argv[])
     };
 
     // Solve
-    ConcatNSSolver2D solver(&u, &v, &p, time_config, physics_config, env_config);
+    ConcatNSSolver2D solver(&u, &v, &p);
     solver.variable_check();
     solver.phys_boundary_update();
     solver.nondiag_shared_boundary_update();

@@ -23,8 +23,8 @@ int main(int argc, char* argv[])
     // Geometry: Cross shape
     Geometry3D geo;
 
-    EnvironmentConfig* env_config = new EnvironmentConfig();
-    env_config->showGmresRes      = true;
+    EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
+    env_cfg.showGmresRes       = true;
 
     double k = 0.1;
 
@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
 
         p.set_value_from_func_global(f_rhs);
 
-        ConcatPoissonSolver3D solver(&p, env_config);
+        ConcatPoissonSolver3D solver(&p);
         solver.solve();
 
         int         rank_int = static_cast<int>(rank);

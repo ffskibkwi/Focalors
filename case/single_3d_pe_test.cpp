@@ -22,8 +22,8 @@ int main(int argc, char* argv[])
 {
     Geometry3D geo;
 
-    EnvironmentConfig* env_config = new EnvironmentConfig();
-    env_config->showGmresRes      = true;
+    EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
+    env_cfg.showGmresRes       = true;
 
     int rank = 4;
     int nx1  = rank;
@@ -71,7 +71,7 @@ int main(int argc, char* argv[])
         }
     }
 
-    ConcatPoissonSolver3D solver(&p, env_config);
+    ConcatPoissonSolver3D solver(&p);
     solver.solve();
 
     int         rank_int = static_cast<int>(rank);
