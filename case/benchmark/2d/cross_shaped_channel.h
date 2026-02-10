@@ -1,6 +1,6 @@
 #pragma once
 
-#include "poisson_base/io/case_base.hpp"
+#include "io/case_base.hpp"
 
 /**
  * @brief Case class for Cross-Shaped Channel 2D simulation.

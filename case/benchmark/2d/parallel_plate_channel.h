@@ -1,6 +1,6 @@
 #pragma once
 
-#include "poisson_base/io/case_base.hpp"
+#include "io/case_base.hpp"
 
 /**
  * @brief Case class for Parallel Plate Channel 2D simulation (Non-Newtonian).
@@ -127,8 +127,8 @@ public:
     double mu_min_pl = -1.0; // Minimum viscosity limit for Power Law (-1.0 means use default)
     double mu_max_pl = -1.0; // Maximum viscosity limit for Power Law (-1.0 means use default)
     double Re_0      = 10.0;
-    double Re_inf = 1000.0;
-    double Wi     = 1.0;
+    double Re_inf    = 1000.0;
+    double Wi        = 1.0;
 
     // Analytical Solution Parameters
     double dp_dx =

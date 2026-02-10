@@ -1,10 +1,10 @@
+#include "base/config.h"
 #include "base/domain/domain3d.h"
 #include "base/domain/geometry3d.h"
 #include "base/domain/variable3d.h"
 #include "base/field/field3.h"
 #include "base/location_boundary.h"
 #include "io/common.h"
-#include "io/config.h"
 #include "io/csv_writer_3d.h"
 #include "ns/ns_solver3d.h"
 

@@ -7,7 +7,7 @@
 #include "base/location_boundary.h"
 #include "base/pch.h"
 
-#include "io/config.h"
+#include "base/config.h"
 #include "pe/concat/concat_solver3d.h"
 
 #include <unordered_map>

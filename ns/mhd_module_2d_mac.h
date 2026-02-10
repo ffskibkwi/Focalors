@@ -1,11 +1,11 @@
 #pragma once
 
+#include "base/config.h"
 #include "base/domain/domain2d.h"
 #include "base/domain/geometry2d.h"
 #include "base/domain/variable2d.h"
 #include "base/field/field2.h"
 #include "base/location_boundary.h"
-#include "io/config.h"
 #include "pe/concat/concat_solver2d.h"
 
 #include <memory>

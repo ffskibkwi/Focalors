@@ -6,7 +6,7 @@
 
 #include "ns/ns_solver2d.h"
 
-#include "io/config.h"
+#include "base/config.h"
 #include "io/csv_writer_2d.h"
 
 #include "pe/concat/concat_solver2d.h"
