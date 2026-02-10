@@ -26,7 +26,6 @@ int main(int argc, char* argv[])
     Geometry3D geo_cross;
 
     EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
-    env_cfg.showGmresRes       = true;
 
     TimeAdvancingConfig& time_cfg = TimeAdvancingConfig::Get();
     time_cfg.dt                   = 0.001;
@@ -162,23 +161,27 @@ int main(int argc, char* argv[])
 
     for (int iter = 0; iter <= time_cfg.num_iterations; iter++)
     {
-        if (iter % 200 == 0)
+        if (iter % 10 == 0)
         {
-            std::cout << "iter: " << iter << "/" << time_cfg.num_iterations;
+            std::cout << "iter: " << iter << "/" << time_cfg.num_iterations << "\n";
             iter_start_time = std::chrono::steady_clock::now();
+
+            env_cfg.showGmresRes = true;
         }
 
         ConcatNSSolver3D ns_solver(&u, &v, &w, &p);
         ns_solver.solve();
 
-        if (iter % 200 == 0)
+        if (iter % 10 == 0)
         {
             iter_end_time = std::chrono::steady_clock::now();
             total_elapsed = std::chrono::duration<double>(iter_end_time - iter_start_time).count();
-            std::cout << " iter wall time: " << std::fixed << std::setprecision(2) << total_elapsed << " seconds.\n";
+            std::cout << "iter wall time: " << std::fixed << std::setprecision(2) << total_elapsed << " seconds.\n";
+
+            env_cfg.showGmresRes = false;
         }
 
-        if (iter % 10000 == 0 && iter != 0)
+        if (iter % 5000 == 0 && iter != 0)
         {
             IO::write_csv(u, "result/" + std::to_string(iter) + "u");
             IO::write_csv(v, "result/" + std::to_string(iter) + "v");
