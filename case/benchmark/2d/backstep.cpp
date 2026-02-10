@@ -130,8 +130,7 @@ int main(int argc, char* argv[])
         if (iter % 200 == 0)
             std::cout << "iter: " << iter << "/" << time_cfg.num_iterations << "\n";
 
-        ConcatNSSolver2D ns_solver(&u, &v, &p);
-        ns_solver.solve();
+        solver.solve();
     }
 
     IO::write_csv(u, "result/u");

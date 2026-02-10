@@ -157,28 +157,29 @@ int main(int argc, char* argv[])
 
     auto   main_end_time = std::chrono::steady_clock::now();
     double total_elapsed = std::chrono::duration<double>(main_end_time - main_start_time).count();
-    std::cout << "Total init time: " << std::fixed << std::setprecision(2) << total_elapsed << " seconds.\n";
+    std::cout << "Total init time: " << total_elapsed << " seconds.\n";
 
     for (int iter = 0; iter <= time_cfg.num_iterations; iter++)
     {
-        if (iter % 10 == 0)
+        if (iter % 100 == 0)
         {
             std::cout << "iter: " << iter << "/" << time_cfg.num_iterations << "\n";
             iter_start_time = std::chrono::steady_clock::now();
 
-            env_cfg.showGmresRes = true;
+            env_cfg.track_pe_solve_detail_time = true;
+            env_cfg.showGmresRes               = true;
         }
 
-        ConcatNSSolver3D ns_solver(&u, &v, &w, &p);
-        ns_solver.solve();
+        solver.solve();
 
-        if (iter % 10 == 0)
+        if (iter % 100 == 0)
         {
             iter_end_time = std::chrono::steady_clock::now();
             total_elapsed = std::chrono::duration<double>(iter_end_time - iter_start_time).count();
-            std::cout << "iter wall time: " << std::fixed << std::setprecision(2) << total_elapsed << " seconds.\n";
+            std::cout << "iter wall time: " << total_elapsed << " seconds.\n";
 
-            env_cfg.showGmresRes = false;
+            env_cfg.track_pe_solve_detail_time = false;
+            env_cfg.showGmresRes               = false;
         }
 
         if (iter % 5000 == 0 && iter != 0)
@@ -192,5 +193,5 @@ int main(int argc, char* argv[])
 
     main_end_time = std::chrono::steady_clock::now();
     total_elapsed = std::chrono::duration<double>(main_end_time - main_start_time).count();
-    std::cout << "Total wall time: " << std::fixed << std::setprecision(2) << total_elapsed << " seconds.\n";
+    std::cout << "Total wall time: " << total_elapsed << " seconds.\n";
 }
