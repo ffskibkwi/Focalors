@@ -80,42 +80,7 @@ static void print_field_aligned(const field2& f, const std::string& name)
 
     std::cout.copyfmt(old);
 }
-std::string to_string(PDEBoundaryType type)
-{
-    switch (type)
-    {
-        case PDEBoundaryType::Dirichlet:
-            return "Dirichlet";
-        case PDEBoundaryType::Neumann:
-            return "Neumann";
-        case PDEBoundaryType::Periodic:
-            return "Periodic";
-        case PDEBoundaryType::Adjacented:
-            return "Adjacented";
-        default:
-            return "Unknown";
-    }
-}
-std::string to_string(LocationType loc)
-{
-    switch (loc)
-    {
-        case LocationType::Left:
-            return "Left";
-        case LocationType::Right:
-            return "Right";
-        case LocationType::Down:
-            return "Down";
-        case LocationType::Up:
-            return "Up";
-        case LocationType::Front:
-            return "Front";
-        case LocationType::Back:
-            return "Back";
-        default:
-            return "Unknown";
-    }
-}
+
 int main(int argc, char* argv[])
 {
     // Geometry: Cross shape
@@ -658,7 +623,7 @@ int main(int argc, char* argv[])
     IO::write_csv(v, nowtime_dir + "/v");
     IO::write_csv(p, nowtime_dir + "/p");
 
-    // check boundary types
+    // // check boundary types
     // for (auto* d : domains)
     // {
     //     for (auto loc : dirs)
@@ -666,20 +631,20 @@ int main(int argc, char* argv[])
     //         auto& bound_type_map   = u.boundary_type_map[d];
     //         auto& bound_type_map_v = v.boundary_type_map[d];
     //         auto& bound_type_map_p = p.boundary_type_map[d];
-    //         std::cout << "Domain: " << d->name << ", Location: " << to_string(loc) << "\n";
+    //         std::cout << "Domain: " << d->name << ", Location: " << loc << "\n";
     //         std::cout << "  u boundary type: ";
     //         if (bound_type_map.count(loc))
-    //             std::cout << to_string(bound_type_map[loc]) << "\n";
+    //             std::cout << bound_type_map[loc] << "\n";
     //         else
     //             std::cout << "Not Set\n";
     //         std::cout << "  v boundary type: ";
     //         if (bound_type_map_v.count(loc))
-    //             std::cout << to_string(bound_type_map_v[loc]) << "\n";
+    //             std::cout << bound_type_map_v[loc] << "\n";
     //         else
     //             std::cout << "Not Set\n";
     //         std::cout << "  p boundary type: ";
     //         if (bound_type_map_p.count(loc))
-    //             std::cout << to_string(bound_type_map_p[loc]) << "\n";
+    //             std::cout << bound_type_map_p[loc] << "\n";
     //         else
     //             std::cout << "Not Set\n";
     //     }
