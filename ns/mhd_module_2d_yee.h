@@ -31,11 +31,7 @@ class ConcatNSSolver2D;
 class MHDModule2DYee
 {
 public:
-    MHDModule2DYee(Variable2D*          in_u_var,
-                   Variable2D*          in_v_var,
-                   PhysicsConfig*       in_phy_config,
-                   TimeAdvancingConfig* in_time_config,
-                   EnvironmentConfig*   in_env_config = nullptr);
+    MHDModule2DYee(Variable2D* in_u_var, Variable2D* in_v_var);
     ~MHDModule2DYee();
 
     void init(Variable2D* phi_var = nullptr);
@@ -61,11 +57,6 @@ private:
 
     // Poisson solver for electric potential
     std::unique_ptr<ConcatPoissonSolver2D> m_phiSolver;
-
-    // Configuration references
-    PhysicsConfig*       m_phyConfig;
-    TimeAdvancingConfig* m_timeConfig;
-    EnvironmentConfig*   m_envConfig;
 
     // Cached parameters
     std::vector<Domain2DUniform*>                                                            m_domains;
