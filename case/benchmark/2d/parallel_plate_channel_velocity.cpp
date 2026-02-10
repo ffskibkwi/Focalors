@@ -16,6 +16,7 @@
 #include <iomanip>
 #include <iostream>
 #include <string>
+#include <unordered_map>
 
 /**
  * @brief Power-Law Analytical Solution for Parallel Plate Channel Flow
@@ -37,6 +38,56 @@ double power_law_analytical(double y, double n, double dp_dx, double Re_PL, doub
     double geometric_term = std::pow(H, exponent) - std::pow(std::abs(y), exponent);
 
     return prefactor * geometric_term;
+}
+
+/**
+ * @brief 计算 Variable 的相对残差（L2 范数）
+ * @param var 当前速度场 Variable
+ * @param prev_map 上一时间步速度场的 field2 映射
+ * @return 相对残差值
+ */
+double compute_velocity_residual(Variable2D& var, std::unordered_map<Domain2DUniform*, field2>& prev_map)
+{
+    double total_diff_sq = 0.0;
+    double total_norm_sq = 0.0;
+
+    for (auto* domain : var.geometry->domains)
+    {
+        field2& curr = *var.field_map[domain];
+        field2& prev = prev_map[domain];
+
+        // 使用 field2 减法和 squared_sum
+        field2 diff = curr - prev;
+        total_diff_sq += diff.squared_sum();
+        total_norm_sq += curr.squared_sum();
+    }
+
+    return (total_norm_sq > 1e-14) ? std::sqrt(total_diff_sq / total_norm_sq) : std::sqrt(total_diff_sq);
+}
+
+/**
+ * @brief 更新前一时间步速度场
+ * @param var 当前速度场 Variable
+ * @param prev_map 上一时间步速度场的 field2 映射（将被更新）
+ */
+void update_prev_velocity(Variable2D& var, std::unordered_map<Domain2DUniform*, field2>& prev_map)
+{
+    for (auto* domain : var.geometry->domains)
+    {
+        field2& curr = *var.field_map[domain];
+        field2& prev = prev_map[domain];
+
+        // 复制当前速度场到 prev
+        int nx = curr.get_nx();
+        int ny = curr.get_ny();
+        for (int i = 0; i < nx; ++i)
+        {
+            for (int j = 0; j < ny; ++j)
+            {
+                prev(i, j) = curr(i, j);
+            }
+        }
+    }
 }
 
 int main(int argc, char* argv[])
@@ -82,7 +133,7 @@ int main(int argc, char* argv[])
         std::cout << "  n:      " << case_param.n_index << std::endl;
     }
 
-    // Output stepping
+    // Output stepping - 根据更大的迭代次数调整输出频率
     int pv_output_step =
         case_param.pv_output_step > 0 ? case_param.pv_output_step : std::max(1, time_cfg.num_iterations / 10);
     int final_step_to_save = case_param.step_to_save > 0 ? case_param.step_to_save : time_cfg.num_iterations;
@@ -217,6 +268,30 @@ int main(int argc, char* argv[])
 
     std::cout << "Starting simulation..." << std::endl;
 
+    // 收敛监测变量: 用于存储上一时间步的速度场
+    std::unordered_map<Domain2DUniform*, field2> prev_u_map;
+    std::unordered_map<Domain2DUniform*, field2> prev_v_map;
+
+    // 使用 Domain 遍历初始化 prev_map
+    for (auto* domain : u.geometry->domains)
+    {
+        field2& curr_u = *u.field_map[domain];
+        field2& curr_v = *v.field_map[domain];
+
+        prev_u_map[domain].init(curr_u.get_nx(), curr_u.get_ny(), "prev_u_" + domain->name);
+        prev_v_map[domain].init(curr_v.get_nx(), curr_v.get_ny(), "prev_v_" + domain->name);
+
+        prev_u_map[domain].clear(0.0);
+        prev_v_map[domain].clear(0.0);
+    }
+
+    // 收敛容差和标志
+    double convergence_tol = 1e-6;
+    bool   converged       = false;
+    int    final_step      = time_cfg.num_iterations;
+
+    std::cout << "Convergence monitoring enabled with tolerance = " << convergence_tol << std::endl;
+
     // Simulation Loop
     for (int step = 1; step <= time_cfg.num_iterations; step++)
     {
@@ -234,6 +309,42 @@ int main(int argc, char* argv[])
             Timer step_timer("step_time", TimeRecordType::None, step % 200 == 0);
             ns_solver.solve_nonnewton();
         }
+
+        // 收敛检测: 计算当前速度场与上一时间步速度场的相对残差
+        if (step > 1) // 从第2步开始检测
+        {
+            // 使用辅助函数计算残差
+            double u_residual = compute_velocity_residual(u, prev_u_map);
+            double v_residual = compute_velocity_residual(v, prev_v_map);
+
+            // 取 u 和 v 残差的最大值作为总残差
+            double max_residual = std::max(u_residual, v_residual);
+
+            // 每100步或每次输出时显示残差
+            if (step % 100 == 0 || step % pv_output_step == 0)
+            {
+                std::cout << "Step " << step << ": u_residual = " << u_residual << ", v_residual = " << v_residual
+                          << std::endl;
+            }
+
+            // 检查是否收敛
+            if (max_residual < convergence_tol)
+            {
+                std::cout << "\n========================================" << std::endl;
+                std::cout << "CONVERGED at step " << step << std::endl;
+                std::cout << "u_residual = " << u_residual << std::endl;
+                std::cout << "v_residual = " << v_residual << std::endl;
+                std::cout << "max_residual = " << max_residual << " < " << convergence_tol << std::endl;
+                std::cout << "========================================\n" << std::endl;
+                converged  = true;
+                final_step = step;
+                break; // 提前退出循环
+            }
+        }
+
+        // 使用辅助函数更新上一时间步的速度场
+        update_prev_velocity(u, prev_u_map);
+        update_prev_velocity(v, prev_v_map);
 
         if (step % pv_output_step == 0)
         {
@@ -257,10 +368,10 @@ int main(int argc, char* argv[])
     std::cout << "Simulation finished." << std::endl;
 
     // Final Save
-    IO::write_csv(u, nowtime_dir + "/final/u_" + std::to_string(final_step_to_save));
-    IO::write_csv(v, nowtime_dir + "/final/v_" + std::to_string(final_step_to_save));
-    IO::write_csv(p, nowtime_dir + "/final/p_" + std::to_string(final_step_to_save));
-    IO::write_csv(mu, nowtime_dir + "/final/mu_" + std::to_string(final_step_to_save));
+    IO::write_csv(u, nowtime_dir + "/final/u_" + std::to_string(final_step));
+    IO::write_csv(v, nowtime_dir + "/final/v_" + std::to_string(final_step));
+    IO::write_csv(p, nowtime_dir + "/final/p_" + std::to_string(final_step));
+    IO::write_csv(mu, nowtime_dir + "/final/mu_" + std::to_string(final_step));
 
     // Analytical Verification (At Outlet D2 Right)
     if (case_param.model_type == 1)

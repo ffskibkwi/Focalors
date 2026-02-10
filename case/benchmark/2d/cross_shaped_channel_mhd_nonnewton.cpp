@@ -8,7 +8,7 @@
 #include "io/common.h"
 #include "io/config.h"
 #include "io/csv_writer_2d.h"
-#include "ns/mhd_module_2d.h"
+#include "ns/mhd_module_2d_mac.h"
 #include "ns/ns_solver2d.h"
 #include <algorithm>
 #include <cassert>
@@ -76,15 +76,19 @@ int main(int argc, char* argv[])
         // Use dimensionless setter if Re_PL is provided in config (which it is by default in class)
         // Note: You can add logic to choose between dimensional and dimensionless if needed.
         // Here we prioritize dimensionless for this task.
-        physics_cfg.set_power_law_dimensionless(case_param.Re_PL, case_param.n_index);
+        physics_cfg.set_power_law_dimensionless(
+            case_param.Re_PL, case_param.n_index, case_param.mu_min_pl, case_param.mu_max_pl);
+
         std::cout << "Configuring Power Law Model (Dimensionless):" << std::endl;
         std::cout << "  Re_PL: " << case_param.Re_PL << std::endl;
         std::cout << "  n:     " << case_param.n_index << std::endl;
+        std::cout << "  mu_min_pl: " << case_param.mu_min_pl << std::endl;
+        std::cout << "  mu_max_pl: " << case_param.mu_max_pl << std::endl;
     }
     else if (case_param.model_type == 2) // Carreau
     {
-        physics_cfg.set_carreau_dimensionless(
-            case_param.Re_0, case_param.Re_inf, case_param.Wi, case_param.a, case_param.n_index);
+        physics_cfg.set_carreau(
+            case_param.mu_0, case_param.mu_inf, case_param.a, case_param.lambda, case_param.n_index);
         std::cout << "Configuring Carreau Model (Dimensionless):" << std::endl;
         std::cout << "  Re_0:   " << case_param.Re_0 << std::endl;
         std::cout << "  Re_inf: " << case_param.Re_inf << std::endl;
@@ -253,6 +257,10 @@ int main(int argc, char* argv[])
         }
     }
 
+    // Outlet pressure: Dirichlet p = 0 (A4 Down, A5 Up)
+    set_dirichlet_zero(p, &A4, LocationType::Down);
+    set_dirichlet_zero(p, &A5, LocationType::Up);
+
     // ========== Phi boundary conditions ==========
     // Default: Neumann (zero gradient) for all physical boundaries (walls)
     for (auto* d : domains)
@@ -271,10 +279,19 @@ int main(int argc, char* argv[])
     phi.set_boundary_value(&A1, LocationType::Left, 0.0);
     phi.has_boundary_value_map[&A1][LocationType::Left] = true;
 
-    // Outlet Dirichlet: A3 Right, phi = 0
+    // Inlet Dirichlet: A3 Right, phi = 0
     phi.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Dirichlet);
     phi.set_boundary_value(&A3, LocationType::Right, 0.0);
     phi.has_boundary_value_map[&A3][LocationType::Right] = true;
+
+    // Outlets Dirichlet: A4 Down, A5 Up, phi = 0
+    phi.set_boundary_type(&A4, LocationType::Down, PDEBoundaryType::Dirichlet);
+    phi.set_boundary_value(&A4, LocationType::Down, 0.0);
+    phi.has_boundary_value_map[&A4][LocationType::Down] = true;
+
+    phi.set_boundary_type(&A5, LocationType::Up, PDEBoundaryType::Dirichlet);
+    phi.set_boundary_value(&A5, LocationType::Up, 0.0);
+    phi.has_boundary_value_map[&A5][LocationType::Up] = true;
 
     // Inlet profiles for symmetry validation (Poiseuille)
     const double U0 = case_param.U0;

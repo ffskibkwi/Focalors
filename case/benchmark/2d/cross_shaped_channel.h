@@ -58,6 +58,8 @@ public:
 
         // Dimensionless Parameters
         IO::read_number(para_map, "Re_PL", Re_PL);
+        IO::read_number(para_map, "mu_min_pl", mu_min_pl);
+        IO::read_number(para_map, "mu_max_pl", mu_max_pl);
         IO::read_number(para_map, "Re_0", Re_0);
         IO::read_number(para_map, "Re_inf", Re_inf);
         IO::read_number(para_map, "Wi", Wi);
@@ -93,6 +95,8 @@ public:
             .record("lambda", lambda)
             .record("a", a)
             .record("Re_PL", Re_PL)
+            .record("mu_min_pl", mu_min_pl)
+            .record("mu_max_pl", mu_max_pl)
             .record("Re_0", Re_0)
             .record("Re_inf", Re_inf)
             .record("Wi", Wi);
@@ -117,9 +121,9 @@ public:
     double U0 = 1.0;
 
     // MHD Parameters
-    double Ha = 0.0; // Hartmann number
-    double Bx = 0.0; // Magnetic field x-component
-    double By = 1.0; // Magnetic field y-component
+    double Ha = 10.0; // Hartmann number
+    double Bx = 0.0;  // Magnetic field x-component
+    double By = 1.0;  // Magnetic field y-component
 
     // Time Stepping
     double dt_factor      = 0.1;   // dt = dt_factor * h
@@ -127,21 +131,23 @@ public:
     int    pv_output_step = 0;     // 循环输出时刻间隔步数 (0 表示使用 num_iterations/10)
 
     // Solver Settings
-    int    gmres_m        = 10;
-    double gmres_tol      = 1.e-7;
+    int    gmres_m        = 30;
+    double gmres_tol      = 1.e-6;
     int    gmres_max_iter = 1000;
 
     // Non-Newtonian Model Parameters
-    int    model_type = 0;     // 0: Newtonian (default), 1: Power Law, 2: Carreau
-    double n_index    = 0.708; // Power-law index
-    double mu_0       = 1.0;   // Zero-shear viscosity
-    double mu_inf     = 0.0;   // Infinite-shear viscosity
-    double lambda     = 0.0;   // Relaxation time
-    double a          = 2.0;   // Carreau model parameter
+    int    model_type = 0;       // 0: Newtonian (default), 1: Power Law, 2: Carreau
+    double n_index    = 0.708;   // Power-law index
+    double mu_0       = 0.056;   // Zero-shear viscosity (Bird/Carreau)
+    double mu_inf     = 0.00345; // Infinite-shear viscosity (Bird/Carreau)
+    double lambda     = 0.0;     // Relaxation time
+    double a          = 2.0;     // Carreau model parameter
 
     // Dimensionless Parameters
-    double Re_PL  = 100.0;
-    double Re_0   = 10.0;
-    double Re_inf = 1000.0;
-    double Wi     = 1.0;
+    double Re_PL     = 100.0;
+    double mu_min_pl = 0.00345; // Power-Law viscosity lower limit
+    double mu_max_pl = 0.056;   // Power-Law viscosity upper limit
+    double Re_0      = 10.0;
+    double Re_inf    = 1000.0;
+    double Wi        = 1.0;
 };

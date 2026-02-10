@@ -106,7 +106,7 @@ public:
 
     // Time Stepping
     double dt_factor      = 0.1; // dt = dt_factor * h
-    double T_total        = 10.0;
+    double T_total        = 1000.0;
     int    pv_output_step = 0; // 0 means use default (num_iterations/10)
 
     // Solver Settings

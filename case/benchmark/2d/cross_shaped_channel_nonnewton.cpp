@@ -64,19 +64,22 @@ int main(int argc, char* argv[])
         // Use dimensionless setter if Re_PL is provided in config (which it is by default in class)
         // Note: You can add logic to choose between dimensional and dimensionless if needed.
         // Here we prioritize dimensionless for this task.
-        physics_cfg.set_power_law_dimensionless(case_param.Re_PL, case_param.n_index);
+        physics_cfg.set_power_law_dimensionless(
+            case_param.Re_PL, case_param.n_index, case_param.mu_min_pl, case_param.mu_max_pl);
         std::cout << "Configuring Power Law Model (Dimensionless):" << std::endl;
         std::cout << "  Re_PL: " << case_param.Re_PL << std::endl;
         std::cout << "  n:     " << case_param.n_index << std::endl;
+        std::cout << "  mu_min_pl: " << case_param.mu_min_pl << std::endl;
+        std::cout << "  mu_max_pl: " << case_param.mu_max_pl << std::endl;
     }
     else if (case_param.model_type == 2) // Carreau
     {
-        physics_cfg.set_carreau_dimensionless(
-            case_param.Re_0, case_param.Re_inf, case_param.Wi, case_param.a, case_param.n_index);
-        std::cout << "Configuring Carreau Model (Dimensionless):" << std::endl;
-        std::cout << "  Re_0:   " << case_param.Re_0 << std::endl;
-        std::cout << "  Re_inf: " << case_param.Re_inf << std::endl;
-        std::cout << "  Wi:     " << case_param.Wi << std::endl;
+        physics_cfg.set_carreau(
+            case_param.mu_0, case_param.mu_inf, case_param.a, case_param.lambda, case_param.n_index);
+        std::cout << "Configuring Bird-Carreau Model:" << std::endl;
+        std::cout << "  mu_0:   " << case_param.mu_0 << std::endl;
+        std::cout << "  mu_inf: " << case_param.mu_inf << std::endl;
+        std::cout << "  lambda: " << case_param.lambda << std::endl;
         std::cout << "  a:      " << case_param.a << std::endl;
         std::cout << "  n:      " << case_param.n_index << std::endl;
     }
