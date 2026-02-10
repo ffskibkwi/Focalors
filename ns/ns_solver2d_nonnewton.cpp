@@ -1,5 +1,5 @@
 #include "boundary_2d_utils.h"
-#include "mhd_module_2d.h"
+#include "mhd_module_2d_mac.h"
 #include "ns_solver2d.h"
 
 /** @brief Minimum shear rate threshold to prevent singularity in power-law model */
@@ -56,10 +56,6 @@ void ConcatNSSolver2D::solve_nonnewton()
         mhd_module->solveElectricPotential();
         mhd_module->updateCurrentDensity();
         mhd_module->applyLorentzForce();
-
-        // refresh predicted velocity boundary after applying Lorentz force
-        phys_boundary_update();
-        nondiag_shared_boundary_update();
     }
 
     // 5. Update boundary for divu (Prepare for Pressure Projection)

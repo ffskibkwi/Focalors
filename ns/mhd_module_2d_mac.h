@@ -16,12 +16,32 @@
 class ConcatNSSolver2D;
 
 /**
- * @brief MHD module for 2D quasi-static/induced electric potential method
+ * @brief MHD module for 2D quasi-static/induced electric potential method (MAC Grid)
  *
- * Implements the following algorithm:
- * 1. Solve Poisson equation for electric potential phi: div(u×B) = RHS
- * 2. Update current density: J = -∇phi + u×B
- * 3. Apply Lorentz force: F = J×B to predicted velocity
+ * Variable2D Layout (Staggered MAC):
+ * - phi: Cell Center (i, j)
+ * - u:   Right Face  (i+1/2, j)
+ * - v:   Top Face    (i, j+1/2)
+ *
+ * Derived Fields:
+ * - Jx:  Right Face  (i+1/2, j) [Collocated with u]
+ * - Jy:  Top Face    (i, j+1/2) [Collocated with v]
+ * - Fx:  Right Face  (i+1/2, j) [Collocated with u]
+ * - Fy:  Top Face    (i, j+1/2) [Collocated with v]
+ *
+ * Algorithm:
+ * 1. Compute RHS = div(u x B) at Cell Centers using consistent Flux-Divergence.
+ *    RHS = [ (v*Bz)_right - (v*Bz)_left ]/dx + [ (-u*Bz)_top - (-u*Bz)_bottom ]/dy
+ *    Requires interpolating v to X-Faces and u to Y-Faces.
+ * 2. Solve Poisson: div(grad phi) = RHS
+ *    Enforces div(J) = 0.
+ * 3. Update Current Density J = -grad(phi) + u x B at Faces.
+ *    Jx = -dphi/dx + v_interp * Bz
+ *    Jy = -dphi/dy - u_interp * Bz
+ * 4. Calculate Lorentz Force F = J x B at Faces.
+ *    Fx = Jy_interp * Bz
+ *    Fy = -Jx_interp * Bz
+ *    Interpolate J to the required face locations.
  */
 class MHDModule2D
 {
@@ -29,54 +49,27 @@ public:
     MHDModule2D(Variable2D* in_u_var, Variable2D* in_v_var);
     ~MHDModule2D();
 
-    /**
-     * @brief Initialize MHD fields and boundary conditions
-     *
-     * Allocates phi, jx, jy, jz fields (all at cell centers)
-     *
-     * @param phi_var Optional pre-configured phi variable (with boundary conditions).
-     *                If nullptr, creates internal phi variable with default Neumann BCs.
-     */
     void init(Variable2D* phi_var = nullptr);
 
-    /**
-     * @brief Solve Poisson equation for electric potential
-     *
-     * Computes RHS = div(u×B) = Bz*(dv/dx - du/dy) using conservative discretization
-     * Solves for phi (solution unique up to a constant due to Neumann BC)
-     */
     void solveElectricPotential();
-
-    /**
-     * @brief Update current density based on Ohm's law
-     *
-     * Computes J = -∇phi + u×B at cell centers
-     * - jx = -dphi/dx + (u×B)_x
-     * - jy = -dphi/dy + (u×B)_y
-     * - jz = -dphi/dz + (u×B)_z = u*By - v*Bx (2D case)
-     */
     void updateCurrentDensity();
-
-    /**
-     * @brief Apply Lorentz force to predicted velocity
-     *
-     * Adds dt*(Ha^2/Re)*(J×B) to the predicted velocity fields (u_temp, v_temp)
-     * Forces computed at centers are interpolated to edges (MAC grid staggering)
-     */
     void applyLorentzForce();
 
 private:
-    void buffer_update();
+    void buffer_update_phi();
+    void buffer_update_j();
 
-    // Reference to NS velocity variables (for geometry and fields)
+    // Reference to NS velocity variable2ds
     Variable2D* m_uVar;
     Variable2D* m_vVar;
 
-    // MHD-specific variables (all at cell centers)
-    std::unique_ptr<Variable2D> m_phiVar; // Electric potential
-    std::unique_ptr<Variable2D> m_jxVar;  // Current density X
-    std::unique_ptr<Variable2D> m_jyVar;  // Current density Y
-    std::unique_ptr<Variable2D> m_jzVar;  // Current density Z
+    // MHD-specific variable2ds
+    Variable2D*                 m_phiVar   = nullptr; // Electric potential (Center, non-owning)
+    std::unique_ptr<Variable2D> m_phiOwned = nullptr; // Owned phi when created internally
+    // J stored at Faces to behave like velocity
+    std::unique_ptr<Variable2D> m_jxVar; // Current density X (X-Face)
+    std::unique_ptr<Variable2D> m_jyVar; // Current density Y (Y-Face)
+    std::unique_ptr<Variable2D> m_jzVar; // Current density Z (Center - 2D special case)
 
     // Poisson solver for electric potential
     std::unique_ptr<ConcatPoissonSolver2D> m_phiSolver;

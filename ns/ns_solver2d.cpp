@@ -1,6 +1,6 @@
 #include "ns_solver2d.h"
 #include "boundary_2d_utils.h"
-#include "mhd_module_2d.h"
+#include "mhd_module_2d_mac.h"
 
 ConcatNSSolver2D::ConcatNSSolver2D(Variable2D* in_u_var, Variable2D* in_v_var, Variable2D* in_p_var)
     : u_var(in_u_var)
@@ -84,10 +84,6 @@ void ConcatNSSolver2D::solve()
         mhd_module->solveElectricPotential();
         mhd_module->updateCurrentDensity();
         mhd_module->applyLorentzForce();
-
-        // refresh predicted velocity boundary after applying Lorentz force
-        phys_boundary_update();
-        nondiag_shared_boundary_update();
     }
 
     // update boundary for divu
