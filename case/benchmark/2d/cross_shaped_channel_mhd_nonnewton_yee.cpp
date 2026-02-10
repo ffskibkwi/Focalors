@@ -8,7 +8,7 @@
 #include "io/common.h"
 #include "io/config.h"
 #include "io/csv_writer_2d.h"
-#include "ns/mhd_module_2d_mac.h"
+#include "ns/mhd_module_2d_yee.h"
 #include "ns/ns_solver2d.h"
 #include <algorithm>
 #include <cassert>
@@ -37,14 +37,17 @@
  * └──────┴──────┴──────────►
  * O                         x
  *
- * MHD + Non-Newtonian fluid simulation for cross-shaped channel
+ * MHD + Non-Newtonian fluid simulation for cross-shaped channel (YEE grid)
  */
 int main(int argc, char* argv[])
 {
     // 参数读取与物理配置
     CrossShapedChannel2DCase case_param(argc, argv);
     case_param.read_paras();
-    case_param.record_paras();
+    if (case_param.record_paras())
+    {
+        case_param.paras_record.record("mhd_grid", std::string("yee"));
+    }
 
     Geometry2D geo_cross;
     double     h = case_param.h;
@@ -335,13 +338,13 @@ int main(int argc, char* argv[])
     ns_solver.p_solver->set_parameter(case_param.gmres_m, case_param.gmres_tol, case_param.gmres_max_iter);
 
     // ========== Initialize MHD module ==========
-    MHDModule2D mhd_module(&u, &v);
+    MHDModule2DYee mhd_module(&u, &v);
     mhd_module.init(&phi); // Pass pre-configured phi variable
 
     // Generate timestamp directory
     std::string nowtime_dir = case_param.root_dir;
 
-    std::cout << "Starting MHD + Non-Newtonian simulation..." << std::endl;
+    std::cout << "Starting MHD + Non-Newtonian simulation (YEE)..." << std::endl;
 
     // Solve
     for (int step = 1; step <= time_cfg.num_iterations; step++)
