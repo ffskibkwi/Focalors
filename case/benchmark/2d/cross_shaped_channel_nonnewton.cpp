@@ -1,9 +1,9 @@
-#include "case/cross_shaped_channel_2d.h"
 #include "base/domain/domain2d.h"
 #include "base/domain/geometry2d.h"
 #include "base/domain/variable2d.h"
 #include "base/field/field2.h"
 #include "base/location_boundary.h"
+#include "cross_shaped_channel.h"
 #include "instrumentor/timer.h"
 #include "io/common.h"
 #include "io/config.h"
@@ -16,7 +16,6 @@
 #include <iomanip>
 #include <iostream>
 #include <string>
-
 /**
  *
  * y
@@ -57,6 +56,30 @@ int main(int argc, char* argv[])
     // time_cfg.num_iterations   = 10;
     PhysicsConfig& physics_cfg = PhysicsConfig::Get();
     physics_cfg.set_Re(case_param.Re);
+
+    // Set Non-Newtonian parameters based on model type
+    physics_cfg.set_model_type(case_param.model_type);
+    if (case_param.model_type == 1) // Power Law
+    {
+        // Use dimensionless setter if Re_PL is provided in config (which it is by default in class)
+        // Note: You can add logic to choose between dimensional and dimensionless if needed.
+        // Here we prioritize dimensionless for this task.
+        physics_cfg.set_power_law_dimensionless(case_param.Re_PL, case_param.n_index);
+        std::cout << "Configuring Power Law Model (Dimensionless):" << std::endl;
+        std::cout << "  Re_PL: " << case_param.Re_PL << std::endl;
+        std::cout << "  n:     " << case_param.n_index << std::endl;
+    }
+    else if (case_param.model_type == 2) // Carreau
+    {
+        physics_cfg.set_carreau_dimensionless(
+            case_param.Re_0, case_param.Re_inf, case_param.Wi, case_param.a, case_param.n_index);
+        std::cout << "Configuring Carreau Model (Dimensionless):" << std::endl;
+        std::cout << "  Re_0:   " << case_param.Re_0 << std::endl;
+        std::cout << "  Re_inf: " << case_param.Re_inf << std::endl;
+        std::cout << "  Wi:     " << case_param.Wi << std::endl;
+        std::cout << "  a:      " << case_param.a << std::endl;
+        std::cout << "  n:      " << case_param.n_index << std::endl;
+    }
 
     // 计算循环输出步数间隔 pv_output_step（如果未指定则使用 num_iterations/10）
     int pv_output_step = case_param.pv_output_step > 0 ? case_param.pv_output_step : time_cfg.num_iterations / 10;
@@ -115,6 +138,13 @@ int main(int argc, char* argv[])
     v.set_geometry(geo_cross);
     p.set_geometry(geo_cross);
 
+    // Non-Newtonian Variable2Ds
+    Variable2D mu("mu"), tau_xx("tau_xx"), tau_yy("tau_yy"), tau_xy("tau_xy");
+    mu.set_geometry(geo_cross);
+    tau_xx.set_geometry(geo_cross);
+    tau_yy.set_geometry(geo_cross);
+    tau_xy.set_geometry(geo_cross);
+
     // Fields on each domain
     field2 u_A1, u_A2, u_A3, u_A4, u_A5;
     field2 v_A1, v_A2, v_A3, v_A4, v_A5;
@@ -135,6 +165,36 @@ int main(int argc, char* argv[])
     p.set_center_field(&A3, p_A3);
     p.set_center_field(&A4, p_A4);
     p.set_center_field(&A5, p_A5);
+
+    // Non-Newtonian Fields
+    field2 mu_A1("mu_A1"), mu_A2("mu_A2"), mu_A3("mu_A3"), mu_A4("mu_A4"), mu_A5("mu_A5");
+    field2 txx_A1("txx_A1"), txx_A2("txx_A2"), txx_A3("txx_A3"), txx_A4("txx_A4"), txx_A5("txx_A5");
+    field2 tyy_A1("tyy_A1"), tyy_A2("tyy_A2"), tyy_A3("tyy_A3"), tyy_A4("tyy_A4"), tyy_A5("tyy_A5");
+    field2 txy_A1("txy_A1"), txy_A2("txy_A2"), txy_A3("txy_A3"), txy_A4("txy_A4"), txy_A5("txy_A5");
+
+    mu.set_corner_field(&A1, mu_A1);
+    mu.set_corner_field(&A2, mu_A2);
+    mu.set_corner_field(&A3, mu_A3);
+    mu.set_corner_field(&A4, mu_A4);
+    mu.set_corner_field(&A5, mu_A5);
+
+    tau_xx.set_center_field(&A1, txx_A1);
+    tau_xx.set_center_field(&A2, txx_A2);
+    tau_xx.set_center_field(&A3, txx_A3);
+    tau_xx.set_center_field(&A4, txx_A4);
+    tau_xx.set_center_field(&A5, txx_A5);
+
+    tau_yy.set_center_field(&A1, tyy_A1);
+    tau_yy.set_center_field(&A2, tyy_A2);
+    tau_yy.set_center_field(&A3, tyy_A3);
+    tau_yy.set_center_field(&A4, tyy_A4);
+    tau_yy.set_center_field(&A5, tyy_A5);
+
+    tau_xy.set_corner_field(&A1, txy_A1);
+    tau_xy.set_corner_field(&A2, txy_A2);
+    tau_xy.set_corner_field(&A3, txy_A3);
+    tau_xy.set_corner_field(&A4, txy_A4);
+    tau_xy.set_corner_field(&A5, txy_A5);
 
     // Helper setters
     auto set_dirichlet_zero = [](Variable2D& var, Domain2DUniform* d, LocationType loc) {
@@ -183,8 +243,8 @@ int main(int argc, char* argv[])
 
     // A3 Right: u(y_norm) = -6*U0*y_norm*(1-y_norm)
     u.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Dirichlet);
-    u.set_boundary_value(&A3, LocationType::Right, 0.0); // ← 添加这行来分配内存
     u.has_boundary_value_map[&A3][LocationType::Right] = true;
+    u.set_boundary_value(&A3, LocationType::Right, 0.0); // ← 添加这行来分配内存
     set_dirichlet_zero(v, &A3, LocationType::Right);
     for (int j = 0; j < u_A3.get_ny(); ++j)
     {
@@ -202,17 +262,11 @@ int main(int argc, char* argv[])
     set_neumann_zero(v, &A5, LocationType::Up);
 
     ConcatNSSolver2D ns_solver(&u, &v, &p);
+    ns_solver.init_nonnewton(&mu, &tau_xx, &tau_yy, &tau_xy);
 
     ns_solver.p_solver->set_parameter(case_param.gmres_m, case_param.gmres_tol, case_param.gmres_max_iter);
     // Generate timestamp directory
     std::string nowtime_dir = case_param.root_dir;
-
-    // ns_solver.phys_boundary_update();
-    // ns_solver.nondiag_shared_boundary_update();
-    // ns_solver.diag_shared_boundary_update();
-    // IO::write_csv(u, nowtime_dir + "/u_step_" + std::to_string(0));
-    // IO::write_csv(v, nowtime_dir + "/v_step_" + std::to_string(0));
-    // IO::write_csv(p, nowtime_dir + "/p_step_" + std::to_string(0));
 
     // Solve
     for (int step = 1; step <= time_cfg.num_iterations; step++)
@@ -230,7 +284,7 @@ int main(int argc, char* argv[])
 
         {
             Timer step_timer("step_time", TimeRecordType::None, step % 200 == 0);
-            ns_solver.solve();
+            ns_solver.solve_nonnewton();
         }
 
         // 使用 pv_output_step 控制循环输出
@@ -244,6 +298,7 @@ int main(int argc, char* argv[])
             IO::write_csv(u, nowtime_dir + "/u/u_" + std::to_string(step));
             IO::write_csv(v, nowtime_dir + "/v/v_" + std::to_string(step));
             IO::write_csv(p, nowtime_dir + "/p/p_" + std::to_string(step));
+            IO::write_csv(mu, nowtime_dir + "/mu/mu_" + std::to_string(step));
         }
         if (std::isnan(u_A1(1, 1)))
         {
@@ -256,5 +311,6 @@ int main(int argc, char* argv[])
     IO::write_csv(u, nowtime_dir + "/final/u_" + std::to_string(final_step_to_save));
     IO::write_csv(v, nowtime_dir + "/final/v_" + std::to_string(final_step_to_save));
     IO::write_csv(p, nowtime_dir + "/final/p_" + std::to_string(final_step_to_save));
+    IO::write_csv(mu, nowtime_dir + "/final/mu_" + std::to_string(final_step_to_save));
     return 0;
 }

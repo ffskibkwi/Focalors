@@ -27,6 +27,7 @@ public:
         IO::read_number(para_map, "lx_3", lx_3);
         IO::read_number(para_map, "ly_4", ly_4);
         IO::read_number(para_map, "ly_5", ly_5);
+        std::cout << "1" << std::endl;
 
         // Physics Parameters
         IO::read_number(para_map, "Re", Re);

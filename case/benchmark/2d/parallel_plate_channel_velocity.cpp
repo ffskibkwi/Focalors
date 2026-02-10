@@ -3,12 +3,12 @@
 #include "base/domain/variable2d.h"
 #include "base/field/field2.h"
 #include "base/location_boundary.h"
-#include "case/parallel_plate_channel_2d.h"
 #include "instrumentor/timer.h"
 #include "io/common.h"
 #include "io/config.h"
 #include "io/csv_writer_2d.h"
 #include "ns/ns_solver2d.h"
+#include "parallel_plate_channel.h"
 #include <algorithm>
 #include <cassert>
 #include <chrono>

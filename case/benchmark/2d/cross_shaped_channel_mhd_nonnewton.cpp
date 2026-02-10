@@ -3,7 +3,7 @@
 #include "base/domain/variable2d.h"
 #include "base/field/field2.h"
 #include "base/location_boundary.h"
-#include "case/cross_shaped_channel_2d.h"
+#include "cross_shaped_channel.h"
 #include "instrumentor/timer.h"
 #include "io/common.h"
 #include "io/config.h"
