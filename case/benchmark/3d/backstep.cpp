@@ -7,7 +7,7 @@
 #include "ns/ns_solver3d.h"
 
 #include "base/config.h"
-#include "io/csv_writer_3d.h"
+#include "io/vtk_writer.h"
 
 #include "pe/concat/concat_solver3d.h"
 #include <algorithm>
@@ -23,9 +23,10 @@ int main(int argc, char* argv[])
     auto main_start_time = std::chrono::steady_clock::now();
 
     // Geometry: Cross shape
-    Geometry3D geo_cross;
+    Geometry3D geo;
 
     EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
+    env_cfg.debugOutputDir     = "./result/backstep_3d";
 
     TimeAdvancingConfig& time_cfg = TimeAdvancingConfig::Get();
     time_cfg.dt                   = 0.001;
@@ -61,20 +62,24 @@ int main(int argc, char* argv[])
     Domain3DUniform A2(nx2, ny2, nz2, lx2, ly2, lz2, "A2");
     Domain3DUniform A3(nx3, ny3, nz3, lx3, ly3, lz3, "A3");
 
-    geo_cross.add_domain(&A1);
-    geo_cross.add_domain(&A2);
-    geo_cross.add_domain(&A3);
+    geo.add_domain(&A1);
+    geo.add_domain(&A2);
+    geo.add_domain(&A3);
 
     // Construct cross connectivity
-    geo_cross.connect(&A2, LocationType::Left, &A1);
-    geo_cross.connect(&A2, LocationType::Down, &A3);
+    geo.connect(&A2, LocationType::Left, &A1);
+    geo.connect(&A2, LocationType::Down, &A3);
+
+    geo.axis(&A1, LocationType::Left);
+    geo.axis(&A1, LocationType::Front);
+    geo.axis(&A1, LocationType::Down);
 
     // Variable2Ds
     Variable3D u("u"), v("v"), w("w"), p("p");
-    u.set_geometry(geo_cross);
-    v.set_geometry(geo_cross);
-    w.set_geometry(geo_cross);
-    p.set_geometry(geo_cross);
+    u.set_geometry(geo);
+    v.set_geometry(geo);
+    w.set_geometry(geo);
+    p.set_geometry(geo);
 
     // Fields on each domain
     field3 u_A1, u_A2, u_A3;
@@ -104,7 +109,7 @@ int main(int argc, char* argv[])
         var.set_boundary_type(d, loc, PDEBoundaryType::Neumann);
     };
     auto isdjacented = [&](Domain3DUniform* d, LocationType loc) {
-        return geo_cross.adjacency.count(d) && geo_cross.adjacency[d].count(loc);
+        return geo.adjacency.count(d) && geo.adjacency[d].count(loc);
     };
 
     // Default outer boundaries
@@ -153,6 +158,10 @@ int main(int argc, char* argv[])
 
     ConcatNSSolver3D solver(&u, &v, &w, &p);
 
+    VTKWriter vtk_writer;
+    vtk_writer.add_vector_as_cell_data(&u, &v, &w, "velocity");
+    vtk_writer.validate();
+
     std::chrono::steady_clock::time_point iter_start_time, iter_end_time;
 
     auto   main_end_time = std::chrono::steady_clock::now();
@@ -182,12 +191,10 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = false;
         }
 
-        if (iter % 5000 == 0 && iter != 0)
+        // iter % 5000 == 0 && iter != 0
+        if (iter == 2)
         {
-            IO::write_csv(u, "result/" + std::to_string(iter) + "u");
-            IO::write_csv(v, "result/" + std::to_string(iter) + "v");
-            IO::write_csv(w, "result/" + std::to_string(iter) + "w");
-            IO::write_csv(p, "result/" + std::to_string(iter) + "p");
+            vtk_writer.write(env_cfg.debugOutputDir + "/" + std::to_string(iter));
         }
     }
 

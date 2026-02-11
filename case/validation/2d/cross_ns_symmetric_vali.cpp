@@ -84,7 +84,7 @@ static void print_field_aligned(const field2& f, const std::string& name)
 int main(int argc, char* argv[])
 {
     // Geometry: Cross shape
-    Geometry2D geo_cross;
+    Geometry2D geo;
 
     EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
     env_cfg.showGmresRes       = true;
@@ -116,19 +116,19 @@ int main(int argc, char* argv[])
     A5.set_ny(6);
     A5.set_ly(1.0);
 
-    geo_cross.add_domain({&A1, &A2, &A3, &A4, &A5});
+    geo.add_domain({&A1, &A2, &A3, &A4, &A5});
 
     // Construct cross connectivity
-    geo_cross.connect(&A2, LocationType::Left, &A1);
-    geo_cross.connect(&A2, LocationType::Right, &A3);
-    geo_cross.connect(&A2, LocationType::Down, &A4);
-    geo_cross.connect(&A2, LocationType::Up, &A5);
+    geo.connect(&A2, LocationType::Left, &A1);
+    geo.connect(&A2, LocationType::Right, &A3);
+    geo.connect(&A2, LocationType::Down, &A4);
+    geo.connect(&A2, LocationType::Up, &A5);
 
     // Variable2Ds
     Variable2D u("u"), v("v"), p("p");
-    u.set_geometry(geo_cross);
-    v.set_geometry(geo_cross);
-    p.set_geometry(geo_cross);
+    u.set_geometry(geo);
+    v.set_geometry(geo);
+    p.set_geometry(geo);
 
     // Fields on each domain
     field2 u_A1, u_A2, u_A3, u_A4, u_A5;
@@ -160,7 +160,7 @@ int main(int argc, char* argv[])
         var.set_boundary_type(d, loc, PDEBoundaryType::Neumann);
     };
     auto is_adjacented = [&](Domain2DUniform* d, LocationType loc) {
-        return geo_cross.adjacency.count(d) && geo_cross.adjacency[d].count(loc);
+        return geo.adjacency.count(d) && geo.adjacency[d].count(loc);
     };
 
     // Default outer boundaries

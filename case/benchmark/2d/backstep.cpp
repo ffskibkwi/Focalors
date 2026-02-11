@@ -20,7 +20,7 @@
 int main(int argc, char* argv[])
 {
     // Geometry: Cross shape
-    Geometry2D geo_cross;
+    Geometry2D geo;
 
     EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
     env_cfg.showGmresRes       = true;
@@ -53,17 +53,17 @@ int main(int argc, char* argv[])
     Domain2DUniform A2(nx2, ny2, lx2, ly2, "A2");
     Domain2DUniform A3(nx3, ny3, lx3, ly3, "A3");
 
-    geo_cross.add_domain({&A1, &A2, &A3});
+    geo.add_domain({&A1, &A2, &A3});
 
     // Construct cross connectivity
-    geo_cross.connect(&A2, LocationType::Left, &A1);
-    geo_cross.connect(&A2, LocationType::Down, &A3);
+    geo.connect(&A2, LocationType::Left, &A1);
+    geo.connect(&A2, LocationType::Down, &A3);
 
     // Variable2Ds
     Variable2D u("u"), v("v"), p("p");
-    u.set_geometry(geo_cross);
-    v.set_geometry(geo_cross);
-    p.set_geometry(geo_cross);
+    u.set_geometry(geo);
+    v.set_geometry(geo);
+    p.set_geometry(geo);
 
     // Fields on each domain
     field2 u_A1, u_A2, u_A3;
@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
         var.set_boundary_type(d, loc, PDEBoundaryType::Neumann);
     };
     auto isdjacented = [&](Domain2DUniform* d, LocationType loc) {
-        return geo_cross.adjacency.count(d) && geo_cross.adjacency[d].count(loc);
+        return geo.adjacency.count(d) && geo.adjacency[d].count(loc);
     };
 
     // Default outer boundaries

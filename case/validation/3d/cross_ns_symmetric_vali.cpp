@@ -114,7 +114,7 @@ int main(int argc, char* argv[])
     (void)argc;
     (void)argv;
 
-    Geometry3D geo_cross;
+    Geometry3D geo;
 
     EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
     env_cfg.showGmresRes       = true;
@@ -146,20 +146,20 @@ int main(int argc, char* argv[])
     a5.set_ny(6);
     a5.set_ly(1.0);
 
-    geo_cross.connect(&a2, LocationType::Left, &a1);
-    geo_cross.connect(&a2, LocationType::Right, &a3);
-    geo_cross.connect(&a2, LocationType::Front, &a4);
-    geo_cross.connect(&a2, LocationType::Back, &a5);
+    geo.connect(&a2, LocationType::Left, &a1);
+    geo.connect(&a2, LocationType::Right, &a3);
+    geo.connect(&a2, LocationType::Front, &a4);
+    geo.connect(&a2, LocationType::Back, &a5);
 
-    geo_cross.axis(&a2, LocationType::Left);
-    geo_cross.axis(&a2, LocationType::Front);
-    geo_cross.axis(&a2, LocationType::Down);
+    geo.axis(&a2, LocationType::Left);
+    geo.axis(&a2, LocationType::Front);
+    geo.axis(&a2, LocationType::Down);
 
     Variable3D u("u"), v("v"), w("w"), p("p");
-    u.set_geometry(geo_cross);
-    v.set_geometry(geo_cross);
-    w.set_geometry(geo_cross);
-    p.set_geometry(geo_cross);
+    u.set_geometry(geo);
+    v.set_geometry(geo);
+    w.set_geometry(geo);
+    p.set_geometry(geo);
 
     field3 u_a1, u_a2, u_a3, u_a4, u_a5;
     field3 v_a1, v_a2, v_a3, v_a4, v_a5;
@@ -198,7 +198,7 @@ int main(int argc, char* argv[])
         var.set_boundary_type(domain, loc, PDEBoundaryType::Neumann);
     };
     auto is_adjacented = [&](Domain3DUniform* domain, LocationType loc) {
-        return geo_cross.adjacency.count(domain) && geo_cross.adjacency[domain].count(loc);
+        return geo.adjacency.count(domain) && geo.adjacency[domain].count(loc);
     };
 
     std::vector<Domain3DUniform*> domains = {&a1, &a2, &a3, &a4, &a5};
