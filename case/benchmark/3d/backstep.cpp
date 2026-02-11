@@ -191,8 +191,7 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = false;
         }
 
-        // iter % 5000 == 0 && iter != 0
-        if (iter == 2)
+        if (iter % 5000 == 0 && iter != 0)
         {
             vtk_writer.write(env_cfg.debugOutputDir + "/" + std::to_string(iter));
         }
