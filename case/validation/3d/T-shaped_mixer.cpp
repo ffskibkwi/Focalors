@@ -18,35 +18,48 @@
 #include <iostream>
 #include <string>
 
+/**
+ *
+ * y
+ * ▲
+ * │
+ * │
+ * │
+ * │
+ * │
+ * ├──────┬──────┬──────┐
+ * │      │      │      │
+ * │  A1  │  A2  │  A3  │
+ * │      │      │      │
+ * ├──────┼──────┼──────┘
+ * │      │      │
+ * │      │  A4  │
+ * │      │      │
+ * └──────┴──────┴──────────►
+ * O                         x
+ *
+ */
 int main(int argc, char* argv[])
 {
     TIMER_BEGIN(Init, "Init", TimeRecordType::None, true);
 
-    // Geometry: Cross shape
-    Geometry3D geo;
+    double lx1 = 0.3;
+    double ly1 = 0.02;
+    double lz1 = 0.02;
 
-    EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
-    env_cfg.debugOutputDir     = "./result/backstep_3d";
+    double lx2 = 0.04;
+    double ly2 = 0.02;
+    double lz2 = 0.02;
 
-    TimeAdvancingConfig& time_cfg = TimeAdvancingConfig::Get();
-    time_cfg.dt                   = 0.001;
-    time_cfg.num_iterations       = 1e5;
+    double lx3 = lx1; // symmetry
+    double ly3 = ly1; // symmetry
+    double lz3 = lz1; // symmetry
 
-    PhysicsConfig& physics_cfg = PhysicsConfig::Get();
-    physics_cfg.set_Re(200);
+    double lx4 = 0.04;
+    double ly4 = 0.6;
+    double lz4 = 0.02;
 
-    double lx1 = 0.5;
-    double lx2 = 0.5;
-    double ly1 = 0.5;
-    double lz1 = 0.5;
-    double lz3 = 0.5;
-
-    double ly2 = ly1;
-    double ly3 = ly1;
-    double lz2 = lz1;
-    double lx3 = lx2;
-
-    double h = 1e-2;
+    double h = 0.001;
 
     int nx1 = lx1 / h;
     int ny1 = ly1 / h;
@@ -57,18 +70,43 @@ int main(int argc, char* argv[])
     int nx3 = lx3 / h;
     int ny3 = ly3 / h;
     int nz3 = lz3 / h;
+    int nx4 = lx4 / h;
+    int ny4 = ly4 / h;
+    int nz4 = lz4 / h;
+
+    double Re                  = 175;
+    double density             = 1.03;
+    double dynamic_viscosity   = 1.57e-5;
+    double feature_velocity    = Re * dynamic_viscosity / (density * ly1);
+    double kinematic_viscosity = dynamic_viscosity / density;
+
+    // Geometry: Cross shape
+    Geometry3D geo;
+
+    EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
+    env_cfg.debugOutputDir     = "./result/backstep_3d/Re" + std::to_string(Re);
+
+    TimeAdvancingConfig& time_cfg = TimeAdvancingConfig::Get();
+    time_cfg.dt                   = 0.0001;
+    time_cfg.num_iterations       = 1e5;
+
+    PhysicsConfig& physics_cfg = PhysicsConfig::Get();
+    physics_cfg.set_nu(kinematic_viscosity);
 
     Domain3DUniform A1(nx1, ny1, nz1, lx1, ly1, lz1, "A1");
     Domain3DUniform A2(nx2, ny2, nz2, lx2, ly2, lz2, "A2");
     Domain3DUniform A3(nx3, ny3, nz3, lx3, ly3, lz3, "A3");
+    Domain3DUniform A4(nx4, ny4, nz4, lx4, ly4, lz4, "A4");
 
     geo.add_domain(&A1);
     geo.add_domain(&A2);
     geo.add_domain(&A3);
+    geo.add_domain(&A4);
 
     // Construct cross connectivity
     geo.connect(&A2, LocationType::Left, &A1);
-    geo.connect(&A2, LocationType::Down, &A3);
+    geo.connect(&A2, LocationType::Right, &A3);
+    geo.connect(&A2, LocationType::Front, &A4);
 
     geo.axis(&A1, LocationType::Left);
     geo.axis(&A1, LocationType::Front);
@@ -82,23 +120,27 @@ int main(int argc, char* argv[])
     p.set_geometry(geo);
 
     // Fields on each domain
-    field3 u_A1, u_A2, u_A3;
-    field3 v_A1, v_A2, v_A3;
-    field3 w_A1, w_A2, w_A3;
-    field3 p_A1, p_A2, p_A3;
+    field3 u_A1, u_A2, u_A3, u_A4;
+    field3 v_A1, v_A2, v_A3, v_A4;
+    field3 w_A1, w_A2, w_A3, w_A4;
+    field3 p_A1, p_A2, p_A3, p_A4;
 
     u.set_x_face_center_field(&A1, u_A1);
     u.set_x_face_center_field(&A2, u_A2);
     u.set_x_face_center_field(&A3, u_A3);
+    u.set_x_face_center_field(&A4, u_A4);
     v.set_y_face_center_field(&A1, v_A1);
     v.set_y_face_center_field(&A2, v_A2);
     v.set_y_face_center_field(&A3, v_A3);
+    v.set_y_face_center_field(&A4, v_A4);
     w.set_z_face_center_field(&A1, w_A1);
     w.set_z_face_center_field(&A2, w_A2);
     w.set_z_face_center_field(&A3, w_A3);
+    w.set_z_face_center_field(&A4, w_A4);
     p.set_center_field(&A1, p_A1);
     p.set_center_field(&A2, p_A2);
     p.set_center_field(&A3, p_A3);
+    p.set_center_field(&A4, p_A4);
 
     // Helper setters
     auto set_dirichlet_zero = [](Variable3D& var, Domain3DUniform* d, LocationType loc) {
@@ -113,7 +155,7 @@ int main(int argc, char* argv[])
     };
 
     // Default outer boundaries
-    std::vector<Domain3DUniform*> domains = {&A1, &A2, &A3};
+    std::vector<Domain3DUniform*> domains = {&A1, &A2, &A3, &A4};
     std::vector<LocationType>     dirs    = {LocationType::Left,
                                              LocationType::Right,
                                              LocationType::Front,
@@ -138,24 +180,28 @@ int main(int argc, char* argv[])
 
     // Inlet
     {
-        u.has_boundary_value_map[&A1][LocationType::Left] = true;
-        field2& u_inlet_buffer                            = *u.boundary_value_map[&A1][LocationType::Left];
+        u.has_boundary_value_map[&A1][LocationType::Left]  = true;
+        u.has_boundary_value_map[&A3][LocationType::Right] = true;
+
+        field2& u_inlet_buffer_left  = *u.boundary_value_map[&A1][LocationType::Left];
+        field2& u_inlet_buffer_right = *u.boundary_value_map[&A3][LocationType::Right];
+
         for (int j = 0; j < u_A1.get_ny(); ++j)
         {
             for (int k = 0; k < u_A1.get_nz(); ++k)
             {
-                double z             = k * h + 0.5 * h;
-                u_inlet_buffer(j, k) = -24.0 * z * z + 12.0 * z;
+                double z = k * h + 0.5 * h;
+                z /= lz1;
+                double vel                 = 6.0 * feature_velocity * (1.0 - z) * z;
+                u_inlet_buffer_left(j, k)  = vel;
+                u_inlet_buffer_right(j, k) = vel;
             }
         }
     }
     // Outlet
-    u.set_boundary_type(&A2, LocationType::Right, PDEBoundaryType::Neumann);
-    u.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Neumann);
-    v.set_boundary_type(&A2, LocationType::Right, PDEBoundaryType::Neumann);
-    v.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Neumann);
-    w.set_boundary_type(&A2, LocationType::Right, PDEBoundaryType::Neumann);
-    w.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Neumann);
+    u.set_boundary_type(&A4, LocationType::Front, PDEBoundaryType::Neumann);
+    v.set_boundary_type(&A4, LocationType::Front, PDEBoundaryType::Neumann);
+    w.set_boundary_type(&A4, LocationType::Front, PDEBoundaryType::Neumann);
 
     ConcatNSSolver3D solver(&u, &v, &w, &p);
 
