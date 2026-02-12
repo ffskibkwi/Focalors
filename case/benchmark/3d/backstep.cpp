@@ -1,15 +1,13 @@
+#include "base/config.h"
 #include "base/domain/domain3d.h"
 #include "base/domain/geometry3d.h"
 #include "base/domain/variable3d.h"
 #include "base/field/field3.h"
 #include "base/location_boundary.h"
-
-#include "ns/ns_solver3d.h"
-
-#include "base/config.h"
 #include "io/vtk_writer.h"
-
+#include "ns/ns_solver3d.h"
 #include "pe/concat/concat_solver3d.h"
+
 #include <algorithm>
 #include <cassert>
 #include <chrono>

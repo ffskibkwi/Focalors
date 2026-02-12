@@ -1,15 +1,14 @@
+#include "base/config.h"
 #include "base/domain/domain3d.h"
 #include "base/domain/geometry3d.h"
 #include "base/domain/variable3d.h"
 #include "base/field/field3.h"
 #include "base/location_boundary.h"
-
-#include "ns/ns_solver3d.h"
-
-#include "base/config.h"
+#include "io/csv_handler.h"
 #include "io/vtk_writer.h"
-
+#include "ns/ns_solver3d.h"
 #include "pe/concat/concat_solver3d.h"
+
 #include <algorithm>
 #include <cassert>
 #include <chrono>
@@ -17,6 +16,10 @@
 #include <iomanip>
 #include <iostream>
 #include <string>
+
+// Basu, S., Dirbude, S.B. (2024). Flow, Thermal, and Mass Mixing Analysis in a T-Shaped Mixer. In: Sikarwar, B.S.,
+// Sharma, S.K. (eds) Scientific and Technological Advances in Materials for Energy Storage and Conversions. FLUTE 2023.
+// Lecture Notes in Mechanical Engineering. Springer, Singapore. https://doi.org/10.1007/978-981-97-2481-9_17
 
 /**
  *
@@ -75,8 +78,8 @@ int main(int argc, char* argv[])
     int nz4 = lz4 / h;
 
     double Re                  = 175;
-    double density             = 1.03;
-    double dynamic_viscosity   = 1.57e-5;
+    double density             = 1e3;
+    double dynamic_viscosity   = 1.01e-3;
     double feature_velocity    = Re * dynamic_viscosity / (density * ly1);
     double kinematic_viscosity = dynamic_viscosity / density;
 
@@ -211,6 +214,53 @@ int main(int argc, char* argv[])
 
     TIMER_END(Init);
 
+    // validation
+    // in paper, coord origin at A2 center
+    // capture z line at A2 domain at:
+    // 1. x = 0, y = 0
+    // 2. x = 0.002, y = 0
+    // 3. x = -0.002, y = 0
+
+    int  iuc            = nx2 / 2;      // i of u variable in center position
+    bool should_avg_iuc = nx2 % 2 == 1; // should average iuc and iuc+1
+    int  juc            = ny2 / 2;      // j of u variable in center position
+    bool should_avg_juc = ny2 % 2 == 0; // should average juc-1 and juc
+
+    int offset_x = 0.002 / h;
+
+    auto output_z_line = [&](CSVHandler& output, int offset) {
+        int iac = iuc + offset; // accurate
+        for (int k = 0; k < nz2; k++)
+        {
+            double u_val = 0.0;
+
+            if (should_avg_iuc && should_avg_juc)
+                u_val =
+                    (u_A2(iac, juc - 1, k) + u_A2(iac + 1, juc - 1, k) + u_A2(iac, juc, k) + u_A2(iac + 1, juc, k)) /
+                    4.0;
+            else if (should_avg_iac)
+                u_val = (u_A2(iac, juc, k) + u_A2(iac + 1, juc, k)) / 2.0;
+            else if (should_avg_juc)
+                u_val = (u_A2(iac, juc - 1, k) + u_A2(iac, juc, k)) / 2.0;
+            else
+                u_val = u_A2(iac, juc, k);
+
+            output.stream << u_val;
+            if (k < nz2 - 1)
+                output.stream << ',';
+            else
+                output.stream << std::endl;
+        }
+    };
+
+    auto get_rms = [](Variable3D& var) {
+        double rms = 0.0;
+        for (auto kv : var.field_map)
+            rms += kv.second->squared_sum();
+        rms = std::sqrt(rms);
+        return rms;
+    };
+
     for (int iter = 0; iter <= time_cfg.num_iterations; iter++)
     {
         SCOPE_TIMER("Iteration", TimeRecordType::None, iter % 100 == 0);
@@ -233,7 +283,26 @@ int main(int argc, char* argv[])
 
         if (iter % 5000 == 0 && iter != 0)
         {
-            vtk_writer.write(env_cfg.debugOutputDir + "/" + std::to_string(iter));
+            vtk_writer.write(env_cfg.debugOutputDir + "/vtk/" + std::to_string(iter));
+        }
+
+        if (iter % 20 == 0)
+        {
+            CSVHandler line_output(env_cfg.debugOutputDir + "/line");
+            CSVHandler line_offset_x_pos_output(env_cfg.debugOutputDir + "/line_offset_x_pos");
+            CSVHandler line_offset_x_neg_output(env_cfg.debugOutputDir + "/line_offset_x_neg");
+
+            output_z_line(line_output, 0);
+            output_z_line(line_offset_x_pos_output, offset_x);
+            output_z_line(line_offset_x_neg_output, -offset_x);
+
+            CSVHandler u_rms(env_cfg.debugOutputDir + "/u_rms");
+            CSVHandler v_rms(env_cfg.debugOutputDir + "/v_rms");
+            CSVHandler w_rms(env_cfg.debugOutputDir + "/w_rms");
+
+            u_rms.stream << get_rms(u) << std::endl;
+            v_rms.stream << get_rms(v) << std::endl;
+            w_rms.stream << get_rms(w) << std::endl;
         }
     }
 
