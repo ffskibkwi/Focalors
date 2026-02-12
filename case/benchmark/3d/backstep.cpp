@@ -20,7 +20,7 @@
 
 int main(int argc, char* argv[])
 {
-    auto main_start_time = std::chrono::steady_clock::now();
+    TIMER_BEGIN(Init, "Init", TimeRecordType::None, true);
 
     // Geometry: Cross shape
     Geometry3D geo;
@@ -162,18 +162,15 @@ int main(int argc, char* argv[])
     vtk_writer.add_vector_as_cell_data(&u, &v, &w, "velocity");
     vtk_writer.validate();
 
-    std::chrono::steady_clock::time_point iter_start_time, iter_end_time;
-
-    auto   main_end_time = std::chrono::steady_clock::now();
-    double total_elapsed = std::chrono::duration<double>(main_end_time - main_start_time).count();
-    std::cout << "Total init time: " << total_elapsed << " seconds.\n";
+    TIMER_END(Init);
 
     for (int iter = 0; iter <= time_cfg.num_iterations; iter++)
     {
+        SCOPE_TIMER("Iteration", TimeRecordType::None, iter % 100 == 0);
+
         if (iter % 100 == 0)
         {
             std::cout << "iter: " << iter << "/" << time_cfg.num_iterations << "\n";
-            iter_start_time = std::chrono::steady_clock::now();
 
             env_cfg.track_pe_solve_detail_time = true;
             env_cfg.showGmresRes               = true;
@@ -183,10 +180,6 @@ int main(int argc, char* argv[])
 
         if (iter % 100 == 0)
         {
-            iter_end_time = std::chrono::steady_clock::now();
-            total_elapsed = std::chrono::duration<double>(iter_end_time - iter_start_time).count();
-            std::cout << "iter wall time: " << total_elapsed << " seconds.\n";
-
             env_cfg.track_pe_solve_detail_time = false;
             env_cfg.showGmresRes               = false;
         }
@@ -197,7 +190,5 @@ int main(int argc, char* argv[])
         }
     }
 
-    main_end_time = std::chrono::steady_clock::now();
-    total_elapsed = std::chrono::duration<double>(main_end_time - main_start_time).count();
-    std::cout << "Total wall time: " << total_elapsed << " seconds.\n";
+    std::cout << "Finished" << std::endl;
 }
