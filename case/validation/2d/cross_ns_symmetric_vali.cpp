@@ -69,7 +69,6 @@ static void print_field_aligned(const field2& f, const std::string& name)
     old.copyfmt(std::cout);
 
     std::cout << "Field: " << name << " (" << f.get_nx() << " x " << f.get_ny() << ")\n";
-    std::cout << std::fixed << std::setprecision(6);
     for (int j = f.get_ny() - 1; j >= 0; --j)
     {
         for (int i = 0; i < f.get_nx(); ++i)
@@ -559,7 +558,6 @@ int main(int argc, char* argv[])
         print_field_aligned(v_A5, "v_A5");
         print_field_aligned(v_A2, "v_A2");
         print_field_aligned(v_A4, "v_A4");
-        std::cout << std::setprecision(6) << std::scientific;
         std::cout << "\n[ Symmetry Check]\n";
         std::cout << "[NS Symmetry] L_inf(u_1 + u_3^R) = " << max_abs(u_diff_r_1_3) << "\n";
         std::cout << "[NS Symmetry] L_inf(v_1 - v_3^R) = " << max_abs(v_diff_1_3) << "\n";

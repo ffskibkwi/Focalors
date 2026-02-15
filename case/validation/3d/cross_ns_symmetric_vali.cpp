@@ -126,22 +126,22 @@ int main(int argc, char* argv[])
     PhysicsConfig& physics_cfg = PhysicsConfig::Get();
     physics_cfg.nu             = 0.01;
 
-    Domain3DUniform a2(6, 6, 6, 1.0, 1.0, 1.0, "A2");
+    Domain3DUniform a2(3, 3, 3, 1.0, 1.0, 1.0, "A2");
 
     Domain3DUniform a1("A1");
-    a1.set_nx(6);
+    a1.set_nx(3);
     a1.set_lx(1.0);
 
     Domain3DUniform a3("A3");
-    a3.set_nx(6);
+    a3.set_nx(3);
     a3.set_lx(1.0);
 
     Domain3DUniform a4("A4");
-    a4.set_ny(6);
+    a4.set_ny(3);
     a4.set_ly(1.0);
 
     Domain3DUniform a5("A5");
-    a5.set_ny(6);
+    a5.set_ny(3);
     a5.set_ly(1.0);
 
     geo.connect(&a2, LocationType::Left, &a1);
@@ -316,7 +316,6 @@ int main(int argc, char* argv[])
         calc_diff_with_two_field_reversed_along_y(v_a4, v_a5, v_diff_r_4_5);
         calc_diff_with_two_field_along_y(w_a4, w_a5, w_diff_4_5);
 
-        std::cout << std::scientific << std::setprecision(6);
         std::cout << "\n[NS 3D Symmetry] " << stage << "\n";
         std::cout << "L_inf(u_1 + u_3^Rx) = " << max_abs(u_diff_r_1_3) << "\n";
         std::cout << "L_inf(v_1 - v_3^Rx) = " << max_abs(v_diff_1_3) << "\n";
