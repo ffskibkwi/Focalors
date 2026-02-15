@@ -83,15 +83,17 @@ int main(int argc, char* argv[])
     double feature_velocity    = Re * dynamic_viscosity / (density * ly1);
     double kinematic_viscosity = dynamic_viscosity / density;
 
+    std::cout << "feature_velocity = " << feature_velocity << std::endl;
+
     // Geometry: Cross shape
     Geometry3D geo;
 
     EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
-    env_cfg.debugOutputDir     = "./result/backstep_3d/Re" + std::to_string(Re);
+    env_cfg.debugOutputDir     = "./result/T-shaped_mixer/Re" + std::to_string(static_cast<int>(Re));
 
     TimeAdvancingConfig& time_cfg = TimeAdvancingConfig::Get();
     time_cfg.dt                   = 0.0001;
-    time_cfg.num_iterations       = 1e5;
+    time_cfg.num_iterations       = 2e5;
 
     PhysicsConfig& physics_cfg = PhysicsConfig::Get();
     physics_cfg.set_nu(kinematic_viscosity);
@@ -197,7 +199,7 @@ int main(int argc, char* argv[])
                 z /= lz1;
                 double vel                 = 6.0 * feature_velocity * (1.0 - z) * z;
                 u_inlet_buffer_left(j, k)  = vel;
-                u_inlet_buffer_right(j, k) = vel;
+                u_inlet_buffer_right(j, k) = -vel;
             }
         }
     }
@@ -238,7 +240,7 @@ int main(int argc, char* argv[])
                 u_val =
                     (u_A2(iac, juc - 1, k) + u_A2(iac + 1, juc - 1, k) + u_A2(iac, juc, k) + u_A2(iac + 1, juc, k)) /
                     4.0;
-            else if (should_avg_iac)
+            else if (should_avg_iuc)
                 u_val = (u_A2(iac, juc, k) + u_A2(iac + 1, juc, k)) / 2.0;
             else if (should_avg_juc)
                 u_val = (u_A2(iac, juc - 1, k) + u_A2(iac, juc, k)) / 2.0;
@@ -281,28 +283,44 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = false;
         }
 
-        if (iter % 5000 == 0 && iter != 0)
+        if (iter % 4000 == 0)
         {
             vtk_writer.write(env_cfg.debugOutputDir + "/vtk/" + std::to_string(iter));
         }
 
         if (iter % 20 == 0)
         {
-            CSVHandler line_output(env_cfg.debugOutputDir + "/line");
-            CSVHandler line_offset_x_pos_output(env_cfg.debugOutputDir + "/line_offset_x_pos");
-            CSVHandler line_offset_x_neg_output(env_cfg.debugOutputDir + "/line_offset_x_neg");
+            CSVHandler line_file(env_cfg.debugOutputDir + "/line");
+            CSVHandler line_offset_x_pos_file(env_cfg.debugOutputDir + "/line_offset_x_pos");
+            CSVHandler line_offset_x_neg_file(env_cfg.debugOutputDir + "/line_offset_x_neg");
 
-            output_z_line(line_output, 0);
-            output_z_line(line_offset_x_pos_output, offset_x);
-            output_z_line(line_offset_x_neg_output, -offset_x);
+            output_z_line(line_file, 0);
+            output_z_line(line_offset_x_pos_file, offset_x);
+            output_z_line(line_offset_x_neg_file, -offset_x);
 
-            CSVHandler u_rms(env_cfg.debugOutputDir + "/u_rms");
-            CSVHandler v_rms(env_cfg.debugOutputDir + "/v_rms");
-            CSVHandler w_rms(env_cfg.debugOutputDir + "/w_rms");
+            CSVHandler u_rms_file(env_cfg.debugOutputDir + "/u_rms");
+            CSVHandler v_rms_file(env_cfg.debugOutputDir + "/v_rms");
+            CSVHandler w_rms_file(env_cfg.debugOutputDir + "/w_rms");
 
-            u_rms.stream << get_rms(u) << std::endl;
-            v_rms.stream << get_rms(v) << std::endl;
-            w_rms.stream << get_rms(w) << std::endl;
+            double u_rms = get_rms(u);
+            double v_rms = get_rms(v);
+            double w_rms = get_rms(w);
+
+            if (std::isnan(u_rms) || std::isnan(v_rms) || std::isnan(w_rms))
+            {
+                std::cout << "Error: Find nan! Break solving." << std::endl;
+                break;
+            }
+
+            u_rms_file.stream << u_rms << std::endl;
+            v_rms_file.stream << v_rms << std::endl;
+            w_rms_file.stream << w_rms << std::endl;
+        }
+
+        if (std::isnan(u_A1(0, 0, 0)))
+        {
+            std::cout << "Error: Find nan! Break solving." << std::endl;
+            break;
         }
     }
 

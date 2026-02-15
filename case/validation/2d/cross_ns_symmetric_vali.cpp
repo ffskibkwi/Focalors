@@ -87,8 +87,6 @@ int main(int argc, char* argv[])
     Geometry2D geo;
 
     EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
-    env_cfg.showGmresRes       = true;
-    env_cfg.showCurrentStep    = true;
 
     TimeAdvancingConfig& time_cfg = TimeAdvancingConfig::Get();
     time_cfg.dt                   = 0.001;
