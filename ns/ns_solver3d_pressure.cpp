@@ -14,7 +14,7 @@ void ConcatNSSolver3D::velocity_div_inner()
 
         int    nx = u.get_nx();
         int    ny = u.get_ny();
-        int    nz = u.get_ny();
+        int    nz = u.get_nz();
         double hx = domain->hx;
         double hy = domain->hy;
         double hz = domain->hz;
