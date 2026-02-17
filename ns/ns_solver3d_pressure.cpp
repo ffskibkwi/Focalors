@@ -177,7 +177,7 @@ void ConcatNSSolver3D::add_pressure_gradient()
         if (u_var->boundary_type_map[domain][LocationType::Front] == PDEBoundaryType::Adjacented)
             for (int i = 0; i < nx; i++)
                 for (int k = 0; k < nz; k++)
-                    v(i, 0, k) -= (p(i, 0, k) - p_buffer_down(i, k)) / hy;
+                    v(i, 0, k) -= (p(i, 0, k) - p_buffer_front(i, k)) / hy;
 
         if (u_var->boundary_type_map[domain][LocationType::Down] == PDEBoundaryType::Adjacented)
             for (int i = 0; i < nx; i++)
