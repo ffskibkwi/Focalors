@@ -46,7 +46,15 @@ int main(int argc, char* argv[])
 {
     TIMER_BEGIN(Init, "Init", TimeRecordType::None, true);
 
-    double lx1 = 0.3;
+    if (argc != 2)
+    {
+        std::cerr << "Error argument! Usage: program rank[double > 0]" << std::endl;
+        return 0;
+    }
+
+    double rank = std::stod(argv[1]);
+
+    double lx1 = 0.2;
     double ly1 = 0.02;
     double lz1 = 0.02;
 
@@ -59,25 +67,27 @@ int main(int argc, char* argv[])
     double lz3 = lz1; // symmetry
 
     double lx4 = 0.04;
-    double ly4 = 0.6;
+    double ly4 = 0.4;
     double lz4 = 0.02;
 
-    double h = 0.001;
+    double hx = 0.001 / rank;
+    double hy = 0.001 / rank;
+    double hz = 0.001 / rank / 2.0;
 
-    int nx1 = lx1 / h;
-    int ny1 = ly1 / h;
-    int nz1 = lz1 / h;
-    int nx2 = lx2 / h;
-    int ny2 = ly2 / h;
-    int nz2 = lz2 / h;
-    int nx3 = lx3 / h;
-    int ny3 = ly3 / h;
-    int nz3 = lz3 / h;
-    int nx4 = lx4 / h;
-    int ny4 = ly4 / h;
-    int nz4 = lz4 / h;
+    int nx1 = lx1 / hx;
+    int ny1 = ly1 / hy;
+    int nz1 = lz1 / hz;
+    int nx2 = lx2 / hx;
+    int ny2 = ly2 / hy;
+    int nz2 = lz2 / hz;
+    int nx3 = lx3 / hx;
+    int ny3 = ly3 / hy;
+    int nz3 = lz3 / hz;
+    int nx4 = lx4 / hx;
+    int ny4 = ly4 / hy;
+    int nz4 = lz4 / hz;
 
-    double Re                  = 175;
+    double Re                  = 350;
     double density             = 1e3;
     double dynamic_viscosity   = 1.01e-3;
     double feature_velocity    = Re * dynamic_viscosity / (density * ly1);
@@ -89,11 +99,11 @@ int main(int argc, char* argv[])
     Geometry3D geo;
 
     EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
-    env_cfg.debugOutputDir     = "./result/T-shaped_mixer/Re" + std::to_string(static_cast<int>(Re));
+    env_cfg.debugOutputDir     = "./result/T-shaped_mixer_grid_independence/" + std::to_string(rank);
 
     TimeAdvancingConfig& time_cfg = TimeAdvancingConfig::Get();
-    time_cfg.dt                   = 0.0001;
-    time_cfg.num_iterations       = 2e5;
+    time_cfg.dt                   = 0.0001 * rank;
+    time_cfg.num_iterations       = 2e5 * rank;
 
     PhysicsConfig& physics_cfg = PhysicsConfig::Get();
     physics_cfg.set_nu(kinematic_viscosity);
@@ -147,6 +157,9 @@ int main(int argc, char* argv[])
     p.set_center_field(&A3, p_A3);
     p.set_center_field(&A4, p_A4);
 
+    std::cout << "mesh num = " << u_A1.get_size_n() + u_A2.get_size_n() + u_A3.get_size_n() + u_A4.get_size_n()
+              << std::endl;
+
     // Helper setters
     auto set_dirichlet_zero = [](Variable3D& var, Domain3DUniform* d, LocationType loc) {
         var.set_boundary_type(d, loc, PDEBoundaryType::Dirichlet);
@@ -195,7 +208,7 @@ int main(int argc, char* argv[])
         {
             for (int k = 0; k < u_A1.get_nz(); ++k)
             {
-                double z = k * h + 0.5 * h;
+                double z = k * hz + 0.5 * hz;
                 z /= lz1;
                 double vel                 = 6.0 * feature_velocity * (1.0 - z) * z;
                 u_inlet_buffer_left(j, k)  = vel;
@@ -210,58 +223,7 @@ int main(int argc, char* argv[])
 
     ConcatNSSolver3D solver(&u, &v, &w, &p);
 
-    VTKWriter vtk_writer;
-    vtk_writer.add_vector_as_cell_data(&u, &v, &w, "velocity");
-    vtk_writer.validate();
-
     TIMER_END(Init);
-
-    // validation
-    // in paper, coord origin at A2 center
-    // capture z line at A2 domain at:
-    // 1. x = 0, y = 0
-    // 2. x = 0.002, y = 0
-    // 3. x = -0.002, y = 0
-
-    int  iuc            = nx2 / 2;      // i of u variable in center position
-    bool should_avg_iuc = nx2 % 2 == 1; // should average iuc and iuc+1
-    int  juc            = ny2 / 2;      // j of u variable in center position
-    bool should_avg_juc = ny2 % 2 == 0; // should average juc-1 and juc
-
-    int offset_x = 0.002 / h;
-
-    auto output_z_line = [&](CSVHandler& output, int offset) {
-        int iac = iuc + offset; // accurate
-        for (int k = 0; k < nz2; k++)
-        {
-            double u_val = 0.0;
-
-            if (should_avg_iuc && should_avg_juc)
-                u_val =
-                    (u_A2(iac, juc - 1, k) + u_A2(iac + 1, juc - 1, k) + u_A2(iac, juc, k) + u_A2(iac + 1, juc, k)) /
-                    4.0;
-            else if (should_avg_iuc)
-                u_val = (u_A2(iac, juc, k) + u_A2(iac + 1, juc, k)) / 2.0;
-            else if (should_avg_juc)
-                u_val = (u_A2(iac, juc - 1, k) + u_A2(iac, juc, k)) / 2.0;
-            else
-                u_val = u_A2(iac, juc, k);
-
-            output.stream << u_val;
-            if (k < nz2 - 1)
-                output.stream << ',';
-            else
-                output.stream << std::endl;
-        }
-    };
-
-    auto get_rms = [](Variable3D& var) {
-        double rms = 0.0;
-        for (auto kv : var.field_map)
-            rms += kv.second->squared_sum();
-        rms = std::sqrt(rms);
-        return rms;
-    };
 
     for (int iter = 0; iter <= time_cfg.num_iterations; iter++)
     {
@@ -283,38 +245,21 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = false;
         }
 
-        if (iter % 4000 == 0)
+        if (iter % static_cast<int>(20 * rank) == 0)
         {
-            vtk_writer.write(env_cfg.debugOutputDir + "/vtk/" + std::to_string(iter));
-        }
+            CSVHandler v_A4_mean_j0_file(env_cfg.debugOutputDir + "/v_A4_mean_j0");
+            CSVHandler v_A4_mean_jend_file(env_cfg.debugOutputDir + "/v_A4_mean_jend");
 
-        if (iter % 20 == 0)
-        {
-            CSVHandler line_file(env_cfg.debugOutputDir + "/line");
-            CSVHandler line_offset_x_pos_file(env_cfg.debugOutputDir + "/line_offset_x_pos");
-            CSVHandler line_offset_x_neg_file(env_cfg.debugOutputDir + "/line_offset_x_neg");
-
-            output_z_line(line_file, 0);
-            output_z_line(line_offset_x_pos_file, offset_x);
-            output_z_line(line_offset_x_neg_file, -offset_x);
-
-            CSVHandler u_rms_file(env_cfg.debugOutputDir + "/u_rms");
-            CSVHandler v_rms_file(env_cfg.debugOutputDir + "/v_rms");
-            CSVHandler w_rms_file(env_cfg.debugOutputDir + "/w_rms");
-
-            double u_rms = get_rms(u);
-            double v_rms = get_rms(v);
-            double w_rms = get_rms(w);
-
-            if (std::isnan(u_rms) || std::isnan(v_rms) || std::isnan(w_rms))
+            double v_A4_mean_j0   = v_A4.mean_at_xz_plane(0);
+            double v_A4_mean_jend = v_A4.mean_at_xz_plane(v_A4.get_ny() - 1);
+            if (std::isnan(v_A4_mean_j0) || std::isnan(v_A4_mean_jend))
             {
                 std::cout << "Error: Find nan! Break solving." << std::endl;
                 break;
             }
 
-            u_rms_file.stream << u_rms << std::endl;
-            v_rms_file.stream << v_rms << std::endl;
-            w_rms_file.stream << w_rms << std::endl;
+            v_A4_mean_j0_file.stream << v_A4_mean_j0 << std::endl;
+            v_A4_mean_jend_file.stream << v_A4_mean_jend << std::endl;
         }
 
         if (std::isnan(u_A1(0, 0, 0)))
