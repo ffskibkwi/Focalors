@@ -1,13 +1,7 @@
 #pragma once
 
-#include "base/domain/domain3d.h"
-#include "base/domain/geometry3d.h"
-#include "base/domain/geometry_tree.hpp"
-#include "base/domain/variable2d.h"
-#include "base/location_boundary.h"
 #include "base/pch.h"
 
-#include "base/config.h"
 #include "pe/concat/concat_solver3d.h"
 
 #include <unordered_map>

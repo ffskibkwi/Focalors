@@ -1,13 +1,7 @@
 #pragma once
 
-#include "base/domain/domain2d.h"
-#include "base/domain/geometry2d.h"
-#include "base/domain/geometry_tree.hpp"
-#include "base/domain/variable2d.h"
-#include "base/location_boundary.h"
 #include "base/pch.h"
 
-#include "base/config.h"
 #include "pe/concat/concat_solver2d.h"
 
 #include <memory>

@@ -62,6 +62,11 @@ ConcatNSSolver3D::ConcatNSSolver3D(Variable3D* in_u_var,
             new field3(field->get_nx(), field->get_ny(), field->get_nz(), field->get_name() + "_temp");
 
     p_solver = new ConcatPoissonSolver3D(p_var);
+
+    // update boundary for first step
+    phys_boundary_update();
+    nondiag_shared_boundary_update();
+    diag_shared_boundary_update();
 }
 
 ConcatNSSolver3D::~ConcatNSSolver3D() { delete p_solver; }
@@ -80,11 +85,6 @@ void ConcatNSSolver3D::variable_check()
 
 void ConcatNSSolver3D::solve()
 {
-    // update boundary for NS
-    phys_boundary_update();
-    nondiag_shared_boundary_update();
-    diag_shared_boundary_update();
-
     // NS
     euler_conv_diff_inner();
     euler_conv_diff_outer();
@@ -109,6 +109,11 @@ void ConcatNSSolver3D::solve()
         // p grad
         add_pressure_gradient();
     }
+
+    // update boundary
+    phys_boundary_update();
+    nondiag_shared_boundary_update();
+    diag_shared_boundary_update();
 }
 
 void ConcatNSSolver3D::euler_conv_diff_inner()
