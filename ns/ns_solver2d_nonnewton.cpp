@@ -28,11 +28,6 @@ void ConcatNSSolver2D::solve_nonnewton()
 {
     PhysicsConfig& physics_cfg = PhysicsConfig::Get();
 
-    // 1. Update boundary for NS (Ghost Cells / Buffers)
-    phys_boundary_update();
-    nondiag_shared_boundary_update();
-    diag_shared_boundary_update();
-
     // 2. Calculate Viscosity (mu) based on current velocity field
     viscosity_update();
 
@@ -79,6 +74,11 @@ void ConcatNSSolver2D::solve_nonnewton()
         // Correct Velocity with Pressure Gradient
         add_pressure_gradient();
     }
+
+    // update boundary at last to ensure other solver get right value at boundary
+    phys_boundary_update();
+    nondiag_shared_boundary_update();
+    diag_shared_boundary_update();
 }
 
 void ConcatNSSolver2D::viscosity_update()

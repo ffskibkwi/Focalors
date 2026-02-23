@@ -375,7 +375,7 @@ int main(int argc, char* argv[])
         if (step % pv_output_step == 0)
         {
             std::cout << "Saving step " << (step) << " to CSV files." << std::endl;
-            // update boundary for NS
+            // update boundary
             ns_solver.phys_boundary_update();
             ns_solver.nondiag_shared_boundary_update();
             ns_solver.diag_shared_boundary_update();

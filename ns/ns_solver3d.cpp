@@ -110,7 +110,7 @@ void ConcatNSSolver3D::solve()
         add_pressure_gradient();
     }
 
-    // update boundary
+    // update boundary at last to ensure other solver get right value at boundary
     phys_boundary_update();
     nondiag_shared_boundary_update();
     diag_shared_boundary_update();

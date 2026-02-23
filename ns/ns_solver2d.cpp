@@ -48,6 +48,11 @@ ConcatNSSolver2D::ConcatNSSolver2D(Variable2D* in_u_var, Variable2D* in_v_var, V
         v_temp_field_map[domain] = new field2(field->get_nx(), field->get_ny(), field->get_name() + "_temp");
 
     p_solver = new ConcatPoissonSolver2D(p_var);
+
+    // update boundary for first step
+    phys_boundary_update();
+    nondiag_shared_boundary_update();
+    diag_shared_boundary_update();
 }
 
 ConcatNSSolver2D::~ConcatNSSolver2D() { delete p_solver; }
@@ -65,11 +70,6 @@ void ConcatNSSolver2D::variable_check()
 void ConcatNSSolver2D::solve()
 {
     PhysicsConfig& physics_cfg = PhysicsConfig::Get();
-
-    // update boundary for NS
-    phys_boundary_update();
-    nondiag_shared_boundary_update();
-    diag_shared_boundary_update();
 
     // NS
     euler_conv_diff_inner();
@@ -106,6 +106,11 @@ void ConcatNSSolver2D::solve()
         // p grad
         add_pressure_gradient();
     }
+
+    // update boundary at last to ensure other solver get right value at boundary
+    phys_boundary_update();
+    nondiag_shared_boundary_update();
+    diag_shared_boundary_update();
 }
 
 void ConcatNSSolver2D::euler_conv_diff_inner()

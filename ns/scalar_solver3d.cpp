@@ -71,6 +71,7 @@ void ScalarSolver3D::solve()
     euler_conv_diff_inner();
     euler_conv_diff_outer();
 
+    // update boundary at last to ensure other solver get right value at boundary
     phys_boundary_update();
     nondiag_shared_boundary_update();
 }
