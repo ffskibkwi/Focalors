@@ -276,7 +276,8 @@ int main(int argc, char* argv[])
 
         if (iter % static_cast<int>(1e4) == 0)
         {
-            vtk_writer.write(env_cfg.debugOutputDir + "/vtk/" + std::to_string(iter));
+            static int count = 0;
+            vtk_writer.write(env_cfg.debugOutputDir + "/vtk/" + std::to_string(count++));
         }
 
         if (iter % 20 == 0)

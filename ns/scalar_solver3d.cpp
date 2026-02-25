@@ -101,18 +101,27 @@ void ScalarSolver3D::euler_conv_diff_inner()
             {
                 for (int k = 1; k < nz - 1; k++)
                 {
-                    double conv_x =
-                        0.5 / hx *
-                        (u(i + 1, j, k) * (s(i + 1, j, k) + s(i, j, k)) - u(i, j, k) * (s(i - 1, j, k) + s(i, j, k)));
-                    double conv_y =
-                        0.5 / hy *
-                        (v(i, j + 1, k) * (s(i, j, k) + s(i, j + 1, k)) - v(i, j, k) * (s(i, j - 1, k) + s(i, j, k)));
-                    double conv_z =
-                        0.5 / hz *
-                        (w(i, j, k + 1) * (s(i, j, k) + s(i, j, k + 1)) - w(i, j, k) * (s(i, j, k - 1) + s(i, j, k)));
-                    double diffuse_x = nr / hx / hx * (s(i + 1, j, k) - 2.0 * s(i, j, k) + s(i - 1, j, k));
-                    double diffuse_y = nr / hy / hy * (s(i, j + 1, k) - 2.0 * s(i, j, k) + s(i, j - 1, k));
-                    double diffuse_z = nr / hz / hz * (s(i, j, k + 1) - 2.0 * s(i, j, k) + s(i, j, k - 1));
+                    double u_ijk = u(i, j, k);
+                    double v_ijk = v(i, j, k);
+                    double w_ijk = w(i, j, k);
+                    double u_ip1 = u(i + 1, j, k);
+                    double v_jp1 = v(i, j + 1, k);
+                    double w_kp1 = w(i, j, k + 1);
+
+                    double s_ijk = s(i, j, k);
+                    double s_im1 = s(i - 1, j, k);
+                    double s_ip1 = s(i + 1, j, k);
+                    double s_jm1 = s(i, j - 1, k);
+                    double s_jp1 = s(i, j + 1, k);
+                    double s_km1 = s(i, j, k - 1);
+                    double s_kp1 = s(i, j, k + 1);
+
+                    double conv_x    = 0.5 / hx * (u_ip1 * (s_ip1 + s_ijk) - u_ijk * (s_im1 + s_ijk));
+                    double conv_y    = 0.5 / hy * (v_jp1 * (s_jp1 + s_ijk) - v_ijk * (s_jm1 + s_ijk));
+                    double conv_z    = 0.5 / hz * (w_kp1 * (s_kp1 + s_ijk) - w_ijk * (s_km1 + s_ijk));
+                    double diffuse_x = nr / hx / hx * (s_ip1 - 2.0 * s_ijk + s_im1);
+                    double diffuse_y = nr / hy / hy * (s_jp1 - 2.0 * s_ijk + s_jm1);
+                    double diffuse_z = nr / hz / hz * (s_kp1 - 2.0 * s_ijk + s_km1);
 
                     s_temp(i, j, k) = s(i, j, k) - dt * (conv_x + conv_y + conv_z - diffuse_x - diffuse_y - diffuse_z);
                 }
@@ -162,14 +171,14 @@ void ScalarSolver3D::euler_conv_diff_outer()
             double s_im1 = i == 0 ? s_left_buffer(j, k) : s(i - 1, j, k);
             double s_ip1 = i == nx - 1 ? s_right_buffer(j, k) : s(i + 1, j, k);
             double s_jm1 = j == 0 ? s_front_buffer(i, k) : s(i, j - 1, k);
-            double s_jp1 = k == ny - 1 ? s_back_buffer(i, k) : s(i, j + 1, k);
+            double s_jp1 = j == ny - 1 ? s_back_buffer(i, k) : s(i, j + 1, k);
             double s_km1 = k == 0 ? s_down_buffer(i, j) : s(i, j, k - 1);
             double s_kp1 = k == nz - 1 ? s_up_buffer(i, j) : s(i, j, k + 1);
 
             double conv_x    = 0.5 / hx * (u_ip1 * (s_ip1 + s_ijk) - u_ijk * (s_im1 + s_ijk));
-            double conv_y    = 0.5 / hy * (v_jp1 * (s_ijk + s_jp1) - v_ijk * (s_jm1 + s_ijk));
-            double conv_z    = 0.5 / hz * (w_kp1 * (s_ijk + s_kp1) - w_ijk * (s_km1 + s_ijk));
-            double diffuse_x = nr / hx / hx * (s_im1 - 2.0 * s_ijk + s_im1);
+            double conv_y    = 0.5 / hy * (v_jp1 * (s_jp1 + s_ijk) - v_ijk * (s_jm1 + s_ijk));
+            double conv_z    = 0.5 / hz * (w_kp1 * (s_kp1 + s_ijk) - w_ijk * (s_km1 + s_ijk));
+            double diffuse_x = nr / hx / hx * (s_ip1 - 2.0 * s_ijk + s_im1);
             double diffuse_y = nr / hy / hy * (s_jp1 - 2.0 * s_ijk + s_jm1);
             double diffuse_z = nr / hz / hz * (s_kp1 - 2.0 * s_ijk + s_km1);
 
