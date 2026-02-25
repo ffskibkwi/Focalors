@@ -53,25 +53,27 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    double lx1 = 20e-3;
-    double ly1 = 1e-3;
-    double lz1 = 1e-3;
+    double Height = 1e-3;
 
-    double lx2 = 2e-3;
-    double ly2 = 1e-3;
-    double lz2 = 1e-3;
+    double lx1 = 20 * Height;
+    double ly1 = Height;
+    double lz1 = Height;
+
+    double lx2 = 2.0 * Height;
+    double ly2 = Height;
+    double lz2 = Height;
 
     double lx3 = lx1; // symmetry
     double ly3 = ly1; // symmetry
     double lz3 = lz1; // symmetry
 
-    double lx4 = 2e-3;
-    double ly4 = 40e-3;
-    double lz4 = 1e-3;
+    double lx4 = 2.0 * Height;
+    double ly4 = 40.0 * Height;
+    double lz4 = Height;
 
-    double hx = 5e-5;
-    double hy = 5e-5;
-    double hz = 5e-5;
+    double hx = Height / 20.0;
+    double hy = Height / 20.0;
+    double hz = Height / 20.0;
 
     int nx1 = lx1 / hx;
     int ny1 = ly1 / hy;
@@ -86,16 +88,44 @@ int main(int argc, char* argv[])
     int ny4 = ly4 / hy;
     int nz4 = lz4 / hz;
 
-    double Sc                  = 5000;
-    double Re                  = std::stod(argv[1]);
-    double Pe                  = Sc * Re;
-    double nr                  = 1.0 / Pe;
-    double density             = 1e3;
-    double dynamic_viscosity   = 1.01e-3;
-    double feature_velocity    = Re * dynamic_viscosity / (density * ly1);
-    double kinematic_viscosity = dynamic_viscosity / density;
+    double Sc = 5000;
+    double Re = std::stod(argv[1]);
+    double Pe = Sc * Re;
+    double nr = 1.0 / Pe;
 
-    std::cout << "feature_velocity = " << feature_velocity << std::endl;
+    double dt = hx / 10.0;
+
+    double density                           = 1e3;
+    double dynamic_viscosity                 = 1.01e-3;
+    double mixing_channel_hydraulic_diameter = 4.0 * Height / 3.0;
+    double inlet_velocity                    = Re * dynamic_viscosity / (density * mixing_channel_hydraulic_diameter);
+    double convective_time                   = mixing_channel_hydraulic_diameter / inlet_velocity;
+
+    lx1 /= mixing_channel_hydraulic_diameter;
+    ly1 /= mixing_channel_hydraulic_diameter;
+    lz1 /= mixing_channel_hydraulic_diameter;
+
+    lx2 /= mixing_channel_hydraulic_diameter;
+    ly2 /= mixing_channel_hydraulic_diameter;
+    lz2 /= mixing_channel_hydraulic_diameter;
+
+    lx3 /= mixing_channel_hydraulic_diameter;
+    ly3 /= mixing_channel_hydraulic_diameter;
+    lz3 /= mixing_channel_hydraulic_diameter;
+
+    lx4 /= mixing_channel_hydraulic_diameter;
+    ly4 /= mixing_channel_hydraulic_diameter;
+    lz4 /= mixing_channel_hydraulic_diameter;
+
+    hx /= mixing_channel_hydraulic_diameter;
+    hy /= mixing_channel_hydraulic_diameter;
+    hz /= mixing_channel_hydraulic_diameter;
+
+    dt /= convective_time;
+
+    std::cout << "mixing_channel_hydraulic_diameter = " << mixing_channel_hydraulic_diameter << std::endl;
+    std::cout << "inlet_velocity = " << inlet_velocity << std::endl;
+    std::cout << "convective_time = " << convective_time << std::endl;
 
     // Geometry: Cross shape
     Geometry3D geo;
@@ -104,11 +134,11 @@ int main(int argc, char* argv[])
     env_cfg.debugOutputDir     = "./result/T-shaped_mixer_concentration/Re" + std::to_string((int)Re);
 
     TimeAdvancingConfig& time_cfg = TimeAdvancingConfig::Get();
-    time_cfg.dt                   = hx / 10.0;
+    time_cfg.dt                   = dt;
     time_cfg.num_iterations       = 2e5;
 
     PhysicsConfig& physics_cfg = PhysicsConfig::Get();
-    physics_cfg.set_nu(kinematic_viscosity);
+    physics_cfg.set_Re(Re);
 
     Domain3DUniform A1(nx1, ny1, nz1, lx1, ly1, lz1, "A1");
     Domain3DUniform A2(nx2, ny2, nz2, lx2, ly2, lz2, "A2");
@@ -219,7 +249,7 @@ int main(int argc, char* argv[])
             {
                 double z = k * hz + 0.5 * hz;
                 z /= lz1;
-                double vel                 = 6.0 * feature_velocity * (1.0 - z) * z;
+                double vel                 = 6.0 * (1.0 - z) * z;
                 u_inlet_buffer_left(j, k)  = vel;
                 u_inlet_buffer_right(j, k) = -vel;
             }
