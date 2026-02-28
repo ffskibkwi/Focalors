@@ -4,6 +4,7 @@
 #include "base/domain/variable3d.h"
 #include "base/field/field3.h"
 #include "base/location_boundary.h"
+#include "base/math/random.h"
 #include "io/csv_handler.h"
 #include "io/stat.h"
 #include "io/vtk_writer.h"
@@ -17,6 +18,7 @@
 #include <cmath>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 // Steady and unsteady regimes in a T-shaped micro-mixer: Synergic experimental and numerical investigation, Alessandro
@@ -47,9 +49,9 @@ int main(int argc, char* argv[])
 {
     TIMER_BEGIN(Init, "Init", TimeRecordType::None, true);
 
-    if (argc != 2)
+    if (argc != 3)
     {
-        std::cerr << "Error argument! Usage: program Re[double > 0]" << std::endl;
+        std::cerr << "Error argument! Usage: program Re[double > 0] Sc[double > 0]" << std::endl;
         return 0;
     }
 
@@ -88,8 +90,8 @@ int main(int argc, char* argv[])
     int ny4 = ly4 / hy;
     int nz4 = lz4 / hz;
 
-    double Sc = 5000;
     double Re = std::stod(argv[1]);
+    double Sc = std::stod(argv[2]);
     double Pe = Sc * Re;
     double nr = 1.0 / Pe;
 
@@ -100,6 +102,8 @@ int main(int argc, char* argv[])
     double mixing_channel_hydraulic_diameter = 4.0 * Height / 3.0;
     double inlet_velocity                    = Re * dynamic_viscosity / (density * mixing_channel_hydraulic_diameter);
     double convective_time                   = mixing_channel_hydraulic_diameter / inlet_velocity;
+
+    DifferenceSchemeType c_scheme = DifferenceSchemeType::Conv_QUICK_Diff_Center2nd;
 
     lx1 /= mixing_channel_hydraulic_diameter;
     ly1 /= mixing_channel_hydraulic_diameter;
@@ -127,11 +131,20 @@ int main(int argc, char* argv[])
     std::cout << "inlet_velocity = " << inlet_velocity << std::endl;
     std::cout << "convective_time = " << convective_time << std::endl;
 
+    std::cout << "convection trem CFL = " << dt / hx << std::endl;
+    std::cout << "Petlet cell = " << hx * Pe << std::endl;
+
     // Geometry: Cross shape
     Geometry3D geo;
 
     EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
-    env_cfg.debugOutputDir     = "./result/T-shaped_mixer_concentration/Re" + std::to_string((int)Re);
+    {
+        std::stringstream ss;
+        ss << "./result/T-shaped_mixer_concentration/";
+        ss << "Re";
+        ss << std::to_string((int)Re);
+        env_cfg.debugOutputDir = ss.str();
+    }
 
     TimeAdvancingConfig& time_cfg = TimeAdvancingConfig::Get();
     time_cfg.dt                   = dt;
@@ -273,8 +286,23 @@ int main(int argc, char* argv[])
     w.set_boundary_type(&A4, LocationType::Front, PDEBoundaryType::Neumann);
     c.set_boundary_type(&A4, LocationType::Front, PDEBoundaryType::Neumann);
 
+    add_random_number(u_A1, -0.01, 0.01, 42);
+    add_random_number(u_A2, -0.01, 0.01, 42);
+    add_random_number(u_A3, -0.01, 0.01, 42);
+    add_random_number(u_A4, -0.01, 0.01, 42);
+
+    add_random_number(v_A1, -0.01, 0.01, 42);
+    add_random_number(v_A2, -0.01, 0.01, 42);
+    add_random_number(v_A3, -0.01, 0.01, 42);
+    add_random_number(v_A4, -0.01, 0.01, 42);
+
+    add_random_number(w_A1, -0.01, 0.01, 42);
+    add_random_number(w_A2, -0.01, 0.01, 42);
+    add_random_number(w_A3, -0.01, 0.01, 42);
+    add_random_number(w_A4, -0.01, 0.01, 42);
+
     ConcatNSSolver3D solver(&u, &v, &w, &p);
-    ScalarSolver3D   solver_c(&u, &v, &w, &c, nr);
+    ScalarSolver3D   solver_c(&u, &v, &w, &c, nr, c_scheme);
 
     VTKWriter vtk_writer;
     vtk_writer.add_vector_as_cell_data(&u, &v, &w, "velocity");

@@ -8,21 +8,35 @@
 #include <unordered_map>
 #include <vector>
 
+#include "base/scheme_type.h"
+
 class ScalarSolver3D
 {
     // Simple: Only for single main domain geometry
 public:
     Variable3D *u_var = nullptr, *v_var = nullptr, *w_var = nullptr, *s_var = nullptr;
 
-    ScalarSolver3D(Variable3D* in_u_var, Variable3D* in_v_var, Variable3D* in_w_var, Variable3D* in_s_var, double _nr);
+    ScalarSolver3D(Variable3D*          in_u_var,
+                   Variable3D*          in_v_var,
+                   Variable3D*          in_w_var,
+                   Variable3D*          in_s_var,
+                   double               _nr,
+                   DifferenceSchemeType _scheme);
 
     void variable_check();
     void solve();
 
     void phys_boundary_update();
     void nondiag_shared_boundary_update();
-    void euler_conv_diff_inner();
-    void euler_conv_diff_outer();
+
+    void conv_cd2nd_diff_cd2nd_inner();
+    void conv_cd2nd_diff_cd2nd_outer();
+
+    void conv_uw1st_diff_cd2nd_inner();
+    void conv_uw1st_diff_cd2nd_outer();
+
+    void conv_QUICK_diff_cd2nd_inner();
+    void conv_QUICK_diff_cd2nd_outer();
 
 private:
     std::vector<Domain3DUniform*>                                                            domains;
@@ -35,4 +49,6 @@ private:
 
     double dt;
     double nr;
+
+    DifferenceSchemeType scheme;
 };
