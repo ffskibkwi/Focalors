@@ -259,7 +259,8 @@ int main(int argc, char* argv[])
     set_dirichlet_zero(p, &D2, LocationType::Right); // Pressure outlet p=0
 
     // Solver Initialization
-    ConcatNSSolver2D ns_solver(&u, &v, &p);
+    ConcatPoissonSolver2D p_solver(&p);
+    ConcatNSSolver2D      ns_solver(&u, &v, &p, &p_solver);
     ns_solver.init_nonnewton(&mu, &tau_xx, &tau_yy, &tau_xy);
     ns_solver.p_solver->set_parameter(case_param.gmres_m, case_param.gmres_tol, case_param.gmres_max_iter);
 

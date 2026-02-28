@@ -121,14 +121,15 @@ int main(int argc, char* argv[])
     v.set_boundary_type(&A2, LocationType::Right, PDEBoundaryType::Neumann);
     v.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Neumann);
 
-    ConcatNSSolver2D solver(&u, &v, &p);
+    ConcatPoissonSolver2D p_solver(&p);
+    ConcatNSSolver2D      ns_solver(&u, &v, &p, &p_solver);
 
     for (int iter = 0; iter < time_cfg.num_iterations; iter++)
     {
         if (iter % 200 == 0)
             std::cout << "iter: " << iter << "/" << time_cfg.num_iterations << "\n";
 
-        solver.solve();
+        ns_solver.solve();
     }
 
     IO::write_csv(u, "result/u");

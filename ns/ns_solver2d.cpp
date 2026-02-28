@@ -2,10 +2,14 @@
 #include "boundary_2d_utils.h"
 #include "mhd_module_2d_mac.h"
 
-ConcatNSSolver2D::ConcatNSSolver2D(Variable2D* in_u_var, Variable2D* in_v_var, Variable2D* in_p_var)
+ConcatNSSolver2D::ConcatNSSolver2D(Variable2D*            in_u_var,
+                                   Variable2D*            in_v_var,
+                                   Variable2D*            in_p_var,
+                                   ConcatPoissonSolver2D* in_p_solver)
     : u_var(in_u_var)
     , v_var(in_v_var)
     , p_var(in_p_var)
+    , p_solver(in_p_solver)
     , left_up_corner_value_map(v_var->left_up_corner_value_map)
     , right_down_corner_value_map(u_var->right_down_corner_value_map)
 {
@@ -47,15 +51,11 @@ ConcatNSSolver2D::ConcatNSSolver2D(Variable2D* in_u_var, Variable2D* in_v_var, V
     for (auto& [domain, field] : v_field_map)
         v_temp_field_map[domain] = new field2(field->get_nx(), field->get_ny(), field->get_name() + "_temp");
 
-    p_solver = new ConcatPoissonSolver2D(p_var);
-
     // update boundary for first step
     phys_boundary_update();
     nondiag_shared_boundary_update();
     diag_shared_boundary_update();
 }
-
-ConcatNSSolver2D::~ConcatNSSolver2D() { delete p_solver; }
 
 void ConcatNSSolver2D::variable_check()
 {

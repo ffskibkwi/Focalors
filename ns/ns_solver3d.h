@@ -18,8 +18,11 @@ public:
     Variable3D *mu_var = nullptr, *tau_xx_var = nullptr, *tau_yy_var = nullptr, *tau_zz_var = nullptr,
                *tau_xy_var = nullptr, *tau_xz_var = nullptr, *tau_yz_var = nullptr;
 
-    ConcatNSSolver3D(Variable3D* in_u_var, Variable3D* in_v_var, Variable3D* in_w_var, Variable3D* in_p_var);
-    ~ConcatNSSolver3D();
+    ConcatNSSolver3D(Variable3D*            in_u_var,
+                     Variable3D*            in_v_var,
+                     Variable3D*            in_w_var,
+                     Variable3D*            in_p_var,
+                     ConcatPoissonSolver3D* in_p_solver);
 
     // void init();
     void variable_check();

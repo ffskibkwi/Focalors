@@ -2,13 +2,12 @@
 
 #include "base/pch.h"
 
+#include "mhd_module_2d_mac.h"
 #include "pe/concat/concat_solver2d.h"
 
 #include <memory>
 #include <unordered_map>
 #include <vector>
-
-class MHDModule2D;
 
 class ConcatNSSolver2D
 {
@@ -20,8 +19,10 @@ public:
     // Non-Newtonian fields
     Variable2D *mu_var = nullptr, *tau_xx_var = nullptr, *tau_yy_var = nullptr, *tau_xy_var = nullptr;
 
-    ConcatNSSolver2D(Variable2D* in_u_var, Variable2D* in_v_var, Variable2D* in_p_var);
-    ~ConcatNSSolver2D();
+    ConcatNSSolver2D(Variable2D*            in_u_var,
+                     Variable2D*            in_v_var,
+                     Variable2D*            in_p_var,
+                     ConcatPoissonSolver2D* in_p_solver);
 
     // void init();
     void variable_check();

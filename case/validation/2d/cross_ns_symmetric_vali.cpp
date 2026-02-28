@@ -369,11 +369,12 @@ int main(int argc, char* argv[])
     };
 
     // Solve
-    ConcatNSSolver2D solver(&u, &v, &p);
-    solver.variable_check();
-    solver.phys_boundary_update();
-    solver.nondiag_shared_boundary_update();
-    solver.diag_shared_boundary_update();
+    ConcatPoissonSolver2D p_solver(&p);
+    ConcatNSSolver2D      ns_solver(&u, &v, &p, &p_solver);
+    ns_solver.variable_check();
+    ns_solver.phys_boundary_update();
+    ns_solver.nondiag_shared_boundary_update();
+    ns_solver.diag_shared_boundary_update();
     // 输出的u为结束时刻的u 输出buffer只能得到前一dt的值，无法和field做比较
     std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, double*>> u_buffer_map, v_buffer_map,
         p_buffer_map;
@@ -588,18 +589,18 @@ int main(int argc, char* argv[])
     IO::write_csv(p, nowtime_dir + "/p_init");
 
     // NS
-    solver.euler_conv_diff_inner();
-    solver.euler_conv_diff_outer();
+    ns_solver.euler_conv_diff_inner();
+    ns_solver.euler_conv_diff_outer();
     // update boundary for divu
-    solver.phys_boundary_update();
-    solver.nondiag_shared_boundary_update();
+    ns_solver.phys_boundary_update();
+    ns_solver.nondiag_shared_boundary_update();
     // divu
-    solver.velocity_div_inner();
-    solver.velocity_div_outer();
+    ns_solver.velocity_div_inner();
+    ns_solver.velocity_div_outer();
     // update buffer for p
-    solver.pressure_buffer_update();
+    ns_solver.pressure_buffer_update();
     // p grad
-    solver.add_pressure_gradient();
+    ns_solver.add_pressure_gradient();
 
     // Symmetry validation
     calc_diff_with_two_field_reversed_along_y(u_A1, u_A3, u_diff_r_1_3); // expect near 0
@@ -609,9 +610,9 @@ int main(int argc, char* argv[])
     std::cout << "--------print after solve--------" << std::endl;
     print_all_field();
 
-    solver.phys_boundary_update();
-    solver.nondiag_shared_boundary_update();
-    solver.diag_shared_boundary_update();
+    ns_solver.phys_boundary_update();
+    ns_solver.nondiag_shared_boundary_update();
+    ns_solver.diag_shared_boundary_update();
 
     print_buffer_info();
     // Optional CSV outputs (uncomment if needed)

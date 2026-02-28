@@ -301,8 +301,9 @@ int main(int argc, char* argv[])
     add_random_number(w_A3, -0.01, 0.01, 42);
     add_random_number(w_A4, -0.01, 0.01, 42);
 
-    ConcatNSSolver3D solver(&u, &v, &w, &p);
-    ScalarSolver3D   solver_c(&u, &v, &w, &c, nr, c_scheme);
+    ConcatPoissonSolver3D p_solver(&p);
+    ConcatNSSolver3D      ns_solver(&u, &v, &w, &p, &p_solver);
+    ScalarSolver3D        solver_c(&u, &v, &w, &c, nr, c_scheme);
 
     VTKWriter vtk_writer;
     vtk_writer.add_vector_as_cell_data(&u, &v, &w, "velocity");
@@ -323,7 +324,7 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = true;
         }
 
-        solver.solve();
+        ns_solver.solve();
         solver_c.solve();
 
         if (iter % 100 == 0)

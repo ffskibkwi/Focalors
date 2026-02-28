@@ -12,9 +12,6 @@
 #include <unordered_map>
 #include <vector>
 
-// Forward declaration
-class ConcatNSSolver2D;
-
 /**
  * @brief MHD module for 2D quasi-static/induced electric potential method (MAC Grid)
  *

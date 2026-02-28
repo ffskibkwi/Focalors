@@ -155,7 +155,8 @@ int main(int argc, char* argv[])
     w.set_boundary_type(&A2, LocationType::Right, PDEBoundaryType::Neumann);
     w.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Neumann);
 
-    ConcatNSSolver3D solver(&u, &v, &w, &p);
+    ConcatPoissonSolver3D p_solver(&p);
+    ConcatNSSolver3D      ns_solver(&u, &v, &w, &p, &p_solver);
 
     VTKWriter vtk_writer;
     vtk_writer.add_vector_as_cell_data(&u, &v, &w, "velocity");
@@ -175,7 +176,7 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = true;
         }
 
-        solver.solve();
+        ns_solver.solve();
 
         if (iter % 100 == 0)
         {

@@ -293,11 +293,12 @@ int main(int argc, char* argv[])
         return 0.50 + 0.06 * xr * xr - 0.04 * yr * yr + 0.02 * zr * zr;
     });
 
-    ConcatNSSolver3D solver(&u, &v, &w, &p);
-    solver.variable_check();
-    solver.phys_boundary_update();
-    solver.nondiag_shared_boundary_update();
-    solver.diag_shared_boundary_update();
+    ConcatPoissonSolver3D p_solver(&p);
+    ConcatNSSolver3D      ns_solver(&u, &v, &w, &p, &p_solver);
+    ns_solver.variable_check();
+    ns_solver.phys_boundary_update();
+    ns_solver.nondiag_shared_boundary_update();
+    ns_solver.diag_shared_boundary_update();
 
     field3 u_diff_r_1_3(u_a1.get_nx() - 1, u_a1.get_ny(), u_a1.get_nz(), "u_diff_r_1_3");
     field3 v_diff_1_3(v_a1.get_nx(), v_a1.get_ny(), v_a1.get_nz(), "v_diff_1_3");
@@ -334,20 +335,20 @@ int main(int argc, char* argv[])
     IO::write_csv(w, nowtime_dir + "/w_init");
     IO::write_csv(p, nowtime_dir + "/p_init");
 
-    solver.euler_conv_diff_inner();
-    solver.euler_conv_diff_outer();
+    ns_solver.euler_conv_diff_inner();
+    ns_solver.euler_conv_diff_outer();
 
-    solver.phys_boundary_update();
-    solver.nondiag_shared_boundary_update();
+    ns_solver.phys_boundary_update();
+    ns_solver.nondiag_shared_boundary_update();
 
-    solver.velocity_div_inner();
-    solver.velocity_div_outer();
-    solver.pressure_buffer_update();
-    solver.add_pressure_gradient();
+    ns_solver.velocity_div_inner();
+    ns_solver.velocity_div_outer();
+    ns_solver.pressure_buffer_update();
+    ns_solver.add_pressure_gradient();
 
-    solver.phys_boundary_update();
-    solver.nondiag_shared_boundary_update();
-    solver.diag_shared_boundary_update();
+    ns_solver.phys_boundary_update();
+    ns_solver.nondiag_shared_boundary_update();
+    ns_solver.diag_shared_boundary_update();
 
     print_symmetry("after_one_step");
 

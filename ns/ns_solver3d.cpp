@@ -1,14 +1,16 @@
 #include "ns_solver3d.h"
 #include "boundary_3d_utils.h"
 
-ConcatNSSolver3D::ConcatNSSolver3D(Variable3D* in_u_var,
-                                   Variable3D* in_v_var,
-                                   Variable3D* in_w_var,
-                                   Variable3D* in_p_var)
+ConcatNSSolver3D::ConcatNSSolver3D(Variable3D*            in_u_var,
+                                   Variable3D*            in_v_var,
+                                   Variable3D*            in_w_var,
+                                   Variable3D*            in_p_var,
+                                   ConcatPoissonSolver3D* in_p_solver)
     : u_var(in_u_var)
     , v_var(in_v_var)
     , w_var(in_w_var)
     , p_var(in_p_var)
+    , p_solver(in_p_solver)
     , u_corner_value_map_y(u_var->corner_value_map_y)
     , u_corner_value_map_z(u_var->corner_value_map_z)
     , v_corner_value_map_x(v_var->corner_value_map_x)
@@ -61,15 +63,11 @@ ConcatNSSolver3D::ConcatNSSolver3D(Variable3D* in_u_var,
         w_temp_field_map[domain] =
             new field3(field->get_nx(), field->get_ny(), field->get_nz(), field->get_name() + "_temp");
 
-    p_solver = new ConcatPoissonSolver3D(p_var);
-
     // update boundary for first step
     phys_boundary_update();
     nondiag_shared_boundary_update();
     diag_shared_boundary_update();
 }
-
-ConcatNSSolver3D::~ConcatNSSolver3D() { delete p_solver; }
 
 void ConcatNSSolver3D::variable_check()
 {
