@@ -123,18 +123,6 @@ private:
         w_buffer_map, p_buffer_map;
     std::unordered_map<Domain3DUniform*, field3*> u_temp_field_map, v_temp_field_map, w_temp_field_map;
 
-    // Non-Newtonian field maps
-    std::unordered_map<Domain3DUniform*, field3*> mu_field_map;
-    std::unordered_map<Domain3DUniform*, field3*> tau_xx_field_map;
-    std::unordered_map<Domain3DUniform*, field3*> tau_yy_field_map;
-    std::unordered_map<Domain3DUniform*, field3*> tau_zz_field_map;
-    std::unordered_map<Domain3DUniform*, field3*> tau_xy_field_map;
-    std::unordered_map<Domain3DUniform*, field3*> tau_xz_field_map;
-    std::unordered_map<Domain3DUniform*, field3*> tau_yz_field_map;
-
-    std::unordered_map<Domain3DUniform*, std::unordered_map<LocationType, double*>> tau_xx_buffer_map,
-        tau_yy_buffer_map, tau_zz_buffer_map, tau_xy_buffer_map, tau_xz_buffer_map, tau_yz_buffer_map;
-
     std::unordered_map<Domain3DUniform*, double*>&u_corner_value_map_y, u_corner_value_map_z;
     std::unordered_map<Domain3DUniform*, double*>&v_corner_value_map_x, v_corner_value_map_z;
     std::unordered_map<Domain3DUniform*, double*>&w_corner_value_map_x, w_corner_value_map_y;

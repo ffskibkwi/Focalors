@@ -86,7 +86,7 @@ void ConcatNSSolver3D::velocity_div_outer()
 
         p(nx - 1, ny - 1, nz - 1) = (u_buffer_right(ny - 1, nz - 1) - u(nx - 1, ny - 1, nz - 1)) / hx +
                                     (v_buffer_back(nx - 1, nz - 1) - v(nx - 1, ny - 1, nz - 1)) / hy +
-                                    (w_buffer_up(nx - 1, nx - 1) - w(nx - 1, ny - 1, nz - 1)) / hz;
+                                    (w_buffer_up(nx - 1, ny - 1) - w(nx - 1, ny - 1, nz - 1)) / hz;
     }
 }
 
