@@ -5,10 +5,47 @@
 /** @brief Minimum shear rate threshold to prevent singularity in power-law model */
 constexpr double GAMMA_DOT_MIN = 1.0e-4;
 
+namespace
+{
+double calc_viscosity_by_model(double gamma_dot, const PhysicsConfig& physics_cfg)
+{
+    double mu_val = physics_cfg.nu;
+
+    if (physics_cfg.model_type == 1) // Power Law
+    {
+        if (physics_cfg.n < 1.0)
+            gamma_dot = std::max(gamma_dot, GAMMA_DOT_MIN); // protect against zero when exponent negative
+
+        mu_val = physics_cfg.k * std::pow(gamma_dot, physics_cfg.n - 1.0);
+
+        // Enforce limits
+        mu_val = std::max(physics_cfg.mu_min, std::min(mu_val, physics_cfg.mu_max));
+    }
+    else if (physics_cfg.model_type == 2) // Carreau
+    {
+        mu_val = physics_cfg.mu_inf +
+                 (physics_cfg.mu_0 - physics_cfg.mu_inf) *
+                     std::pow(1.0 + std::pow(physics_cfg.lambda * gamma_dot, physics_cfg.a),
+                              (physics_cfg.n - 1.0) / physics_cfg.a);
+
+        // Enforce limits
+        mu_val = std::max(physics_cfg.mu_min, std::min(mu_val, physics_cfg.mu_max));
+    }
+
+    if (physics_cfg.use_dimensionless_viscosity)
+    {
+        mu_val *= 1.0 / (physics_cfg.mu_ref * physics_cfg.Re);
+    }
+
+    return mu_val;
+}
+} // namespace
+
 void ConcatNSSolver2D::init_nonnewton(Variable2D* in_mu_var,
                                       Variable2D* in_tau_xx_var,
                                       Variable2D* in_tau_yy_var,
-                                      Variable2D* in_tau_xy_var)
+                                      Variable2D* in_tau_xy_var,
+                                      Variable2D* in_phi_var)
 {
     mu_var     = in_mu_var;
     tau_xx_var = in_tau_xx_var;
@@ -22,6 +59,10 @@ void ConcatNSSolver2D::init_nonnewton(Variable2D* in_mu_var,
 
     tau_xx_buffer_map = tau_xx_var->buffer_map;
     tau_yy_buffer_map = tau_yy_var->buffer_map;
+
+    PhysicsConfig& physics_cfg = PhysicsConfig::Get();
+    if (physics_cfg.enable_mhd)
+        init_mhd(in_phi_var);
 }
 
 void ConcatNSSolver2D::solve_nonnewton()
@@ -43,11 +84,8 @@ void ConcatNSSolver2D::solve_nonnewton()
     euler_conv_diff_outer_nonnewton();
 
     // MHD: predictor step finished, before div(u) boundary update
-    if (physics_cfg.enable_mhd)
+    if (physics_cfg.enable_mhd && mhd_module)
     {
-        if (!mhd_module)
-            mhd_module = std::unique_ptr<MHDModule2D>(new MHDModule2D(u_var, v_var));
-        mhd_module->init();
         mhd_module->solveElectricPotential();
         mhd_module->updateCurrentDensity();
         mhd_module->applyLorentzForce();
@@ -195,32 +233,7 @@ void ConcatNSSolver2D::viscosity_update()
                 double gamma_dot = std::sqrt(2.0 * (du_dx * du_dx + dv_dy * dv_dy) + (du_dy + dv_dx) * (du_dy + dv_dx));
 
                 // 4. Update Viscosity
-                double mu_val = physics_cfg.nu;
-
-                if (physics_cfg.model_type == 1) // Power Law
-                {
-                    double k      = physics_cfg.k;
-                    double n      = physics_cfg.n;
-                    double mu_min = physics_cfg.mu_min;
-                    double mu_max = physics_cfg.mu_max;
-                    if (n < 1.0)
-                        gamma_dot = std::max(gamma_dot, GAMMA_DOT_MIN); // protect against zero when exponent negative
-                    // Avoid division by zero if gamma_dot is 0 and n < 1
-                    mu_val = k * std::pow(gamma_dot, n - 1.0);
-
-                    // Enforce limits
-                    mu_val = std::max(mu_min, std::min(mu_val, mu_max));
-                }
-                else if (physics_cfg.model_type == 2) // Carreau
-                {
-                    double mu_0   = physics_cfg.mu_0;
-                    double mu_inf = physics_cfg.mu_inf;
-                    double lambda = physics_cfg.lambda;
-                    double n      = physics_cfg.n;
-                    double a      = physics_cfg.a;
-
-                    mu_val = mu_inf + (mu_0 - mu_inf) * std::pow(1.0 + std::pow(lambda * gamma_dot, a), (n - 1.0) / a);
-                }
+                double mu_val = calc_viscosity_by_model(gamma_dot, physics_cfg);
 
                 mu(i, j) = mu_val;
             }
@@ -347,27 +360,7 @@ void ConcatNSSolver2D::stress_buffer_update()
                                          (du_dy_ghost + dv_dx_ghost) * (du_dy_ghost + dv_dx_ghost));
 
             // 6. Viscosity
-            double mu_val = physics_cfg.nu;
-            if (physics_cfg.model_type == 1) // Power Law
-            {
-                double k      = physics_cfg.k;
-                double n      = physics_cfg.n;
-                double mu_min = physics_cfg.mu_min;
-                double mu_max = physics_cfg.mu_max;
-                if (n < 1.0)
-                    gamma_dot = std::max(gamma_dot, GAMMA_DOT_MIN);
-                mu_val = k * std::pow(gamma_dot, n - 1.0);
-                mu_val = std::max(mu_min, std::min(mu_val, mu_max));
-            }
-            else if (physics_cfg.model_type == 2) // Carreau
-            {
-                double mu_0   = physics_cfg.mu_0;
-                double mu_inf = physics_cfg.mu_inf;
-                double lambda = physics_cfg.lambda;
-                double n      = physics_cfg.n;
-                double a      = physics_cfg.a;
-                mu_val = mu_inf + (mu_0 - mu_inf) * std::pow(1.0 + std::pow(lambda * gamma_dot, a), (n - 1.0) / a);
-            }
+            double mu_val = calc_viscosity_by_model(gamma_dot, physics_cfg);
 
             tau_xx_left_buffer[j] = 2.0 * mu_val * du_dx_ghost;
         }
@@ -439,27 +432,7 @@ void ConcatNSSolver2D::stress_buffer_update()
                                          (du_dy_ghost + dv_dx_ghost) * (du_dy_ghost + dv_dx_ghost));
 
             // 6. Viscosity
-            double mu_val = physics_cfg.nu;
-            if (physics_cfg.model_type == 1) // Power Law
-            {
-                double k      = physics_cfg.k;
-                double n      = physics_cfg.n;
-                double mu_min = physics_cfg.mu_min;
-                double mu_max = physics_cfg.mu_max;
-                if (n < 1.0)
-                    gamma_dot = std::max(gamma_dot, GAMMA_DOT_MIN);
-                mu_val = k * std::pow(gamma_dot, n - 1.0);
-                mu_val = std::max(mu_min, std::min(mu_val, mu_max));
-            }
-            else if (physics_cfg.model_type == 2) // Carreau
-            {
-                double mu_0   = physics_cfg.mu_0;
-                double mu_inf = physics_cfg.mu_inf;
-                double lambda = physics_cfg.lambda;
-                double n      = physics_cfg.n;
-                double a      = physics_cfg.a;
-                mu_val = mu_inf + (mu_0 - mu_inf) * std::pow(1.0 + std::pow(lambda * gamma_dot, a), (n - 1.0) / a);
-            }
+            double mu_val = calc_viscosity_by_model(gamma_dot, physics_cfg);
 
             tau_yy_down_buffer[i] = 2.0 * mu_val * dv_dy_ghost;
         }

@@ -60,25 +60,40 @@ int main(int argc, char* argv[])
     physics_cfg.set_model_type(case_param.model_type);
     if (case_param.model_type == 1) // Power Law
     {
-        // Use dimensionless setter if Re_PL is provided in config (which it is by default in class)
-        // Note: You can add logic to choose between dimensional and dimensionless if needed.
-        // Here we prioritize dimensionless for this task.
         physics_cfg.set_power_law_dimensionless(
-            case_param.Re_PL, case_param.n_index, case_param.mu_min_pl, case_param.mu_max_pl);
+            case_param.k_pl,
+            case_param.n_index,
+            case_param.Re,
+            case_param.mu_ref,
+            case_param.use_dimensionless_viscosity,
+            case_param.mu_min_pl,
+            case_param.mu_max_pl);
         std::cout << "Configuring Power Law Model (Dimensionless):" << std::endl;
-        std::cout << "  Re_PL: " << case_param.Re_PL << std::endl;
+        std::cout << "  k_pl: " << case_param.k_pl << std::endl;
+        std::cout << "  Re: " << case_param.Re << std::endl;
+        std::cout << "  mu_ref: " << case_param.mu_ref << std::endl;
+        std::cout << "  use_dimensionless_viscosity: " << case_param.use_dimensionless_viscosity << std::endl;
         std::cout << "  n:     " << case_param.n_index << std::endl;
         std::cout << "  mu_min_pl: " << case_param.mu_min_pl << std::endl;
         std::cout << "  mu_max_pl: " << case_param.mu_max_pl << std::endl;
     }
     else if (case_param.model_type == 2) // Carreau
     {
-        physics_cfg.set_carreau(
-            case_param.mu_0, case_param.mu_inf, case_param.a, case_param.lambda, case_param.n_index);
+        physics_cfg.set_carreau_dimensionless(case_param.mu_0,
+                                              case_param.mu_inf,
+                                              case_param.a,
+                                              case_param.lambda,
+                                              case_param.n_index,
+                                              case_param.Re,
+                                              case_param.mu_ref,
+                                              case_param.use_dimensionless_viscosity);
         std::cout << "Configuring Bird-Carreau Model:" << std::endl;
-        std::cout << "  mu_0:   " << case_param.mu_0 << std::endl;
-        std::cout << "  mu_inf: " << case_param.mu_inf << std::endl;
-        std::cout << "  lambda: " << case_param.lambda << std::endl;
+        std::cout << "  mu_0:           " << case_param.mu_0 << std::endl;
+        std::cout << "  mu_inf:         " << case_param.mu_inf << std::endl;
+        std::cout << "  lambda:         " << case_param.lambda << std::endl;
+        std::cout << "  Re:             " << case_param.Re << std::endl;
+        std::cout << "  mu_ref:         " << case_param.mu_ref << std::endl;
+        std::cout << "  use_dimensionless_viscosity: " << case_param.use_dimensionless_viscosity << std::endl;
         std::cout << "  a:      " << case_param.a << std::endl;
         std::cout << "  n:      " << case_param.n_index << std::endl;
     }
@@ -226,6 +241,10 @@ int main(int argc, char* argv[])
             set_neumann_zero(p, d, loc);
         }
     }
+
+    // Outlet pressure: Dirichlet p = 0 (A4 Down, A5 Up)
+    set_dirichlet_zero(p, &A4, LocationType::Down);
+    set_dirichlet_zero(p, &A5, LocationType::Up);
 
     // Inlet profiles for symmetry validation (Poiseuille)
     const double U0 = case_param.U0;

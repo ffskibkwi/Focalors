@@ -22,12 +22,12 @@
  *
  * u(y) = n/(n+1) * ( (-dp/dx)/K )^(1/n) * [ H^((n+1)/n) - |y|^((n+1)/n) ]
  */
-double power_law_analytical(double y, double n, double dp_dx, double Re_PL, double H)
+double power_law_analytical(double y, double n, double dp_dx, double k_pl, double H)
 {
     if (std::abs(y) > H)
         return 0.0;
 
-    double K             = 1.0 / Re_PL;
+    double K             = k_pl;
     double pressure_term = -dp_dx / K;
     if (pressure_term < 0)
         pressure_term = 0.0;
@@ -113,21 +113,39 @@ int main(int argc, char* argv[])
     if (case_param.model_type == 1) // Power Law
     {
         physics_cfg.set_power_law_dimensionless(
-            case_param.Re_PL, case_param.n_index, case_param.mu_min_pl, case_param.mu_max_pl);
+            case_param.k_pl,
+            case_param.n_index,
+            case_param.Re,
+            case_param.mu_ref,
+            case_param.use_dimensionless_viscosity,
+            case_param.mu_min_pl,
+            case_param.mu_max_pl);
         std::cout << "Configuring Power Law Model (Dimensionless):" << std::endl;
-        std::cout << "  Re_PL:     " << case_param.Re_PL << std::endl;
+        std::cout << "  k_pl:      " << case_param.k_pl << std::endl;
+        std::cout << "  Re:        " << case_param.Re << std::endl;
+        std::cout << "  mu_ref:    " << case_param.mu_ref << std::endl;
+        std::cout << "  use_dimensionless_viscosity: " << case_param.use_dimensionless_viscosity << std::endl;
         std::cout << "  n:         " << case_param.n_index << std::endl;
         std::cout << "  mu_min_pl: " << case_param.mu_min_pl << " (use default if -1)" << std::endl;
         std::cout << "  mu_max_pl: " << case_param.mu_max_pl << " (use default if -1)" << std::endl;
     }
     else if (case_param.model_type == 2) // Carreau
     {
-        physics_cfg.set_carreau_dimensionless(
-            case_param.Re_0, case_param.Re_inf, case_param.Wi, case_param.a, case_param.n_index);
+        physics_cfg.set_carreau_dimensionless(case_param.mu_0,
+                                              case_param.mu_inf,
+                                              case_param.a,
+                                              case_param.lambda,
+                                              case_param.n_index,
+                                              case_param.Re,
+                                              case_param.mu_ref,
+                                              case_param.use_dimensionless_viscosity);
         std::cout << "Configuring Carreau Model (Dimensionless):" << std::endl;
-        std::cout << "  Re_0:   " << case_param.Re_0 << std::endl;
-        std::cout << "  Re_inf: " << case_param.Re_inf << std::endl;
-        std::cout << "  Wi:     " << case_param.Wi << std::endl;
+        std::cout << "  mu_0:           " << case_param.mu_0 << std::endl;
+        std::cout << "  mu_inf:         " << case_param.mu_inf << std::endl;
+        std::cout << "  lambda:         " << case_param.lambda << std::endl;
+        std::cout << "  Re:             " << case_param.Re << std::endl;
+        std::cout << "  mu_ref:         " << case_param.mu_ref << std::endl;
+        std::cout << "  use_dimensionless_viscosity: " << case_param.use_dimensionless_viscosity << std::endl;
         std::cout << "  a:      " << case_param.a << std::endl;
         std::cout << "  n:      " << case_param.n_index << std::endl;
     }
@@ -242,11 +260,11 @@ int main(int argc, char* argv[])
         double u_val;
         if (case_param.model_type == 0) // Newtonian
         {
-            u_val = power_law_analytical(y_centered, 1.0, case_param.dp_dx, case_param.Re_PL, H);
+            u_val = power_law_analytical(y_centered, 1.0, case_param.dp_dx, case_param.k_pl, H);
         }
         else // Power Law / Carreau
         {
-            u_val = power_law_analytical(y_centered, case_param.n_index, case_param.dp_dx, case_param.Re_PL, H);
+            u_val = power_law_analytical(y_centered, case_param.n_index, case_param.dp_dx, case_param.k_pl, H);
         }
 
         // Now it's safe to access
@@ -393,7 +411,7 @@ int main(int argc, char* argv[])
             double y_centered = y_coord - H;
 
             double u_num = u_D2(i_check, j);
-            double u_ana = power_law_analytical(y_centered, case_param.n_index, case_param.dp_dx, case_param.Re_PL, H);
+            double u_ana = power_law_analytical(y_centered, case_param.n_index, case_param.dp_dx, case_param.k_pl, H);
 
             double error = u_num - u_ana;
             error_sum_sq += error * error;
