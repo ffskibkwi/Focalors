@@ -234,7 +234,7 @@ int main(int argc, char* argv[])
         {
             double y_norm = (j + 0.5) / static_cast<double>(u_A1.get_ny());
             double z_norm = (k + 0.5) / static_cast<double>(u_A1.get_nz());
-            double u_val  = 36.0 * case_param.U0 * y_norm * (1.0 - y_norm) * z_norm * (1.0 - z_norm);
+            double u_val  = 36.0 * y_norm * (1.0 - y_norm) * z_norm * (1.0 - z_norm);
             (*u.boundary_value_map[&A1][LocationType::Left])(j, k) = u_val;
         }
     }
@@ -251,7 +251,7 @@ int main(int argc, char* argv[])
         {
             double y_norm = (j + 0.5) / static_cast<double>(u_A3.get_ny());
             double z_norm = (k + 0.5) / static_cast<double>(u_A3.get_nz());
-            double u_val  = -36.0 * case_param.U0 * y_norm * (1.0 - y_norm) * z_norm * (1.0 - z_norm);
+            double u_val  = -36.0 * y_norm * (1.0 - y_norm) * z_norm * (1.0 - z_norm);
             (*u.boundary_value_map[&A3][LocationType::Right])(j, k) = u_val;
         }
     }

@@ -321,23 +321,22 @@ int main(int argc, char* argv[])
         phi.has_boundary_value_map[&A5][LocationType::Up] = true;
     }
 
-    // Inlet profiles for symmetry validation (Poiseuille)
-    const double U0 = case_param.U0;
+    // Inlet profiles for symmetry validation (Poiseuille, nondimensional amplitude = 1.0)
 
     u.set_boundary_type(&A1, LocationType::Left, PDEBoundaryType::Dirichlet);
     u.set_boundary_value(&A1, LocationType::Left, 0.0); // ← 添加这行来分配内存
     u.has_boundary_value_map[&A1][LocationType::Left] = true;
     set_dirichlet_zero(v, &A1, LocationType::Left);
-    // A1 Left: u(y_norm) = +6*U0*y_norm*(1-y_norm)
+    // A1 Left: u(y_norm) = +6*y_norm*(1-y_norm)
     for (int j = 0; j < u_A1.get_ny(); ++j)
     {
         double y_norm                                    = (j + 0.5) / static_cast<double>(u_A1.get_ny());
-        double u_val                                     = 6.0 * U0 * y_norm * (1.0 - y_norm);
+        double u_val                                     = 6.0 * y_norm * (1.0 - y_norm);
         u.boundary_value_map[&A1][LocationType::Left][j] = u_val;
     }
     set_dirichlet_zero(v, &A1, LocationType::Left);
 
-    // A3 Right: u(y_norm) = -6*U0*y_norm*(1-y_norm)
+    // A3 Right: u(y_norm) = -6*y_norm*(1-y_norm)
     u.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Dirichlet);
     u.has_boundary_value_map[&A3][LocationType::Right] = true;
     u.set_boundary_value(&A3, LocationType::Right, 0.0); // ← 添加这行来分配内存
@@ -345,7 +344,7 @@ int main(int argc, char* argv[])
     for (int j = 0; j < u_A3.get_ny(); ++j)
     {
         double y_norm                                     = (j + 0.5) / static_cast<double>(u_A3.get_ny());
-        double u_val                                      = -6.0 * U0 * y_norm * (1.0 - y_norm);
+        double u_val                                      = -6.0 * y_norm * (1.0 - y_norm);
         u.boundary_value_map[&A3][LocationType::Right][j] = u_val;
     }
 
@@ -400,7 +399,8 @@ int main(int argc, char* argv[])
             IO::write_csv(v, nowtime_dir + "/v/v_" + std::to_string(step));
             IO::write_csv(p, nowtime_dir + "/p/p_" + std::to_string(step));
             IO::write_csv(mu, nowtime_dir + "/mu/mu_" + std::to_string(step));
-            IO::write_csv(phi, nowtime_dir + "/phi/phi_" + std::to_string(step));
+            if (enable_mhd)
+                IO::write_csv(phi, nowtime_dir + "/phi/phi_" + std::to_string(step));
         }
         if (std::isnan(u_A1(1, 1)))
         {
@@ -414,6 +414,7 @@ int main(int argc, char* argv[])
     IO::write_csv(v, nowtime_dir + "/final/v_" + std::to_string(final_step_to_save));
     IO::write_csv(p, nowtime_dir + "/final/p_" + std::to_string(final_step_to_save));
     IO::write_csv(mu, nowtime_dir + "/final/mu_" + std::to_string(final_step_to_save));
-    IO::write_csv(phi, nowtime_dir + "/final/phi_" + std::to_string(final_step_to_save));
+    if (enable_mhd)
+        IO::write_csv(phi, nowtime_dir + "/final/phi_" + std::to_string(final_step_to_save));
     return 0;
 }

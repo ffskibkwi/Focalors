@@ -185,23 +185,22 @@ int main(int argc, char* argv[])
     set_dirichlet_zero(p, &A4, LocationType::Down);
     set_dirichlet_zero(p, &A5, LocationType::Up);
 
-    // Inlet profiles for symmetry validation (Poiseuille)
-    const double U0 = case_param.U0;
+    // Inlet profiles for symmetry validation (Poiseuille, nondimensional amplitude = 1.0)
 
     u.set_boundary_type(&A1, LocationType::Left, PDEBoundaryType::Dirichlet);
     u.set_boundary_value(&A1, LocationType::Left, 0.0); // ← 添加这行来分配内存
     u.has_boundary_value_map[&A1][LocationType::Left] = true;
     set_dirichlet_zero(v, &A1, LocationType::Left);
-    // A1 Left: u(y_norm) = +6*U0*y_norm*(1-y_norm)
+    // A1 Left: u(y_norm) = +6*y_norm*(1-y_norm)
     for (int j = 0; j < u_A1.get_ny(); ++j)
     {
         double y_norm                                    = (j + 0.5) / static_cast<double>(u_A1.get_ny());
-        double u_val                                     = 6.0 * U0 * y_norm * (1.0 - y_norm);
+        double u_val                                     = 6.0 * y_norm * (1.0 - y_norm);
         u.boundary_value_map[&A1][LocationType::Left][j] = u_val;
     }
     set_dirichlet_zero(v, &A1, LocationType::Left);
 
-    // A3 Right: u(y_norm) = -6*U0*y_norm*(1-y_norm)
+    // A3 Right: u(y_norm) = -6*y_norm*(1-y_norm)
     u.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Dirichlet);
     u.set_boundary_value(&A3, LocationType::Right, 0.0); // ← 添加这行来分配内存
     u.has_boundary_value_map[&A3][LocationType::Right] = true;
@@ -209,7 +208,7 @@ int main(int argc, char* argv[])
     for (int j = 0; j < u_A3.get_ny(); ++j)
     {
         double y_norm                                     = (j + 0.5) / static_cast<double>(u_A3.get_ny());
-        double u_val                                      = -6.0 * U0 * y_norm * (1.0 - y_norm);
+        double u_val                                      = -6.0 * y_norm * (1.0 - y_norm);
         u.boundary_value_map[&A3][LocationType::Right][j] = u_val;
     }
 

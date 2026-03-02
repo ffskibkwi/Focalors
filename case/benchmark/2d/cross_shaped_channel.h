@@ -40,6 +40,7 @@ public:
 
         // MHD Parameters
         IO::read_number(para_map, "Ha", Ha);
+        IO::read_number(para_map, "B0", B0);
         IO::read_number(para_map, "Bx", Bx);
         IO::read_number(para_map, "By", By);
 
@@ -91,6 +92,7 @@ public:
             .record("Re", Re)
             .record("U0", U0)
             .record("Ha", Ha)
+            .record("B0", B0)
             .record("Bx", Bx)
             .record("By", By)
             .record("dt_factor", dt_factor)
@@ -114,7 +116,6 @@ public:
         return true;
     }
 
-public:
     // Grid Spacing
     double h = 0.01;
 
@@ -132,6 +133,7 @@ public:
 
     // MHD Parameters
     double Ha = 10.0; // Hartmann number
+    double B0 = 1.0;  // Magnetic field magnitude
     double Bx = 0.0;  // Magnetic field x-component
     double By = 1.0;  // Magnetic field y-component
 
