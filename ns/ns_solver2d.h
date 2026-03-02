@@ -26,6 +26,7 @@ public:
 
     // void init();
     void variable_check();
+    void init_mhd(Variable2D* in_phi_var = nullptr);
     void solve();
     void normalize_pressure();
 
@@ -33,7 +34,8 @@ public:
     void init_nonnewton(Variable2D* in_mu_var,
                         Variable2D* in_tau_xx_var,
                         Variable2D* in_tau_yy_var,
-                        Variable2D* in_tau_xy_var);
+                        Variable2D* in_tau_xy_var,
+                        Variable2D* in_phi_var = nullptr);
     void solve_nonnewton();
     void viscosity_update();
     void stress_update();

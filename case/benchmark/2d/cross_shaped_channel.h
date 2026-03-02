@@ -11,6 +11,11 @@
 class CrossShapedChannel2DCase : public CaseBase
 {
 public:
+    static constexpr double POWERLAW_ETA_C = 0.00604;
+    static constexpr double CARREAU_ETA_C  = 0.00596;
+    static constexpr double POWERLAW_N      = 0.708;
+    static constexpr double CARREAU_N       = 0.3568;
+
     CrossShapedChannel2DCase(int argc, char* argv[])
         : CaseBase(argc, argv)
     {}
@@ -50,19 +55,25 @@ public:
 
         // Non-Newtonian Parameters (Optional, with defaults)
         IO::read_number(para_map, "model_type", model_type);
-        IO::read_number(para_map, "n_index", n_index);
+        const bool has_n_index = IO::read_number(para_map, "n_index", n_index);
+        if (!has_n_index)
+        {
+            n_index = (model_type == 2) ? CARREAU_N : POWERLAW_N;
+        }
         IO::read_number(para_map, "mu_0", mu_0);
         IO::read_number(para_map, "mu_inf", mu_inf);
         IO::read_number(para_map, "lambda", lambda);
         IO::read_number(para_map, "a", a);
 
-        // Dimensionless Parameters
-        IO::read_number(para_map, "Re_PL", Re_PL);
+        // Non-Newtonian parameters actually used by config setters
+        IO::read_number(para_map, "k_pl", k_pl);
         IO::read_number(para_map, "mu_min_pl", mu_min_pl);
         IO::read_number(para_map, "mu_max_pl", mu_max_pl);
-        IO::read_number(para_map, "Re_0", Re_0);
-        IO::read_number(para_map, "Re_inf", Re_inf);
-        IO::read_number(para_map, "Wi", Wi);
+        if (!IO::read_number(para_map, "mu_ref", mu_ref))
+        {
+            mu_ref = (model_type == 2) ? CARREAU_ETA_C : POWERLAW_ETA_C;
+        }
+        IO::read_bool(para_map, "use_dimensionless_viscosity", use_dimensionless_viscosity);
     }
 
     bool record_paras() override
@@ -94,12 +105,11 @@ public:
             .record("mu_inf", mu_inf)
             .record("lambda", lambda)
             .record("a", a)
-            .record("Re_PL", Re_PL)
+            .record("k_pl", k_pl)
             .record("mu_min_pl", mu_min_pl)
             .record("mu_max_pl", mu_max_pl)
-            .record("Re_0", Re_0)
-            .record("Re_inf", Re_inf)
-            .record("Wi", Wi);
+            .record("mu_ref", mu_ref)
+            .record("use_dimensionless_viscosity", use_dimensionless_viscosity ? 1 : 0);
 
         return true;
     }
@@ -136,18 +146,17 @@ public:
     int    gmres_max_iter = 1000;
 
     // Non-Newtonian Model Parameters
-    int    model_type = 0;       // 0: Newtonian (default), 1: Power Law, 2: Carreau
-    double n_index    = 0.708;   // Power-law index
+    int    model_type = 1;       // 0: Newtonian, 1: Power Law (paper default), 2: Carreau
+    double n_index    = POWERLAW_N; // Power-law index (paper)
     double mu_0       = 0.056;   // Zero-shear viscosity (Bird/Carreau)
     double mu_inf     = 0.00345; // Infinite-shear viscosity (Bird/Carreau)
-    double lambda     = 0.0;     // Relaxation time
+    double lambda     = 3.313;   // Relaxation time (paper Bird-Carreau)
     double a          = 2.0;     // Carreau model parameter
 
-    // Dimensionless Parameters
-    double Re_PL     = 100.0;
+    // Non-Newtonian parameters actually used by config setters
+    double k_pl      = 0.017;   // Power-law consistency index (paper)
     double mu_min_pl = 0.00345; // Power-Law viscosity lower limit
     double mu_max_pl = 0.056;   // Power-Law viscosity upper limit
-    double Re_0      = 10.0;
-    double Re_inf    = 1000.0;
-    double Wi        = 1.0;
+    double mu_ref    = POWERLAW_ETA_C;
+    bool   use_dimensionless_viscosity = true;
 };

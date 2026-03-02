@@ -55,6 +55,19 @@ ConcatNSSolver2D::ConcatNSSolver2D(Variable2D*            in_u_var,
     phys_boundary_update();
     nondiag_shared_boundary_update();
     diag_shared_boundary_update();
+
+}
+
+void ConcatNSSolver2D::init_mhd(Variable2D* in_phi_var)
+{
+    PhysicsConfig& physics_cfg = PhysicsConfig::Get();
+    if (!physics_cfg.enable_mhd)
+        return;
+
+    if (!mhd_module)
+        mhd_module = std::unique_ptr<MHDModule2D>(new MHDModule2D(u_var, v_var));
+
+    mhd_module->init(in_phi_var);
 }
 
 void ConcatNSSolver2D::variable_check()
@@ -76,11 +89,8 @@ void ConcatNSSolver2D::solve()
     euler_conv_diff_outer();
 
     // MHD: predictor step finished, before div(u) boundary update
-    if (physics_cfg.enable_mhd)
+    if (physics_cfg.enable_mhd && mhd_module)
     {
-        if (!mhd_module)
-            mhd_module = std::unique_ptr<MHDModule2D>(new MHDModule2D(u_var, v_var));
-        mhd_module->init();
         mhd_module->solveElectricPotential();
         mhd_module->updateCurrentDensity();
         mhd_module->applyLorentzForce();

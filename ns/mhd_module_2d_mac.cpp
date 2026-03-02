@@ -110,9 +110,15 @@ void MHDModule2D::init(Variable2D* phi_var)
         // Ensure phi has Right/Up buffers for MHD-specific usage.
         auto& phi_buffer_map = m_phiVar->buffer_map[domain];
         if (!phi_buffer_map.count(LocationType::Right))
+        {
             phi_buffer_map[LocationType::Right] = new double[domain->get_ny()];
+            std::fill_n(phi_buffer_map[LocationType::Right], static_cast<std::size_t>(domain->get_ny()), 0.0);
+        }
         if (!phi_buffer_map.count(LocationType::Up))
+        {
             phi_buffer_map[LocationType::Up] = new double[domain->get_nx()];
+            std::fill_n(phi_buffer_map[LocationType::Up], static_cast<std::size_t>(domain->get_nx()), 0.0);
+        }
 
         // Zero initialize jx, jy, jz fields
         m_jxFieldStorage[domain]->clear(0.0);

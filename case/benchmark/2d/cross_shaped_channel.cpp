@@ -56,6 +56,9 @@ int main(int argc, char* argv[])
     // time_cfg.num_iterations   = 10;
     PhysicsConfig& physics_cfg = PhysicsConfig::Get();
     physics_cfg.set_Re(case_param.Re);
+    physics_cfg.set_enable_mhd(std::abs(case_param.Ha) > 0.0);
+    physics_cfg.set_Ha(case_param.Ha);
+    physics_cfg.set_magnetic_field(case_param.Bx, case_param.By, 0.0);
 
     // 计算循环输出步数间隔 pv_output_step（如果未指定则使用 num_iterations/10）
     int pv_output_step = case_param.pv_output_step > 0 ? case_param.pv_output_step : time_cfg.num_iterations / 10;
@@ -114,6 +117,10 @@ int main(int argc, char* argv[])
     v.set_geometry(geo);
     p.set_geometry(geo);
 
+    Variable2D phi("phi");
+    if (physics_cfg.enable_mhd)
+        phi.set_geometry(geo);
+
     // Fields on each domain
     field2 u_A1, u_A2, u_A3, u_A4, u_A5;
     field2 v_A1, v_A2, v_A3, v_A4, v_A5;
@@ -134,6 +141,16 @@ int main(int argc, char* argv[])
     p.set_center_field(&A3, p_A3);
     p.set_center_field(&A4, p_A4);
     p.set_center_field(&A5, p_A5);
+
+    field2 phi_A1, phi_A2, phi_A3, phi_A4, phi_A5;
+    if (physics_cfg.enable_mhd)
+    {
+        phi.set_center_field(&A1, phi_A1);
+        phi.set_center_field(&A2, phi_A2);
+        phi.set_center_field(&A3, phi_A3);
+        phi.set_center_field(&A4, phi_A4);
+        phi.set_center_field(&A5, phi_A5);
+    }
 
     // Helper setters
     auto set_dirichlet_zero = [](Variable2D& var, Domain2DUniform* d, LocationType loc) {
@@ -163,6 +180,10 @@ int main(int argc, char* argv[])
             set_neumann_zero(p, d, loc);
         }
     }
+
+    // Outlet pressure: Dirichlet p = 0 (A4 Down, A5 Up)
+    set_dirichlet_zero(p, &A4, LocationType::Down);
+    set_dirichlet_zero(p, &A5, LocationType::Up);
 
     // Inlet profiles for symmetry validation (Poiseuille)
     const double U0 = case_param.U0;
@@ -202,6 +223,8 @@ int main(int argc, char* argv[])
 
     ConcatPoissonSolver2D p_solver(&p);
     ConcatNSSolver2D      ns_solver(&u, &v, &p, &p_solver);
+    if (physics_cfg.enable_mhd)
+        ns_solver.init_mhd(&phi);
 
     ns_solver.p_solver->set_parameter(case_param.gmres_m, case_param.gmres_tol, case_param.gmres_max_iter);
     // Generate timestamp directory

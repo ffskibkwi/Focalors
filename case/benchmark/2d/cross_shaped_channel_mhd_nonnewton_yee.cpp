@@ -62,12 +62,16 @@ int main(int argc, char* argv[])
     PhysicsConfig& physics_cfg = PhysicsConfig::Get();
     physics_cfg.set_Re(case_param.Re);
 
+    const bool enable_mhd = (std::abs(case_param.Ha) > 0.0);
+    physics_cfg.set_enable_mhd(enable_mhd);
+
     // MHD parameters (must be set before MHDModule2D initialization)
     physics_cfg.Ha = case_param.Ha;
     physics_cfg.Bx = case_param.Bx;
     physics_cfg.By = case_param.By;
 
     std::cout << "MHD Parameters:" << std::endl;
+    std::cout << "  enable_mhd: " << enable_mhd << std::endl;
     std::cout << "  Ha: " << case_param.Ha << std::endl;
     std::cout << "  Bx: " << case_param.Bx << std::endl;
     std::cout << "  By: " << case_param.By << std::endl;
@@ -76,26 +80,41 @@ int main(int argc, char* argv[])
     physics_cfg.set_model_type(case_param.model_type);
     if (case_param.model_type == 1) // Power Law
     {
-        // Use dimensionless setter if Re_PL is provided in config (which it is by default in class)
-        // Note: You can add logic to choose between dimensional and dimensionless if needed.
-        // Here we prioritize dimensionless for this task.
         physics_cfg.set_power_law_dimensionless(
-            case_param.Re_PL, case_param.n_index, case_param.mu_min_pl, case_param.mu_max_pl);
+            case_param.k_pl,
+            case_param.n_index,
+            case_param.Re,
+            case_param.mu_ref,
+            case_param.use_dimensionless_viscosity,
+            case_param.mu_min_pl,
+            case_param.mu_max_pl);
 
         std::cout << "Configuring Power Law Model (Dimensionless):" << std::endl;
-        std::cout << "  Re_PL: " << case_param.Re_PL << std::endl;
+        std::cout << "  k_pl: " << case_param.k_pl << std::endl;
+        std::cout << "  Re: " << case_param.Re << std::endl;
+        std::cout << "  mu_ref: " << case_param.mu_ref << std::endl;
+        std::cout << "  use_dimensionless_viscosity: " << case_param.use_dimensionless_viscosity << std::endl;
         std::cout << "  n:     " << case_param.n_index << std::endl;
         std::cout << "  mu_min_pl: " << case_param.mu_min_pl << std::endl;
         std::cout << "  mu_max_pl: " << case_param.mu_max_pl << std::endl;
     }
     else if (case_param.model_type == 2) // Carreau
     {
-        physics_cfg.set_carreau(
-            case_param.mu_0, case_param.mu_inf, case_param.a, case_param.lambda, case_param.n_index);
+        physics_cfg.set_carreau_dimensionless(case_param.mu_0,
+                                              case_param.mu_inf,
+                                              case_param.a,
+                                              case_param.lambda,
+                                              case_param.n_index,
+                                              case_param.Re,
+                                              case_param.mu_ref,
+                                              case_param.use_dimensionless_viscosity);
         std::cout << "Configuring Carreau Model (Dimensionless):" << std::endl;
-        std::cout << "  Re_0:   " << case_param.Re_0 << std::endl;
-        std::cout << "  Re_inf: " << case_param.Re_inf << std::endl;
-        std::cout << "  Wi:     " << case_param.Wi << std::endl;
+        std::cout << "  mu_0:           " << case_param.mu_0 << std::endl;
+        std::cout << "  mu_inf:         " << case_param.mu_inf << std::endl;
+        std::cout << "  lambda:         " << case_param.lambda << std::endl;
+        std::cout << "  Re:             " << case_param.Re << std::endl;
+        std::cout << "  mu_ref:         " << case_param.mu_ref << std::endl;
+        std::cout << "  use_dimensionless_viscosity: " << case_param.use_dimensionless_viscosity << std::endl;
         std::cout << "  a:      " << case_param.a << std::endl;
         std::cout << "  n:      " << case_param.n_index << std::endl;
     }
@@ -163,7 +182,8 @@ int main(int argc, char* argv[])
 
     // Electric potential variable (center type, like pressure p)
     Variable2D phi("phi");
-    phi.set_geometry(geo);
+    if (enable_mhd)
+        phi.set_geometry(geo);
 
     // Non-Newtonian Variable2Ds
     Variable2D mu("mu"), tau_xx("tau_xx"), tau_yy("tau_yy"), tau_xy("tau_xy");
@@ -195,11 +215,14 @@ int main(int argc, char* argv[])
 
     // Electric potential fields (center type)
     field2 phi_A1("phi_A1"), phi_A2("phi_A2"), phi_A3("phi_A3"), phi_A4("phi_A4"), phi_A5("phi_A5");
-    phi.set_center_field(&A1, phi_A1);
-    phi.set_center_field(&A2, phi_A2);
-    phi.set_center_field(&A3, phi_A3);
-    phi.set_center_field(&A4, phi_A4);
-    phi.set_center_field(&A5, phi_A5);
+    if (enable_mhd)
+    {
+        phi.set_center_field(&A1, phi_A1);
+        phi.set_center_field(&A2, phi_A2);
+        phi.set_center_field(&A3, phi_A3);
+        phi.set_center_field(&A4, phi_A4);
+        phi.set_center_field(&A5, phi_A5);
+    }
 
     // Non-Newtonian Fields
     field2 mu_A1("mu_A1"), mu_A2("mu_A2"), mu_A3("mu_A3"), mu_A4("mu_A4"), mu_A5("mu_A5");
@@ -265,36 +288,39 @@ int main(int argc, char* argv[])
     set_dirichlet_zero(p, &A5, LocationType::Up);
 
     // ========== Phi boundary conditions ==========
-    // Default: Neumann (zero gradient) for all physical boundaries (walls)
-    for (auto* d : domains)
+    if (enable_mhd)
     {
-        for (auto loc : dirs)
+        // Default: Neumann (zero gradient) for all physical boundaries (walls)
+        for (auto* d : domains)
         {
-            if (is_adjacented(d, loc))
-                continue; // skip internal connections (Adjacented is set by set_geometry)
-            // Set Neumann BC for walls
-            set_neumann_zero(phi, d, loc);
+            for (auto loc : dirs)
+            {
+                if (is_adjacented(d, loc))
+                    continue; // skip internal connections (Adjacented is set by set_geometry)
+                // Set Neumann BC for walls
+                set_neumann_zero(phi, d, loc);
+            }
         }
+
+        // Inlet Dirichlet: A1 Left, phi = 0
+        phi.set_boundary_type(&A1, LocationType::Left, PDEBoundaryType::Dirichlet);
+        phi.set_boundary_value(&A1, LocationType::Left, 0.0);
+        phi.has_boundary_value_map[&A1][LocationType::Left] = true;
+
+        // Inlet Dirichlet: A3 Right, phi = 0
+        phi.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Dirichlet);
+        phi.set_boundary_value(&A3, LocationType::Right, 0.0);
+        phi.has_boundary_value_map[&A3][LocationType::Right] = true;
+
+        // Outlets Dirichlet: A4 Down, A5 Up, phi = 0
+        phi.set_boundary_type(&A4, LocationType::Down, PDEBoundaryType::Dirichlet);
+        phi.set_boundary_value(&A4, LocationType::Down, 0.0);
+        phi.has_boundary_value_map[&A4][LocationType::Down] = true;
+
+        phi.set_boundary_type(&A5, LocationType::Up, PDEBoundaryType::Dirichlet);
+        phi.set_boundary_value(&A5, LocationType::Up, 0.0);
+        phi.has_boundary_value_map[&A5][LocationType::Up] = true;
     }
-
-    // Inlet Dirichlet: A1 Left, phi = 0
-    phi.set_boundary_type(&A1, LocationType::Left, PDEBoundaryType::Dirichlet);
-    phi.set_boundary_value(&A1, LocationType::Left, 0.0);
-    phi.has_boundary_value_map[&A1][LocationType::Left] = true;
-
-    // Inlet Dirichlet: A3 Right, phi = 0
-    phi.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Dirichlet);
-    phi.set_boundary_value(&A3, LocationType::Right, 0.0);
-    phi.has_boundary_value_map[&A3][LocationType::Right] = true;
-
-    // Outlets Dirichlet: A4 Down, A5 Up, phi = 0
-    phi.set_boundary_type(&A4, LocationType::Down, PDEBoundaryType::Dirichlet);
-    phi.set_boundary_value(&A4, LocationType::Down, 0.0);
-    phi.has_boundary_value_map[&A4][LocationType::Down] = true;
-
-    phi.set_boundary_type(&A5, LocationType::Up, PDEBoundaryType::Dirichlet);
-    phi.set_boundary_value(&A5, LocationType::Up, 0.0);
-    phi.has_boundary_value_map[&A5][LocationType::Up] = true;
 
     // Inlet profiles for symmetry validation (Poiseuille)
     const double U0 = case_param.U0;
@@ -334,13 +360,9 @@ int main(int argc, char* argv[])
 
     ConcatPoissonSolver2D p_solver(&p);
     ConcatNSSolver2D      ns_solver(&u, &v, &p, &p_solver);
-    ns_solver.init_nonnewton(&mu, &tau_xx, &tau_yy, &tau_xy);
+    ns_solver.init_nonnewton(&mu, &tau_xx, &tau_yy, &tau_xy, enable_mhd ? &phi : nullptr);
 
     ns_solver.p_solver->set_parameter(case_param.gmres_m, case_param.gmres_tol, case_param.gmres_max_iter);
-
-    // ========== Initialize MHD module ==========
-    MHDModule2DYee mhd_module(&u, &v);
-    mhd_module.init(&phi); // Pass pre-configured phi variable
 
     // Generate timestamp directory
     std::string nowtime_dir = case_param.root_dir;
@@ -363,13 +385,8 @@ int main(int argc, char* argv[])
 
         {
             Timer step_timer("step_time", TimeRecordType::None, step % 200 == 0);
-            // Non-Newtonian solve
+            // Non-Newtonian solve (MHD is internally handled by ns_solver when enable_mhd=true)
             ns_solver.solve_nonnewton();
-
-            // MHD solve
-            mhd_module.solveElectricPotential();
-            mhd_module.updateCurrentDensity();
-            mhd_module.applyLorentzForce();
         }
 
         // 使用 pv_output_step 控制循环输出
