@@ -97,6 +97,26 @@ int main(int argc, char* argv[])
         std::cout << "  a:      " << case_param.a << std::endl;
         std::cout << "  n:      " << case_param.n_index << std::endl;
     }
+    else if (case_param.model_type == 3) // Casson
+    {
+        physics_cfg.set_casson_dimensionless(case_param.casson_mu,
+                                             case_param.casson_tau0,
+                                             case_param.Re,
+                                             case_param.mu_ref,
+                                             case_param.use_dimensionless_viscosity,
+                                             case_param.mu_min_pl,
+                                             case_param.mu_max_pl);
+        std::cout << "Configuring Casson Model (Dimensionless):" << std::endl;
+        std::cout << "  casson_mu:      " << case_param.casson_mu << std::endl;
+        std::cout << "  casson_tau0:    " << case_param.casson_tau0 << std::endl;
+        std::cout << "  Re:             " << case_param.Re << std::endl;
+        std::cout << "  mu_ref:         " << case_param.mu_ref << std::endl;
+        std::cout << "  use_dimensionless_viscosity: " << case_param.use_dimensionless_viscosity << std::endl;
+    }
+    else
+    {
+        std::cout << "Configuring Newtonian Model." << std::endl;
+    }
 
     // 计算循环输出步数间隔 pv_output_step（如果未指定则使用 num_iterations/10）
     int pv_output_step = case_param.pv_output_step > 0 ? case_param.pv_output_step : time_cfg.num_iterations / 10;

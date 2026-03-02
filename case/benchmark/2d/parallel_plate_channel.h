@@ -14,8 +14,11 @@ class ParallelPlateChannel2DCase : public CaseBase
 public:
     static constexpr double POWERLAW_ETA_C = 0.00604;
     static constexpr double CARREAU_ETA_C  = 0.00596;
+    static constexpr double CASSON_ETA_C   = 0.00514;
     static constexpr double POWERLAW_N      = 0.708;
     static constexpr double CARREAU_N       = 0.3568;
+    static constexpr double CASSON_MU       = 0.00276;
+    static constexpr double CASSON_TAU0     = 0.0108;
 
     ParallelPlateChannel2DCase(int argc, char* argv[])
         : CaseBase(argc, argv)
@@ -49,12 +52,14 @@ public:
         const bool has_n_index = IO::read_number(para_map, "n_index", n_index);
         if (!has_n_index)
         {
-            n_index = (model_type == 2) ? CARREAU_N : POWERLAW_N;
+            n_index = (model_type == 2) ? CARREAU_N : ((model_type == 3) ? 1.0 : POWERLAW_N);
         }
         IO::read_number(para_map, "mu_0", mu_0);
         IO::read_number(para_map, "mu_inf", mu_inf);
         IO::read_number(para_map, "lambda", lambda);
         IO::read_number(para_map, "a", a);
+        IO::read_number(para_map, "casson_mu", casson_mu);
+        IO::read_number(para_map, "casson_tau0", casson_tau0);
 
         // Non-Newtonian parameters actually used by config setters
         IO::read_number(para_map, "k_pl", k_pl);
@@ -62,7 +67,7 @@ public:
         IO::read_number(para_map, "mu_max_pl", mu_max_pl);
         if (!IO::read_number(para_map, "mu_ref", mu_ref))
         {
-            mu_ref = (model_type == 2) ? CARREAU_ETA_C : POWERLAW_ETA_C;
+            mu_ref = (model_type == 2) ? CARREAU_ETA_C : ((model_type == 3) ? CASSON_ETA_C : POWERLAW_ETA_C);
         }
         IO::read_bool(para_map, "use_dimensionless_viscosity", use_dimensionless_viscosity);
 
@@ -92,6 +97,8 @@ public:
             .record("mu_inf", mu_inf)
             .record("lambda", lambda)
             .record("a", a)
+            .record("casson_mu", casson_mu)
+            .record("casson_tau0", casson_tau0)
             .record("k_pl", k_pl)
             .record("mu_min_pl", mu_min_pl)
             .record("mu_max_pl", mu_max_pl)
@@ -125,12 +132,14 @@ public:
     int    gmres_max_iter = 1000;
 
     // Non-Newtonian Model Parameters
-    int    model_type = 1;   // 0: Newtonian, 1: Power Law (default), 2: Carreau
+    int    model_type = 1;   // 0: Newtonian, 1: Power Law (default), 2: Carreau, 3: Casson
     double n_index    = POWERLAW_N; // Power-law index (paper)
     double mu_0       = 0.056;   // Zero-shear viscosity (Carreau, paper)
     double mu_inf     = 0.00345; // Infinite-shear viscosity (Carreau, paper)
     double lambda     = 3.313;   // Relaxation time (Carreau, paper)
     double a          = 2.0; // Carreau model parameter
+    double casson_mu   = CASSON_MU;
+    double casson_tau0 = CASSON_TAU0;
 
     // Non-Newtonian parameters actually used by config setters
     double k_pl      = 0.017;   // Power-law consistency index (paper)

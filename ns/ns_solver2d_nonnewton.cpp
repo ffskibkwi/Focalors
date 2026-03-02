@@ -31,6 +31,16 @@ double calc_viscosity_by_model(double gamma_dot, const PhysicsConfig& physics_cf
         // Enforce limits
         mu_val = std::max(physics_cfg.mu_min, std::min(mu_val, physics_cfg.mu_max));
     }
+    else if (physics_cfg.model_type == 3) // Casson
+    {
+        const double gamma_safe = std::max(gamma_dot, GAMMA_DOT_MIN);
+        const double sqrt_mu    = std::sqrt(std::max(physics_cfg.casson_mu, 0.0));
+        const double sqrt_term  = std::sqrt(std::max(physics_cfg.casson_tau0, 0.0) / gamma_safe);
+        mu_val                  = (sqrt_mu + sqrt_term) * (sqrt_mu + sqrt_term);
+
+        // Enforce limits
+        mu_val = std::max(physics_cfg.mu_min, std::min(mu_val, physics_cfg.mu_max));
+    }
 
     if (physics_cfg.use_dimensionless_viscosity)
     {
