@@ -7,48 +7,47 @@ constexpr double GAMMA_DOT_MIN = 1.0e-4;
 
 namespace
 {
-double calc_viscosity_by_model(double gamma_dot, const PhysicsConfig& physics_cfg)
-{
-    double mu_val = physics_cfg.nu;
-
-    if (physics_cfg.model_type == 1) // Power Law
+    double calc_viscosity_by_model(double gamma_dot, const PhysicsConfig& physics_cfg)
     {
-        if (physics_cfg.n < 1.0)
-            gamma_dot = std::max(gamma_dot, GAMMA_DOT_MIN); // protect against zero when exponent negative
+        double mu_val = physics_cfg.nu;
 
-        mu_val = physics_cfg.k * std::pow(gamma_dot, physics_cfg.n - 1.0);
+        if (physics_cfg.model_type == 1) // Power Law
+        {
+            if (physics_cfg.n < 1.0)
+                gamma_dot = std::max(gamma_dot, GAMMA_DOT_MIN); // protect against zero when exponent negative
 
-        // Enforce limits
-        mu_val = std::max(physics_cfg.mu_min, std::min(mu_val, physics_cfg.mu_max));
+            mu_val = physics_cfg.k * std::pow(gamma_dot, physics_cfg.n - 1.0);
+
+            // Enforce limits
+            mu_val = std::max(physics_cfg.mu_min, std::min(mu_val, physics_cfg.mu_max));
+        }
+        else if (physics_cfg.model_type == 2) // Carreau
+        {
+            mu_val = physics_cfg.mu_inf + (physics_cfg.mu_0 - physics_cfg.mu_inf) *
+                                              std::pow(1.0 + std::pow(physics_cfg.lambda * gamma_dot, physics_cfg.a),
+                                                       (physics_cfg.n - 1.0) / physics_cfg.a);
+
+            // Enforce limits
+            mu_val = std::max(physics_cfg.mu_min, std::min(mu_val, physics_cfg.mu_max));
+        }
+        else if (physics_cfg.model_type == 3) // Casson
+        {
+            const double gamma_safe = std::max(gamma_dot, GAMMA_DOT_MIN);
+            const double sqrt_mu    = std::sqrt(std::max(physics_cfg.casson_mu, 0.0));
+            const double sqrt_term  = std::sqrt(std::max(physics_cfg.casson_tau0, 0.0) / gamma_safe);
+            mu_val                  = (sqrt_mu + sqrt_term) * (sqrt_mu + sqrt_term);
+
+            // Enforce limits
+            mu_val = std::max(physics_cfg.mu_min, std::min(mu_val, physics_cfg.mu_max));
+        }
+
+        if (physics_cfg.use_dimensionless_viscosity)
+        {
+            mu_val *= 1.0 / (physics_cfg.mu_ref * physics_cfg.Re);
+        }
+
+        return mu_val;
     }
-    else if (physics_cfg.model_type == 2) // Carreau
-    {
-        mu_val = physics_cfg.mu_inf +
-                 (physics_cfg.mu_0 - physics_cfg.mu_inf) *
-                     std::pow(1.0 + std::pow(physics_cfg.lambda * gamma_dot, physics_cfg.a),
-                              (physics_cfg.n - 1.0) / physics_cfg.a);
-
-        // Enforce limits
-        mu_val = std::max(physics_cfg.mu_min, std::min(mu_val, physics_cfg.mu_max));
-    }
-    else if (physics_cfg.model_type == 3) // Casson
-    {
-        const double gamma_safe = std::max(gamma_dot, GAMMA_DOT_MIN);
-        const double sqrt_mu    = std::sqrt(std::max(physics_cfg.casson_mu, 0.0));
-        const double sqrt_term  = std::sqrt(std::max(physics_cfg.casson_tau0, 0.0) / gamma_safe);
-        mu_val                  = (sqrt_mu + sqrt_term) * (sqrt_mu + sqrt_term);
-
-        // Enforce limits
-        mu_val = std::max(physics_cfg.mu_min, std::min(mu_val, physics_cfg.mu_max));
-    }
-
-    if (physics_cfg.use_dimensionless_viscosity)
-    {
-        mu_val *= 1.0 / (physics_cfg.mu_ref * physics_cfg.Re);
-    }
-
-    return mu_val;
-}
 } // namespace
 
 void ConcatNSSolver2D::init_nonnewton(Variable2D* in_mu_var,
@@ -85,7 +84,7 @@ void ConcatNSSolver2D::solve_nonnewton()
     // 3. Calculate Stress Tensor (tau) based on velocity and viscosity
     stress_update();
 
-    // 3.1 Update Stress Buffers (tau_xx, tau_yy)
+    // 3.1 YPositivedate Stress Buffers (tau_xx, tau_yy)
     stress_buffer_update();
 
     // 4. Solve Momentum Equation (Predictor Step)
@@ -101,7 +100,7 @@ void ConcatNSSolver2D::solve_nonnewton()
         mhd_module->applyLorentzForce();
     }
 
-    // 5. Update boundary for divu (Prepare for Pressure Projection)
+    // 5. YPositivedate boundary for divu (Prepare for Pressure Projection)
     phys_boundary_update();
     nondiag_shared_boundary_update();
 
@@ -116,14 +115,14 @@ void ConcatNSSolver2D::solve_nonnewton()
         normalize_pressure();
         p_solver->solve();
 
-        // Update Pressure Boundaries
+        // YPositivedate Pressure Boundaries
         pressure_buffer_update();
 
         // Correct Velocity with Pressure Gradient
         add_pressure_gradient();
     }
 
-    // update boundary at last to ensure other solver get right value at boundary
+    // update boundary at last to ensure other solver get xpos value at boundary
     phys_boundary_update();
     nondiag_shared_boundary_update();
     diag_shared_boundary_update();
@@ -144,15 +143,15 @@ void ConcatNSSolver2D::viscosity_update()
         double hx = domain->hx;
         double hy = domain->hy;
 
-        double* u_left_buffer  = u_buffer_map[domain][LocationType::Left];
-        double* u_right_buffer = u_buffer_map[domain][LocationType::Right];
-        double* u_down_buffer  = u_buffer_map[domain][LocationType::Down];
-        double* u_up_buffer    = u_buffer_map[domain][LocationType::Up];
+        double* u_xneg_buffer = u_buffer_map[domain][LocationType::XNegative];
+        double* u_xpos_buffer = u_buffer_map[domain][LocationType::XPositive];
+        double* u_yneg_buffer = u_buffer_map[domain][LocationType::YNegative];
+        double* u_ypos_buffer = u_buffer_map[domain][LocationType::YPositive];
 
-        double* v_left_buffer  = v_buffer_map[domain][LocationType::Left];
-        double* v_right_buffer = v_buffer_map[domain][LocationType::Right];
-        double* v_down_buffer  = v_buffer_map[domain][LocationType::Down];
-        double* v_up_buffer    = v_buffer_map[domain][LocationType::Up];
+        double* v_xneg_buffer = v_buffer_map[domain][LocationType::XNegative];
+        double* v_xpos_buffer = v_buffer_map[domain][LocationType::XPositive];
+        double* v_yneg_buffer = v_buffer_map[domain][LocationType::YNegative];
+        double* v_ypos_buffer = v_buffer_map[domain][LocationType::YPositive];
 
         // Helper to get u at (i, j) handling boundaries
         // u is defined at (i, j+0.5) for i in [0, nx], j in [-1, ny]
@@ -162,11 +161,11 @@ void ConcatNSSolver2D::viscosity_update()
                                        nx,
                                        ny,
                                        u,
-                                       u_left_buffer,
-                                       u_right_buffer,
-                                       u_down_buffer,
-                                       u_up_buffer,
-                                       right_down_corner_value_map[domain]);
+                                       u_xneg_buffer,
+                                       u_xpos_buffer,
+                                       u_yneg_buffer,
+                                       u_ypos_buffer,
+                                       xpos_yneg_corner_value_map[domain]);
         };
 
         // Helper to get v at (i, j) handling boundaries
@@ -177,11 +176,11 @@ void ConcatNSSolver2D::viscosity_update()
                                        nx,
                                        ny,
                                        v,
-                                       v_left_buffer,
-                                       v_right_buffer,
-                                       v_down_buffer,
-                                       v_up_buffer,
-                                       left_up_corner_value_map[domain]);
+                                       v_xneg_buffer,
+                                       v_xpos_buffer,
+                                       v_yneg_buffer,
+                                       v_ypos_buffer,
+                                       xneg_ypos_corner_value_map[domain]);
         };
 
         // Helper lambda for du/dx at (i, j_row) where u is defined
@@ -242,7 +241,7 @@ void ConcatNSSolver2D::viscosity_update()
                 // gamma_dot = sqrt( 2*(du_dx^2 + dv_dy^2) + (du_dy + dv_dx)^2 )
                 double gamma_dot = std::sqrt(2.0 * (du_dx * du_dx + dv_dy * dv_dy) + (du_dy + dv_dx) * (du_dy + dv_dx));
 
-                // 4. Update Viscosity
+                // 4. YPositivedate Viscosity
                 double mu_val = calc_viscosity_by_model(gamma_dot, physics_cfg);
 
                 mu(i, j) = mu_val;
@@ -265,14 +264,14 @@ void ConcatNSSolver2D::stress_buffer_update()
         double hx = domain->hx;
         double hy = domain->hy;
 
-        double* u_left_buffer = u_buffer_map[domain][LocationType::Left];
-        double* v_left_buffer = v_buffer_map[domain][LocationType::Left];
+        double* u_xneg_buffer = u_buffer_map[domain][LocationType::XNegative];
+        double* v_xneg_buffer = v_buffer_map[domain][LocationType::XNegative];
 
-        double* u_down_buffer = u_buffer_map[domain][LocationType::Down];
-        double* v_down_buffer = v_buffer_map[domain][LocationType::Down];
+        double* u_yneg_buffer = u_buffer_map[domain][LocationType::YNegative];
+        double* v_yneg_buffer = v_buffer_map[domain][LocationType::YNegative];
 
-        double* tau_xx_left_buffer = tau_xx_buffer_map[domain][LocationType::Left];
-        double* tau_yy_down_buffer = tau_yy_buffer_map[domain][LocationType::Down];
+        double* tau_xx_xneg_buffer = tau_xx_buffer_map[domain][LocationType::XNegative];
+        double* tau_yy_yneg_buffer = tau_yy_buffer_map[domain][LocationType::YNegative];
 
         // Helper to get u at (i, j) handling boundaries
         auto get_u = [&](int i_idx, int j_idx) {
@@ -281,11 +280,11 @@ void ConcatNSSolver2D::stress_buffer_update()
                                        nx,
                                        ny,
                                        u,
-                                       u_left_buffer,
-                                       u_buffer_map[domain][LocationType::Right],
-                                       u_down_buffer,
-                                       u_buffer_map[domain][LocationType::Up],
-                                       right_down_corner_value_map[domain]);
+                                       u_xneg_buffer,
+                                       u_buffer_map[domain][LocationType::XPositive],
+                                       u_yneg_buffer,
+                                       u_buffer_map[domain][LocationType::YPositive],
+                                       xpos_yneg_corner_value_map[domain]);
         };
 
         // Helper to get v at (i, j) handling boundaries
@@ -295,32 +294,32 @@ void ConcatNSSolver2D::stress_buffer_update()
                                        nx,
                                        ny,
                                        v,
-                                       v_left_buffer,
-                                       v_buffer_map[domain][LocationType::Right],
-                                       v_down_buffer,
-                                       v_buffer_map[domain][LocationType::Up],
-                                       left_up_corner_value_map[domain]);
+                                       v_xneg_buffer,
+                                       v_buffer_map[domain][LocationType::XPositive],
+                                       v_yneg_buffer,
+                                       v_buffer_map[domain][LocationType::YPositive],
+                                       xneg_ypos_corner_value_map[domain]);
         };
 
-        // 1. Update tau_xx left buffer (at ghost cell -1, j)
-        // Left Boundary (i=0 needs tau_xx(-1, j))
+        // 1. YPositivedate tau_xx xneg buffer (at ghost cell -1, j)
+        // XNegative Boundary (i=0 needs tau_xx(-1, j))
         for (int j = 0; j < ny; j++)
         {
             // Calculate tau_xx at ghost cell (-1, j)
             // 1. du/dx at (-0.5, j+0.5)
-            // u(0, j) is at x=0, u_left_buffer[j] is at x=-1
-            double du_dx_ghost = (u(0, j) - u_left_buffer[j]) / hx;
+            // u(0, j) is at x=0, u_xneg_buffer[j] is at x=-1
+            double du_dx_ghost = (u(0, j) - u_xneg_buffer[j]) / hx;
 
             // 2. dv/dy at (-0.5, j+0.5)
-            // v_left_buffer is at x=-0.5. Need dy.
-            // v_left_buffer[j] is at y=j, v_left_buffer[j+1] is at y=j+1
+            // v_xneg_buffer is at x=-0.5. Need dy.
+            // v_xneg_buffer[j] is at y=j, v_xneg_buffer[j+1] is at y=j+1
             // Use get_v to handle corner cases safely
-            double v_left_j    = get_v(-1, j);
-            double v_left_jp1  = get_v(-1, j + 1);
-            double dv_dy_ghost = (v_left_jp1 - v_left_j) / hy;
+            double v_xneg_j    = get_v(-1, j);
+            double v_xneg_jp1  = get_v(-1, j + 1);
+            double dv_dy_ghost = (v_xneg_jp1 - v_xneg_j) / hy;
 
             // 3. du/dy at (-0.5, j+0.5)
-            // Average of du/dy at x=-1 (u_left_buffer) and x=0 (u(0, j))
+            // Average of du/dy at x=-1 (u_xneg_buffer) and x=0 (u(0, j))
             auto get_du_dy_col = [&](int col_idx) {
                 if (j == 0)
                 {
@@ -343,13 +342,13 @@ void ConcatNSSolver2D::stress_buffer_update()
                 }
             };
 
-            double du_dy_left  = get_du_dy_col(-1);
+            double du_dy_xneg  = get_du_dy_col(-1);
             double du_dy_0     = get_du_dy_col(0);
-            double du_dy_ghost = 0.5 * (du_dy_left + du_dy_0);
+            double du_dy_ghost = 0.5 * (du_dy_xneg + du_dy_0);
 
             // 4. dv/dx at (-0.5, j+0.5)
             // Need dv/dx at x=-0.5.
-            // Points: x=-0.5 (v_left), x=0.5 (v0), x=1.5 (v1)
+            // Points: x=-0.5 (v_xneg), x=0.5 (v0), x=1.5 (v1)
             auto get_dv_dx_node = [&](int k) {
                 double v_l = get_v(-1, k);
                 double v_0 = get_v(0, k);
@@ -372,27 +371,27 @@ void ConcatNSSolver2D::stress_buffer_update()
             // 6. Viscosity
             double mu_val = calc_viscosity_by_model(gamma_dot, physics_cfg);
 
-            tau_xx_left_buffer[j] = 2.0 * mu_val * du_dx_ghost;
+            tau_xx_xneg_buffer[j] = 2.0 * mu_val * du_dx_ghost;
         }
 
-        // Down Boundary (j=0 needs tau_yy(i, -1))
+        // YNegative Boundary (j=0 needs tau_yy(i, -1))
         for (int i = 0; i < nx; i++)
         {
             // Calculate tau_yy at ghost cell (i, -1)
             // 1. dv/dy at (i+0.5, -0.5)
-            // v(i, 0) is at y=0, v_down_buffer[i] is at y=-1
-            double dv_dy_ghost = (v(i, 0) - v_down_buffer[i]) / hy;
+            // v(i, 0) is at y=0, v_yneg_buffer[i] is at y=-1
+            double dv_dy_ghost = (v(i, 0) - v_yneg_buffer[i]) / hy;
 
             // 2. du/dx at (i+0.5, -0.5)
-            // u_down_buffer is at y=-0.5. Need dx.
-            // u_down_buffer[i] is at x=i, u_down_buffer[i+1] is at x=i+1
+            // u_yneg_buffer is at y=-0.5. Need dx.
+            // u_yneg_buffer[i] is at x=i, u_yneg_buffer[i+1] is at x=i+1
             // Use get_u to handle corner cases safely
-            double u_down_i    = get_u(i, -1);
-            double u_down_ip1  = get_u(i + 1, -1);
-            double du_dx_ghost = (u_down_ip1 - u_down_i) / hx;
+            double u_yneg_i    = get_u(i, -1);
+            double u_yneg_ip1  = get_u(i + 1, -1);
+            double du_dx_ghost = (u_yneg_ip1 - u_yneg_i) / hx;
 
             // 3. dv/dx at (i+0.5, -0.5)
-            // Average of dv/dx at y=-1 (v_down_buffer) and y=0 (v(i, 0))
+            // Average of dv/dx at y=-1 (v_yneg_buffer) and y=0 (v(i, 0))
             auto get_dv_dx_row = [&](int row_idx) {
                 if (i == 0)
                 {
@@ -415,13 +414,13 @@ void ConcatNSSolver2D::stress_buffer_update()
                 }
             };
 
-            double dv_dx_down  = get_dv_dx_row(-1);
+            double dv_dx_yneg  = get_dv_dx_row(-1);
             double dv_dx_0     = get_dv_dx_row(0);
-            double dv_dx_ghost = 0.5 * (dv_dx_down + dv_dx_0);
+            double dv_dx_ghost = 0.5 * (dv_dx_yneg + dv_dx_0);
 
             // 4. du/dy at (i+0.5, -0.5)
             // Need du/dy at y=-0.5.
-            // Points: y=-0.5 (u_down), y=0.5 (u0), y=1.5 (u1)
+            // Points: y=-0.5 (u_yneg), y=0.5 (u0), y=1.5 (u1)
             auto get_du_dy_node = [&](int k) {
                 double u_d = get_u(k, -1);
                 double u_0 = get_u(k, 0);
@@ -444,7 +443,7 @@ void ConcatNSSolver2D::stress_buffer_update()
             // 6. Viscosity
             double mu_val = calc_viscosity_by_model(gamma_dot, physics_cfg);
 
-            tau_yy_down_buffer[i] = 2.0 * mu_val * dv_dy_ghost;
+            tau_yy_yneg_buffer[i] = 2.0 * mu_val * dv_dy_ghost;
         }
     }
 }
@@ -465,15 +464,15 @@ void ConcatNSSolver2D::stress_update()
         double hx = domain->hx;
         double hy = domain->hy;
 
-        double* u_left_buffer  = u_buffer_map[domain][LocationType::Left];
-        double* u_right_buffer = u_buffer_map[domain][LocationType::Right];
-        double* u_down_buffer  = u_buffer_map[domain][LocationType::Down];
-        double* u_up_buffer    = u_buffer_map[domain][LocationType::Up];
+        double* u_xneg_buffer = u_buffer_map[domain][LocationType::XNegative];
+        double* u_xpos_buffer = u_buffer_map[domain][LocationType::XPositive];
+        double* u_yneg_buffer = u_buffer_map[domain][LocationType::YNegative];
+        double* u_ypos_buffer = u_buffer_map[domain][LocationType::YPositive];
 
-        double* v_left_buffer  = v_buffer_map[domain][LocationType::Left];
-        double* v_right_buffer = v_buffer_map[domain][LocationType::Right];
-        double* v_down_buffer  = v_buffer_map[domain][LocationType::Down];
-        double* v_up_buffer    = v_buffer_map[domain][LocationType::Up];
+        double* v_xneg_buffer = v_buffer_map[domain][LocationType::XNegative];
+        double* v_xpos_buffer = v_buffer_map[domain][LocationType::XPositive];
+        double* v_yneg_buffer = v_buffer_map[domain][LocationType::YNegative];
+        double* v_ypos_buffer = v_buffer_map[domain][LocationType::YPositive];
 
         // Helper to get u at (i, j) handling boundaries for tau_xy calculation
         auto get_u = [&](int i, int j) -> double {
@@ -482,11 +481,11 @@ void ConcatNSSolver2D::stress_update()
                                        nx,
                                        ny,
                                        u,
-                                       u_left_buffer,
-                                       u_right_buffer,
-                                       u_down_buffer,
-                                       u_up_buffer,
-                                       right_down_corner_value_map[domain]);
+                                       u_xneg_buffer,
+                                       u_xpos_buffer,
+                                       u_yneg_buffer,
+                                       u_ypos_buffer,
+                                       xpos_yneg_corner_value_map[domain]);
         };
 
         // Helper to get v at (i, j) handling boundaries for tau_xy calculation
@@ -496,11 +495,11 @@ void ConcatNSSolver2D::stress_update()
                                        nx,
                                        ny,
                                        v,
-                                       v_left_buffer,
-                                       v_right_buffer,
-                                       v_down_buffer,
-                                       v_up_buffer,
-                                       left_up_corner_value_map[domain]);
+                                       v_xneg_buffer,
+                                       v_xpos_buffer,
+                                       v_yneg_buffer,
+                                       v_ypos_buffer,
+                                       xneg_ypos_corner_value_map[domain]);
         };
 
         // 1. Calculate Normal Stresses (tau_xx, tau_yy) at Centers
@@ -588,12 +587,12 @@ void ConcatNSSolver2D::euler_conv_diff_inner_nonnewton()
 
                 // Non-Newtonian Diffusion: div(tau)
                 // For u-momentum: d(tau_xx)/dx + d(tau_xy)/dy
-                // u(i, j) is at left face of cell (i, j)
+                // u(i, j) is at xneg face of cell (i, j)
                 // tau_xx is at center. d(tau_xx)/dx approx (tau_xx(i, j) - tau_xx(i-1, j)) / hx
                 // tau_xy is at node. d(tau_xy)/dy approx (tau_xy(i, j+1) - tau_xy(i, j)) / hy
-                // Note: tau_xy(i, j) is at node (i, j) which is bottom-left of cell (i, j)
-                //       tau_xy(i, j+1) is at node (i, j+1) which is top-left of cell (i, j)
-                //       So this matches the location of u(i, j) which is left face center.
+                // Note: tau_xy(i, j) is at node (i, j) which is yneg-xneg of cell (i, j)
+                //       tau_xy(i, j+1) is at node (i, j+1) which is ypos-xneg of cell (i, j)
+                //       So this matches the location of u(i, j) which is xneg face center.
 
                 double diff_x = (tau_xx(i, j) - tau_xx(i - 1, j)) / hx;
                 double diff_y = (tau_xy(i, j + 1) - tau_xy(i, j)) / hy;
@@ -617,12 +616,12 @@ void ConcatNSSolver2D::euler_conv_diff_inner_nonnewton()
 
                 // Non-Newtonian Diffusion: div(tau)
                 // For v-momentum: d(tau_xy)/dx + d(tau_yy)/dy
-                // v(i, j) is at bottom face of cell (i, j)
+                // v(i, j) is at yneg face of cell (i, j)
                 // tau_xy is at node. d(tau_xy)/dx approx (tau_xy(i+1, j) - tau_xy(i, j)) / hx
                 // tau_yy is at center. d(tau_yy)/dy approx (tau_yy(i, j) - tau_yy(i, j-1)) / hy
-                // Note: tau_xy(i, j) is at node (i, j) which is bottom-left of cell (i, j)
-                //       tau_xy(i+1, j) is at node (i+1, j) which is bottom-right of cell (i, j)
-                //       So this matches the location of v(i, j) which is bottom face center.
+                // Note: tau_xy(i, j) is at node (i, j) which is yneg-xneg of cell (i, j)
+                //       tau_xy(i+1, j) is at node (i+1, j) which is yneg-xpos of cell (i, j)
+                //       So this matches the location of v(i, j) which is yneg face center.
 
                 double diff_x = (tau_xy(i + 1, j) - tau_xy(i, j)) / hx;
                 double diff_y = (tau_yy(i, j) - tau_yy(i, j - 1)) / hy;
@@ -649,34 +648,34 @@ void ConcatNSSolver2D::euler_conv_diff_outer_nonnewton()
         double hx = domain->hx;
         double hy = domain->hy;
 
-        double* v_left_buffer  = v_buffer_map[domain][LocationType::Left];
-        double* v_right_buffer = v_buffer_map[domain][LocationType::Right];
-        double* v_down_buffer  = v_buffer_map[domain][LocationType::Down];
-        double* v_up_buffer    = v_buffer_map[domain][LocationType::Up];
+        double* v_xneg_buffer = v_buffer_map[domain][LocationType::XNegative];
+        double* v_xpos_buffer = v_buffer_map[domain][LocationType::XPositive];
+        double* v_yneg_buffer = v_buffer_map[domain][LocationType::YNegative];
+        double* v_ypos_buffer = v_buffer_map[domain][LocationType::YPositive];
 
-        double* u_left_buffer  = u_buffer_map[domain][LocationType::Left];
-        double* u_right_buffer = u_buffer_map[domain][LocationType::Right];
-        double* u_down_buffer  = u_buffer_map[domain][LocationType::Down];
-        double* u_up_buffer    = u_buffer_map[domain][LocationType::Up];
+        double* u_xneg_buffer = u_buffer_map[domain][LocationType::XNegative];
+        double* u_xpos_buffer = u_buffer_map[domain][LocationType::XPositive];
+        double* u_yneg_buffer = u_buffer_map[domain][LocationType::YNegative];
+        double* u_ypos_buffer = u_buffer_map[domain][LocationType::YPositive];
 
         int nx = domain->get_nx();
         int ny = domain->get_ny();
 
         // TODO FIX cal tau at boundary issue
         auto bound_cal_u = [&](int i, int j) {
-            double u_left  = i == 0 ? u_left_buffer[j] : u(i - 1, j);
-            double u_right = i == nx - 1 ? u_right_buffer[j] : u(i + 1, j);
-            double u_down  = j == 0 ? u_down_buffer[i] : u(i, j - 1);
-            double u_up    = j == ny - 1 ? u_up_buffer[i] : u(i, j + 1);
+            double u_xneg = i == 0 ? u_xneg_buffer[j] : u(i - 1, j);
+            double u_xpos = i == nx - 1 ? u_xpos_buffer[j] : u(i + 1, j);
+            double u_yneg = j == 0 ? u_yneg_buffer[i] : u(i, j - 1);
+            double u_ypos = j == ny - 1 ? u_ypos_buffer[i] : u(i, j + 1);
 
-            double v_left = i == 0 ? v_left_buffer[j] : v(i - 1, j);
-            double v_up   = j == ny - 1 ? v_up_buffer[i] : v(i, j + 1);
+            double v_xneg = i == 0 ? v_xneg_buffer[j] : v(i - 1, j);
+            double v_ypos = j == ny - 1 ? v_ypos_buffer[i] : v(i, j + 1);
 
-            double v_left_up = i == 0 ? (j == ny - 1 ? left_up_corner_value_map[domain] : v_left_buffer[j + 1]) :
-                                        (j == ny - 1 ? v_up_buffer[i - 1] : v(i - 1, j + 1));
+            double v_xneg_ypos = i == 0 ? (j == ny - 1 ? xneg_ypos_corner_value_map[domain] : v_xneg_buffer[j + 1]) :
+                                          (j == ny - 1 ? v_ypos_buffer[i - 1] : v(i - 1, j + 1));
 
-            double u_conv_x = u_right * (u_right + 2.0 * u(i, j)) - u_left * (u_left + 2.0 * u(i, j));
-            double u_conv_y = (u(i, j) + u_up) * (v_left_up + v_up) - (u_down + u(i, j)) * (v_left + v(i, j));
+            double u_conv_x = u_xpos * (u_xpos + 2.0 * u(i, j)) - u_xneg * (u_xneg + 2.0 * u(i, j));
+            double u_conv_y = (u(i, j) + u_ypos) * (v_xneg_ypos + v_ypos) - (u_yneg + u(i, j)) * (v_xneg + v(i, j));
 
             // Non-Newtonian Diffusion
             double diff_x, diff_y;
@@ -684,7 +683,7 @@ void ConcatNSSolver2D::euler_conv_diff_outer_nonnewton()
             // diff_x = (tau_xx(i, j) - tau_xx(i-1, j)) / hx
             // If i=0, tau_xx(-1, j) is needed.
             double t_xx_curr = tau_xx(i, j);
-            double t_xx_prev = (i == 0) ? tau_xx_buffer_map[domain][LocationType::Left][j] : tau_xx(i - 1, j);
+            double t_xx_prev = (i == 0) ? tau_xx_buffer_map[domain][LocationType::XNegative][j] : tau_xx(i - 1, j);
 
             diff_x = (t_xx_curr - t_xx_prev) / hx;
 
@@ -698,19 +697,19 @@ void ConcatNSSolver2D::euler_conv_diff_outer_nonnewton()
         };
 
         auto bound_cal_v = [&](int i, int j) {
-            double v_left  = i == 0 ? v_left_buffer[j] : v(i - 1, j);
-            double v_right = i == nx - 1 ? v_right_buffer[j] : v(i + 1, j);
-            double v_down  = j == 0 ? v_down_buffer[i] : v(i, j - 1);
-            double v_up    = j == ny - 1 ? v_up_buffer[i] : v(i, j + 1);
+            double v_xneg = i == 0 ? v_xneg_buffer[j] : v(i - 1, j);
+            double v_xpos = i == nx - 1 ? v_xpos_buffer[j] : v(i + 1, j);
+            double v_yneg = j == 0 ? v_yneg_buffer[i] : v(i, j - 1);
+            double v_ypos = j == ny - 1 ? v_ypos_buffer[i] : v(i, j + 1);
 
-            double u_right = i == nx - 1 ? u_right_buffer[j] : u(i + 1, j);
-            double u_down  = j == 0 ? u_down_buffer[i] : u(i, j - 1);
+            double u_xpos = i == nx - 1 ? u_xpos_buffer[j] : u(i + 1, j);
+            double u_yneg = j == 0 ? u_yneg_buffer[i] : u(i, j - 1);
 
-            double u_right_down = j == 0 ? (i == nx - 1 ? right_down_corner_value_map[domain] : u_down_buffer[i + 1]) :
-                                           (i == nx - 1 ? u_right_buffer[j - 1] : u(i + 1, j - 1));
+            double u_xpos_yneg = j == 0 ? (i == nx - 1 ? xpos_yneg_corner_value_map[domain] : u_yneg_buffer[i + 1]) :
+                                          (i == nx - 1 ? u_xpos_buffer[j - 1] : u(i + 1, j - 1));
 
-            double v_conv_x = (v(i, j) + v_right) * (u_right_down + u_right) - (v_left + v(i, j)) * (u_down + u(i, j));
-            double v_conv_y = v_up * (v_up + 2.0 * v(i, j)) - v_down * (v_down + 2.0 * v(i, j));
+            double v_conv_x = (v(i, j) + v_xpos) * (u_xpos_yneg + u_xpos) - (v_xneg + v(i, j)) * (u_yneg + u(i, j));
+            double v_conv_y = v_ypos * (v_ypos + 2.0 * v(i, j)) - v_yneg * (v_yneg + 2.0 * v(i, j));
 
             // Non-Newtonian Diffusion
             double diff_x, diff_y;
@@ -722,7 +721,7 @@ void ConcatNSSolver2D::euler_conv_diff_outer_nonnewton()
             // diff_y = (tau_yy(i, j) - tau_yy(i, j-1)) / hy
             // If j=0, tau_yy(i, -1) is needed.
             double t_yy_curr = tau_yy(i, j);
-            double t_yy_prev = (j == 0) ? tau_yy_buffer_map[domain][LocationType::Down][i] : tau_yy(i, j - 1);
+            double t_yy_prev = (j == 0) ? tau_yy_buffer_map[domain][LocationType::YNegative][i] : tau_yy(i, j - 1);
             diff_y           = (t_yy_curr - t_yy_prev) / hy;
 
             double diff = diff_x + diff_y;
@@ -730,30 +729,30 @@ void ConcatNSSolver2D::euler_conv_diff_outer_nonnewton()
             v_temp(i, j) = v(i, j) - dt * (0.25 / hx * v_conv_x + 0.25 / hy * v_conv_y - diff);
         };
 
-        // Left
+        // XNegative
         for (int j = 0; j < ny; j++)
         {
-            if (u_var->boundary_type_map[domain][LocationType::Left] == PDEBoundaryType::Adjacented)
+            if (u_var->boundary_type_map[domain][LocationType::XNegative] == PDEBoundaryType::Adjacented)
                 bound_cal_u(0, j);
             bound_cal_v(0, j);
         }
 
-        // Right
+        // XPositive
         for (int j = 0; j < ny; j++)
         {
             bound_cal_u(nx - 1, j);
             bound_cal_v(nx - 1, j);
         }
 
-        // Down
+        // YNegative
         for (int i = 0; i < nx; i++)
         {
             bound_cal_u(i, 0);
-            if (v_var->boundary_type_map[domain][LocationType::Down] == PDEBoundaryType::Adjacented)
+            if (v_var->boundary_type_map[domain][LocationType::YNegative] == PDEBoundaryType::Adjacented)
                 bound_cal_v(i, 0);
         }
 
-        // Up
+        // YPositive
         for (int i = 0; i < nx; i++)
         {
             bound_cal_u(i, ny - 1);

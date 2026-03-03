@@ -10,8 +10,8 @@ ConcatNSSolver2D::ConcatNSSolver2D(Variable2D*            in_u_var,
     , v_var(in_v_var)
     , p_var(in_p_var)
     , p_solver(in_p_solver)
-    , left_up_corner_value_map(v_var->left_up_corner_value_map)
-    , right_down_corner_value_map(u_var->right_down_corner_value_map)
+    , xneg_ypos_corner_value_map(v_var->xneg_ypos_corner_value_map)
+    , xpos_yneg_corner_value_map(u_var->xpos_yneg_corner_value_map)
 {
     TimeAdvancingConfig& time_cfg    = TimeAdvancingConfig::Get();
     PhysicsConfig&       physics_cfg = PhysicsConfig::Get();
@@ -55,7 +55,6 @@ ConcatNSSolver2D::ConcatNSSolver2D(Variable2D*            in_u_var,
     phys_boundary_update();
     nondiag_shared_boundary_update();
     diag_shared_boundary_update();
-
 }
 
 void ConcatNSSolver2D::init_mhd(Variable2D* in_phi_var)
@@ -117,7 +116,7 @@ void ConcatNSSolver2D::solve()
         add_pressure_gradient();
     }
 
-    // update boundary at last to ensure other solver get right value at boundary
+    // update boundary at last to ensure other solver get xpos value at boundary
     phys_boundary_update();
     nondiag_shared_boundary_update();
     diag_shared_boundary_update();
@@ -187,81 +186,81 @@ void ConcatNSSolver2D::euler_conv_diff_outer()
         double hx = domain->hx;
         double hy = domain->hy;
 
-        double* v_left_buffer  = v_buffer_map[domain][LocationType::Left];
-        double* v_right_buffer = v_buffer_map[domain][LocationType::Right];
-        double* v_down_buffer  = v_buffer_map[domain][LocationType::Down];
-        double* v_up_buffer    = v_buffer_map[domain][LocationType::Up];
+        double* v_xneg_buffer = v_buffer_map[domain][LocationType::XNegative];
+        double* v_xpos_buffer = v_buffer_map[domain][LocationType::XPositive];
+        double* v_yneg_buffer = v_buffer_map[domain][LocationType::YNegative];
+        double* v_ypos_buffer = v_buffer_map[domain][LocationType::YPositive];
 
-        double* u_left_buffer  = u_buffer_map[domain][LocationType::Left];
-        double* u_right_buffer = u_buffer_map[domain][LocationType::Right];
-        double* u_down_buffer  = u_buffer_map[domain][LocationType::Down];
-        double* u_up_buffer    = u_buffer_map[domain][LocationType::Up];
+        double* u_xneg_buffer = u_buffer_map[domain][LocationType::XNegative];
+        double* u_xpos_buffer = u_buffer_map[domain][LocationType::XPositive];
+        double* u_yneg_buffer = u_buffer_map[domain][LocationType::YNegative];
+        double* u_ypos_buffer = u_buffer_map[domain][LocationType::YPositive];
 
         int nx = domain->get_nx();
         int ny = domain->get_ny();
 
         auto bound_cal_u = [&](int i, int j) {
-            double u_left  = i == 0 ? u_left_buffer[j] : u(i - 1, j);
-            double u_right = i == nx - 1 ? u_right_buffer[j] : u(i + 1, j);
-            double u_down  = j == 0 ? u_down_buffer[i] : u(i, j - 1);
-            double u_up    = j == ny - 1 ? u_up_buffer[i] : u(i, j + 1);
+            double u_xneg = i == 0 ? u_xneg_buffer[j] : u(i - 1, j);
+            double u_xpos = i == nx - 1 ? u_xpos_buffer[j] : u(i + 1, j);
+            double u_yneg = j == 0 ? u_yneg_buffer[i] : u(i, j - 1);
+            double u_ypos = j == ny - 1 ? u_ypos_buffer[i] : u(i, j + 1);
 
-            double v_left = i == 0 ? v_left_buffer[j] : v(i - 1, j);
-            double v_up   = j == ny - 1 ? v_up_buffer[i] : v(i, j + 1);
+            double v_xneg = i == 0 ? v_xneg_buffer[j] : v(i - 1, j);
+            double v_ypos = j == ny - 1 ? v_ypos_buffer[i] : v(i, j + 1);
 
-            double v_left_up = i == 0 ? (j == ny - 1 ? left_up_corner_value_map[domain] : v_left_buffer[j + 1]) :
-                                        (j == ny - 1 ? v_up_buffer[i - 1] : v(i - 1, j + 1));
+            double v_xneg_ypos = i == 0 ? (j == ny - 1 ? xneg_ypos_corner_value_map[domain] : v_xneg_buffer[j + 1]) :
+                                          (j == ny - 1 ? v_ypos_buffer[i - 1] : v(i - 1, j + 1));
 
-            double u_conv_x = u_right * (u_right + 2.0 * u(i, j)) - u_left * (u_left + 2.0 * u(i, j));
-            double u_conv_y = (u(i, j) + u_up) * (v_left_up + v_up) - (u_down + u(i, j)) * (v_left + v(i, j));
-            double u_diff   = (u_right + u_left - 2.0 * u(i, j)) / hx / hx + (u_up + u_down - 2.0 * u(i, j)) / hy / hy;
+            double u_conv_x = u_xpos * (u_xpos + 2.0 * u(i, j)) - u_xneg * (u_xneg + 2.0 * u(i, j));
+            double u_conv_y = (u(i, j) + u_ypos) * (v_xneg_ypos + v_ypos) - (u_yneg + u(i, j)) * (v_xneg + v(i, j));
+            double u_diff   = (u_xpos + u_xneg - 2.0 * u(i, j)) / hx / hx + (u_ypos + u_yneg - 2.0 * u(i, j)) / hy / hy;
 
             u_temp(i, j) = u(i, j) - dt * (0.25 / hx * u_conv_x + 0.25 / hy * u_conv_y - nu * u_diff);
         };
 
         auto bound_cal_v = [&](int i, int j) {
-            double v_left  = i == 0 ? v_left_buffer[j] : v(i - 1, j);
-            double v_right = i == nx - 1 ? v_right_buffer[j] : v(i + 1, j);
-            double v_down  = j == 0 ? v_down_buffer[i] : v(i, j - 1);
-            double v_up    = j == ny - 1 ? v_up_buffer[i] : v(i, j + 1);
+            double v_xneg = i == 0 ? v_xneg_buffer[j] : v(i - 1, j);
+            double v_xpos = i == nx - 1 ? v_xpos_buffer[j] : v(i + 1, j);
+            double v_yneg = j == 0 ? v_yneg_buffer[i] : v(i, j - 1);
+            double v_ypos = j == ny - 1 ? v_ypos_buffer[i] : v(i, j + 1);
 
-            double u_right = i == nx - 1 ? u_right_buffer[j] : u(i + 1, j);
-            double u_down  = j == 0 ? u_down_buffer[i] : u(i, j - 1);
+            double u_xpos = i == nx - 1 ? u_xpos_buffer[j] : u(i + 1, j);
+            double u_yneg = j == 0 ? u_yneg_buffer[i] : u(i, j - 1);
 
-            double u_right_down = j == 0 ? (i == nx - 1 ? right_down_corner_value_map[domain] : u_down_buffer[i + 1]) :
-                                           (i == nx - 1 ? u_right_buffer[j - 1] : u(i + 1, j - 1));
+            double u_xpos_yneg = j == 0 ? (i == nx - 1 ? xpos_yneg_corner_value_map[domain] : u_yneg_buffer[i + 1]) :
+                                          (i == nx - 1 ? u_xpos_buffer[j - 1] : u(i + 1, j - 1));
 
-            double v_conv_x = (v(i, j) + v_right) * (u_right_down + u_right) - (v_left + v(i, j)) * (u_down + u(i, j));
-            double v_conv_y = v_up * (v_up + 2.0 * v(i, j)) - v_down * (v_down + 2.0 * v(i, j));
-            double v_diff   = (v_right + v_left - 2.0 * v(i, j)) / hx / hx + (v_up + v_down - 2.0 * v(i, j)) / hy / hy;
+            double v_conv_x = (v(i, j) + v_xpos) * (u_xpos_yneg + u_xpos) - (v_xneg + v(i, j)) * (u_yneg + u(i, j));
+            double v_conv_y = v_ypos * (v_ypos + 2.0 * v(i, j)) - v_yneg * (v_yneg + 2.0 * v(i, j));
+            double v_diff   = (v_xpos + v_xneg - 2.0 * v(i, j)) / hx / hx + (v_ypos + v_yneg - 2.0 * v(i, j)) / hy / hy;
 
             v_temp(i, j) = v(i, j) - dt * (0.25 / hx * v_conv_x + 0.25 / hy * v_conv_y - nu * v_diff);
         };
 
-        // Left
+        // XNegative
         for (int j = 0; j < ny; j++)
         {
-            if (u_var->boundary_type_map[domain][LocationType::Left] == PDEBoundaryType::Adjacented)
+            if (u_var->boundary_type_map[domain][LocationType::XNegative] == PDEBoundaryType::Adjacented)
                 bound_cal_u(0, j);
             bound_cal_v(0, j);
         }
 
-        // Right
+        // XPositive
         for (int j = 0; j < ny; j++)
         {
             bound_cal_u(nx - 1, j);
             bound_cal_v(nx - 1, j);
         }
 
-        // Down
+        // YNegative
         for (int i = 0; i < nx; i++)
         {
             bound_cal_u(i, 0);
-            if (v_var->boundary_type_map[domain][LocationType::Down] == PDEBoundaryType::Adjacented)
+            if (v_var->boundary_type_map[domain][LocationType::YNegative] == PDEBoundaryType::Adjacented)
                 bound_cal_v(i, 0);
         }
 
-        // Up
+        // YPositive
         for (int i = 0; i < nx; i++)
         {
             bound_cal_u(i, ny - 1);

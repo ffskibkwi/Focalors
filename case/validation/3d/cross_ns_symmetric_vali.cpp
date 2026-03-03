@@ -144,14 +144,14 @@ int main(int argc, char* argv[])
     a5.set_ny(3);
     a5.set_ly(1.0);
 
-    geo.connect(&a2, LocationType::Left, &a1);
-    geo.connect(&a2, LocationType::Right, &a3);
-    geo.connect(&a2, LocationType::Front, &a4);
-    geo.connect(&a2, LocationType::Back, &a5);
+    geo.connect(&a2, LocationType::XNegative, &a1);
+    geo.connect(&a2, LocationType::XPositive, &a3);
+    geo.connect(&a2, LocationType::YNegative, &a4);
+    geo.connect(&a2, LocationType::YPositive, &a5);
 
-    geo.axis(&a2, LocationType::Left);
-    geo.axis(&a2, LocationType::Front);
-    geo.axis(&a2, LocationType::Down);
+    geo.axis(&a2, LocationType::XNegative);
+    geo.axis(&a2, LocationType::YNegative);
+    geo.axis(&a2, LocationType::ZNegative);
 
     Variable3D u("u"), v("v"), w("w"), p("p");
     u.set_geometry(geo);
@@ -200,12 +200,12 @@ int main(int argc, char* argv[])
     };
 
     std::vector<Domain3DUniform*> domains = {&a1, &a2, &a3, &a4, &a5};
-    std::vector<LocationType>     dirs    = {LocationType::Left,
-                                             LocationType::Right,
-                                             LocationType::Front,
-                                             LocationType::Back,
-                                             LocationType::Down,
-                                             LocationType::Up};
+    std::vector<LocationType>     dirs    = {LocationType::XNegative,
+                                             LocationType::XPositive,
+                                             LocationType::YNegative,
+                                             LocationType::YPositive,
+                                             LocationType::ZNegative,
+                                             LocationType::ZPositive};
 
     for (auto* domain : domains)
     {
@@ -223,46 +223,46 @@ int main(int argc, char* argv[])
 
     const double u0 = 1.0;
 
-    field2* a1_left_bound = u.boundary_value_map[&a1][LocationType::Left];
-    if (a1_left_bound == nullptr)
+    field2* a1_xneg_bound = u.boundary_value_map[&a1][LocationType::XNegative];
+    if (a1_xneg_bound == nullptr)
     {
-        u.set_boundary_value(&a1, LocationType::Left, 0.0);
-        a1_left_bound = u.boundary_value_map[&a1][LocationType::Left];
+        u.set_boundary_value(&a1, LocationType::XNegative, 0.0);
+        a1_xneg_bound = u.boundary_value_map[&a1][LocationType::XNegative];
     }
-    for (int j = 0; j < a1_left_bound->get_nx(); ++j)
+    for (int j = 0; j < a1_xneg_bound->get_nx(); ++j)
     {
-        for (int k = 0; k < a1_left_bound->get_ny(); ++k)
+        for (int k = 0; k < a1_xneg_bound->get_ny(); ++k)
         {
-            double y_norm          = (j + 0.5) / static_cast<double>(a1_left_bound->get_nx());
-            double z_norm          = (k + 0.5) / static_cast<double>(a1_left_bound->get_ny());
+            double y_norm          = (j + 0.5) / static_cast<double>(a1_xneg_bound->get_nx());
+            double z_norm          = (k + 0.5) / static_cast<double>(a1_xneg_bound->get_ny());
             double u_val           = 36.0 * u0 * y_norm * (1.0 - y_norm) * z_norm * (1.0 - z_norm);
-            (*a1_left_bound)(j, k) = u_val;
+            (*a1_xneg_bound)(j, k) = u_val;
         }
     }
 
-    field2* a3_right_bound = u.boundary_value_map[&a3][LocationType::Right];
-    if (a3_right_bound == nullptr)
+    field2* a3_xpos_bound = u.boundary_value_map[&a3][LocationType::XPositive];
+    if (a3_xpos_bound == nullptr)
     {
-        u.set_boundary_value(&a3, LocationType::Right, 0.0);
-        a3_right_bound = u.boundary_value_map[&a3][LocationType::Right];
+        u.set_boundary_value(&a3, LocationType::XPositive, 0.0);
+        a3_xpos_bound = u.boundary_value_map[&a3][LocationType::XPositive];
     }
-    for (int j = 0; j < a3_right_bound->get_nx(); ++j)
+    for (int j = 0; j < a3_xpos_bound->get_nx(); ++j)
     {
-        for (int k = 0; k < a3_right_bound->get_ny(); ++k)
+        for (int k = 0; k < a3_xpos_bound->get_ny(); ++k)
         {
-            double y_norm           = (j + 0.5) / static_cast<double>(a3_right_bound->get_nx());
-            double z_norm           = (k + 0.5) / static_cast<double>(a3_right_bound->get_ny());
-            double u_val            = -36.0 * u0 * y_norm * (1.0 - y_norm) * z_norm * (1.0 - z_norm);
-            (*a3_right_bound)(j, k) = u_val;
+            double y_norm          = (j + 0.5) / static_cast<double>(a3_xpos_bound->get_nx());
+            double z_norm          = (k + 0.5) / static_cast<double>(a3_xpos_bound->get_ny());
+            double u_val           = -36.0 * u0 * y_norm * (1.0 - y_norm) * z_norm * (1.0 - z_norm);
+            (*a3_xpos_bound)(j, k) = u_val;
         }
     }
 
-    set_neumann_zero(u, &a4, LocationType::Front);
-    set_neumann_zero(v, &a4, LocationType::Front);
-    set_neumann_zero(w, &a4, LocationType::Front);
-    set_neumann_zero(u, &a5, LocationType::Back);
-    set_neumann_zero(v, &a5, LocationType::Back);
-    set_neumann_zero(w, &a5, LocationType::Back);
+    set_neumann_zero(u, &a4, LocationType::YNegative);
+    set_neumann_zero(v, &a4, LocationType::YNegative);
+    set_neumann_zero(w, &a4, LocationType::YNegative);
+    set_neumann_zero(u, &a5, LocationType::YPositive);
+    set_neumann_zero(v, &a5, LocationType::YPositive);
+    set_neumann_zero(w, &a5, LocationType::YPositive);
 
     const double center_x = a2.get_offset_x() + 0.5 * a2.get_lx();
     const double center_y = a2.get_offset_y() + 0.5 * a2.get_ly();

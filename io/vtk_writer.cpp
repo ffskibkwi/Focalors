@@ -104,20 +104,20 @@ double VTKWriter::get_interpolated_value(Variable3D* var, Domain3DUniform* s, in
             return (*f)(i, j, k);
         case VariablePositionType::XFace: {
             double v_curr = (*f)(i, j, k);
-            double v_next =
-                (i < s->nx - 1) ? (*f)(i + 1, j, k) : var->buffer_map.at(s).at(LocationType::Right)->operator()(j, k);
+            double v_next = (i < s->nx - 1) ? (*f)(i + 1, j, k) :
+                                              var->buffer_map.at(s).at(LocationType::XPositive)->operator()(j, k);
             return 0.5 * (v_curr + v_next);
         }
         case VariablePositionType::YFace: {
             double v_curr = (*f)(i, j, k);
-            double v_next =
-                (j < s->ny - 1) ? (*f)(i, j + 1, k) : var->buffer_map.at(s).at(LocationType::Back)->operator()(i, k);
+            double v_next = (j < s->ny - 1) ? (*f)(i, j + 1, k) :
+                                              var->buffer_map.at(s).at(LocationType::YPositive)->operator()(i, k);
             return 0.5 * (v_curr + v_next);
         }
         case VariablePositionType::ZFace: {
             double v_curr = (*f)(i, j, k);
-            double v_next =
-                (k < s->nz - 1) ? (*f)(i, j, k + 1) : var->buffer_map.at(s).at(LocationType::Up)->operator()(i, j);
+            double v_next = (k < s->nz - 1) ? (*f)(i, j, k + 1) :
+                                              var->buffer_map.at(s).at(LocationType::ZPositive)->operator()(i, j);
             return 0.5 * (v_curr + v_next);
         }
         default:

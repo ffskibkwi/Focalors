@@ -46,9 +46,9 @@ int main(int argc, char* argv[])
 
     geo.add_domain(&A1);
 
-    geo.axis(&A1, LocationType::Left);
-    geo.axis(&A1, LocationType::Front);
-    geo.axis(&A1, LocationType::Down);
+    geo.axis(&A1, LocationType::XNegative);
+    geo.axis(&A1, LocationType::YNegative);
+    geo.axis(&A1, LocationType::ZNegative);
 
     Variable3D u("u"), v("v"), w("w"), p("p");
     u.set_geometry(geo);
@@ -308,7 +308,7 @@ int main(int argc, char* argv[])
 
     std::cout << "calc_v(-0.5 * hx, 0.0, 0.5 * hz) = " << calc_v(-0.5 * hx, 0.0, 0.5 * hz) << std::endl;
     std::cout << "calc_v(0.0, 0.0, 0.5 * hz) = " << calc_v(0.0, 0.0, 0.5 * hz) << std::endl;
-    std::cout << "v_left_buffer(0, 0) = " << (*v.buffer_map[&A1][LocationType::Left])(0, 0) << std::endl;
+    std::cout << "v_xneg_buffer(0, 0) = " << (*v.buffer_map[&A1][LocationType::XNegative])(0, 0) << std::endl;
 
     w.fill_boundary_type(PDEBoundaryType::Dirichlet);
     w.fill_boundary_value_from_func_global(calc_w);
@@ -367,7 +367,7 @@ int main(int argc, char* argv[])
                 }
             }
         }
-        field2& u_buffer_right = *u.buffer_map[&A1][LocationType::Right];
+        field2& u_buffer_xpos = *u.buffer_map[&A1][LocationType::XPositive];
         for (int j = 0; j < u_A1.get_ny(); j++)
         {
             for (int k = 0; k < u_A1.get_nz(); k++)
@@ -375,7 +375,7 @@ int main(int argc, char* argv[])
                 double x    = u_A1.get_nx() * hx;
                 double y    = (j + 0.5) * hy;
                 double z    = (k + 0.5) * hz;
-                double diff = u_buffer_right(j, k) - calc_u(x, y, z);
+                double diff = u_buffer_xpos(j, k) - calc_u(x, y, z);
                 error += diff * diff;
             }
         }
@@ -399,7 +399,7 @@ int main(int argc, char* argv[])
                 }
             }
         }
-        field2& v_buffer_back = *v.buffer_map[&A1][LocationType::Back];
+        field2& v_buffer_ypos = *v.buffer_map[&A1][LocationType::YPositive];
         for (int i = 0; i < v_A1.get_nx(); i++)
         {
             for (int k = 0; k < v_A1.get_nz(); k++)
@@ -407,7 +407,7 @@ int main(int argc, char* argv[])
                 double x    = (i + 0.5) * hx;
                 double y    = v_A1.get_ny() * hy;
                 double z    = (k + 0.5) * hz;
-                double diff = v_buffer_back(i, k) - calc_v(x, y, z);
+                double diff = v_buffer_ypos(i, k) - calc_v(x, y, z);
                 error += diff * diff;
             }
         }
@@ -431,7 +431,7 @@ int main(int argc, char* argv[])
                 }
             }
         }
-        field2& w_buffer_up = *w.buffer_map[&A1][LocationType::Up];
+        field2& w_buffer_zpos = *w.buffer_map[&A1][LocationType::ZPositive];
         for (int i = 0; i < w_A1.get_nx(); i++)
         {
             for (int j = 0; j < w_A1.get_ny(); j++)
@@ -439,7 +439,7 @@ int main(int argc, char* argv[])
                 double x    = (i + 0.5) * hx;
                 double y    = (j + 0.5) * hy;
                 double z    = w_A1.get_nz() * hz;
-                double diff = w_buffer_up(i, j) - calc_w(x, y, z);
+                double diff = w_buffer_zpos(i, j) - calc_w(x, y, z);
                 error += diff * diff;
             }
         }

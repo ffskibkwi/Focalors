@@ -90,7 +90,7 @@ public:
      * Iterate through each boundary that may require updating,
      * and determine whether updating is needed based on the connection conditions.
      *
-     * Updating strategy is similar to nondiag_shared_boundary_update.
+     * YPositivedating strategy is similar to nondiag_shared_boundary_update.
      *
      * The importance of diagonal shared boundary updating:
      * When performing NS calculations on shared boundary, if the calculation point is an endpoint of a column or row,
@@ -146,8 +146,8 @@ private:
     std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, double*>> tau_xx_buffer_map,
         tau_yy_buffer_map;
 
-    std::unordered_map<Domain2DUniform*, double>& left_up_corner_value_map;
-    std::unordered_map<Domain2DUniform*, double>& right_down_corner_value_map;
+    std::unordered_map<Domain2DUniform*, double>& xneg_ypos_corner_value_map;
+    std::unordered_map<Domain2DUniform*, double>& xpos_yneg_corner_value_map;
 
     std::unique_ptr<MHDModule2D> mhd_module;
 

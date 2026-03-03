@@ -17,22 +17,22 @@
  *
  * Variable2D Layout (Staggered MAC):
  * - phi: Cell Center (i, j)
- * - u:   Right Face  (i+1/2, j)
+ * - u:   XPositive Face  (i+1/2, j)
  * - v:   Top Face    (i, j+1/2)
  *
  * Derived Fields:
- * - Jx:  Right Face  (i+1/2, j) [Collocated with u]
+ * - Jx:  XPositive Face  (i+1/2, j) [Collocated with u]
  * - Jy:  Top Face    (i, j+1/2) [Collocated with v]
- * - Fx:  Right Face  (i+1/2, j) [Collocated with u]
+ * - Fx:  XPositive Face  (i+1/2, j) [Collocated with u]
  * - Fy:  Top Face    (i, j+1/2) [Collocated with v]
  *
  * Algorithm:
  * 1. Compute RHS = div(u x B) at Cell Centers using consistent Flux-Divergence.
- *    RHS = [ (v*Bz)_right - (v*Bz)_left ]/dx + [ (-u*Bz)_top - (-u*Bz)_bottom ]/dy
+ *    RHS = [ (v*Bz)_xpos - (v*Bz)_xneg ]/dx + [ (-u*Bz)_ypos - (-u*Bz)_yneg ]/dy
  *    Requires interpolating v to X-Faces and u to Y-Faces.
  * 2. Solve Poisson: div(grad phi) = RHS
  *    Enforces div(J) = 0.
- * 3. Update Current Density J = -grad(phi) + u x B at Faces.
+ * 3. YPositivedate Current Density J = -grad(phi) + u x B at Faces.
  *    Jx = -dphi/dx + v_interp * Bz
  *    Jy = -dphi/dy - u_interp * Bz
  * 4. Calculate Lorentz Force F = J x B at Faces.

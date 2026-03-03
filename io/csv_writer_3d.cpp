@@ -231,31 +231,31 @@ namespace IO
                 int nz = field->get_nz();
                 if (var.position_type == VariablePositionType::XFace)
                 {
-                    if (boundary_type.at(LocationType::Right) == PDEBoundaryType::Adjacented)
+                    if (boundary_type.at(LocationType::XPositive) == PDEBoundaryType::Adjacented)
                         write_csv(*field, filename + "_" + domain->name);
                     else
                         write_csv(*field,
-                                  *buffers.at(LocationType::Right),
+                                  *buffers.at(LocationType::XPositive),
                                   filename + "_" + domain->name,
                                   VariablePositionType::XFace);
                 }
                 else if (var.position_type == VariablePositionType::YFace)
                 {
-                    if (boundary_type.at(LocationType::Back) == PDEBoundaryType::Adjacented)
+                    if (boundary_type.at(LocationType::YPositive) == PDEBoundaryType::Adjacented)
                         write_csv(*field, filename + "_" + domain->name);
                     else
                         write_csv(*field,
-                                  *buffers.at(LocationType::Back),
+                                  *buffers.at(LocationType::YPositive),
                                   filename + "_" + domain->name,
                                   VariablePositionType::YFace);
                 }
                 else if (var.position_type == VariablePositionType::ZFace)
                 {
-                    if (boundary_type.at(LocationType::Up) == PDEBoundaryType::Adjacented)
+                    if (boundary_type.at(LocationType::ZPositive) == PDEBoundaryType::Adjacented)
                         write_csv(*field, filename + "_" + domain->name);
                     else
                         write_csv(*field,
-                                  *buffers.at(LocationType::Up),
+                                  *buffers.at(LocationType::ZPositive),
                                   filename + "_" + domain->name,
                                   VariablePositionType::ZFace);
                 }

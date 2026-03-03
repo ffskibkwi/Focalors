@@ -89,7 +89,7 @@ void ScalarSolver3D::solve()
             break;
     }
 
-    // update boundary at last to ensure other solver get right value at boundary
+    // update boundary at last to ensure other solver get xpos value at boundary
     phys_boundary_update();
     nondiag_shared_boundary_update();
 }
@@ -159,16 +159,16 @@ void ScalarSolver3D::conv_cd2nd_diff_cd2nd_outer()
 
         field3& s_temp = *s_temp_field_map[domain];
 
-        field2& u_right_buffer = *u_buffer_map[domain][LocationType::Right];
-        field2& v_back_buffer  = *v_buffer_map[domain][LocationType::Back];
-        field2& w_up_buffer    = *w_buffer_map[domain][LocationType::Up];
+        field2& u_xpos_buffer = *u_buffer_map[domain][LocationType::XPositive];
+        field2& v_back_buffer = *v_buffer_map[domain][LocationType::YPositive];
+        field2& w_zpos_buffer = *w_buffer_map[domain][LocationType::ZPositive];
 
-        field2& s_left_buffer  = *s_buffer_map[domain][LocationType::Left];
-        field2& s_right_buffer = *s_buffer_map[domain][LocationType::Right];
-        field2& s_front_buffer = *s_buffer_map[domain][LocationType::Front];
-        field2& s_back_buffer  = *s_buffer_map[domain][LocationType::Back];
-        field2& s_down_buffer  = *s_buffer_map[domain][LocationType::Down];
-        field2& s_up_buffer    = *s_buffer_map[domain][LocationType::Up];
+        field2& s_xneg_buffer = *s_buffer_map[domain][LocationType::XNegative];
+        field2& s_xpos_buffer = *s_buffer_map[domain][LocationType::XPositive];
+        field2& s_yneg_buffer = *s_buffer_map[domain][LocationType::YNegative];
+        field2& s_back_buffer = *s_buffer_map[domain][LocationType::YPositive];
+        field2& s_zneg_buffer = *s_buffer_map[domain][LocationType::ZNegative];
+        field2& s_zpos_buffer = *s_buffer_map[domain][LocationType::ZPositive];
 
         int    nx = u.get_nx();
         int    ny = u.get_ny();
@@ -181,17 +181,17 @@ void ScalarSolver3D::conv_cd2nd_diff_cd2nd_outer()
             double u_ijk = u(i, j, k);
             double v_ijk = v(i, j, k);
             double w_ijk = w(i, j, k);
-            double u_ip1 = i == nx - 1 ? u_right_buffer(j, k) : u(i + 1, j, k);
+            double u_ip1 = i == nx - 1 ? u_xpos_buffer(j, k) : u(i + 1, j, k);
             double v_jp1 = j == ny - 1 ? v_back_buffer(i, k) : v(i, j + 1, k);
-            double w_kp1 = k == nz - 1 ? w_up_buffer(i, j) : w(i, j, k + 1);
+            double w_kp1 = k == nz - 1 ? w_zpos_buffer(i, j) : w(i, j, k + 1);
 
             double s_ijk = s(i, j, k);
-            double s_im1 = i == 0 ? s_left_buffer(j, k) : s(i - 1, j, k);
-            double s_ip1 = i == nx - 1 ? s_right_buffer(j, k) : s(i + 1, j, k);
-            double s_jm1 = j == 0 ? s_front_buffer(i, k) : s(i, j - 1, k);
+            double s_im1 = i == 0 ? s_xneg_buffer(j, k) : s(i - 1, j, k);
+            double s_ip1 = i == nx - 1 ? s_xpos_buffer(j, k) : s(i + 1, j, k);
+            double s_jm1 = j == 0 ? s_yneg_buffer(i, k) : s(i, j - 1, k);
             double s_jp1 = j == ny - 1 ? s_back_buffer(i, k) : s(i, j + 1, k);
-            double s_km1 = k == 0 ? s_down_buffer(i, j) : s(i, j, k - 1);
-            double s_kp1 = k == nz - 1 ? s_up_buffer(i, j) : s(i, j, k + 1);
+            double s_km1 = k == 0 ? s_zneg_buffer(i, j) : s(i, j, k - 1);
+            double s_kp1 = k == nz - 1 ? s_zpos_buffer(i, j) : s(i, j, k + 1);
 
             double conv_x    = 0.5 / hx * (u_ip1 * (s_ip1 + s_ijk) - u_ijk * (s_im1 + s_ijk));
             double conv_y    = 0.5 / hy * (v_jp1 * (s_jp1 + s_ijk) - v_ijk * (s_jm1 + s_ijk));
@@ -279,22 +279,22 @@ void ScalarSolver3D::conv_uw1st_diff_cd2nd_inner()
 
                     /**
                      * Convective Term: First-Order Upwind Scheme
-                     * Logic: If velocity > 0, transport from upstream (left/front/down).
-                     * If velocity < 0, transport from downstream (right/back/up).
+                     * Logic: If velocity > 0, transport from upstream (xneg/yneg/zneg).
+                     * If velocity < 0, transport from znegstream (xpos/ypos/zpos).
                      * This eliminates oscillations by adding numerical diffusion.
                      */
 
-                    double flux_x_right = (u_ip1 > 0) ? (u_ip1 * s_ijk) : (u_ip1 * s_ip1);
-                    double flux_x_left  = (u_ijk > 0) ? (u_ijk * s_im1) : (u_ijk * s_ijk);
-                    double conv_x       = (flux_x_right - flux_x_left) / hx;
+                    double flux_x_xpos = (u_ip1 > 0) ? (u_ip1 * s_ijk) : (u_ip1 * s_ip1);
+                    double flux_x_xneg = (u_ijk > 0) ? (u_ijk * s_im1) : (u_ijk * s_ijk);
+                    double conv_x      = (flux_x_xpos - flux_x_xneg) / hx;
 
-                    double flux_y_back  = (v_jp1 > 0) ? (v_jp1 * s_ijk) : (v_jp1 * s_jp1);
-                    double flux_y_front = (v_ijk > 0) ? (v_ijk * s_jm1) : (v_ijk * s_ijk);
-                    double conv_y       = (flux_y_back - flux_y_front) / hy;
+                    double flux_y_ypos = (v_jp1 > 0) ? (v_jp1 * s_ijk) : (v_jp1 * s_jp1);
+                    double flux_y_yneg = (v_ijk > 0) ? (v_ijk * s_jm1) : (v_ijk * s_ijk);
+                    double conv_y      = (flux_y_ypos - flux_y_yneg) / hy;
 
-                    double flux_z_up   = (w_kp1 > 0) ? (w_kp1 * s_ijk) : (w_kp1 * s_kp1);
-                    double flux_z_down = (w_ijk > 0) ? (w_ijk * s_km1) : (w_ijk * s_ijk);
-                    double conv_z      = (flux_z_up - flux_z_down) / hz;
+                    double flux_z_zpos = (w_kp1 > 0) ? (w_kp1 * s_ijk) : (w_kp1 * s_kp1);
+                    double flux_z_zneg = (w_ijk > 0) ? (w_ijk * s_km1) : (w_ijk * s_ijk);
+                    double conv_z      = (flux_z_zpos - flux_z_zneg) / hz;
 
                     /**
                      * Diffusive Term: Second-Order Central Difference
@@ -323,16 +323,16 @@ void ScalarSolver3D::conv_uw1st_diff_cd2nd_outer()
 
         field3& s_temp = *s_temp_field_map[domain];
 
-        field2& u_right_buffer = *u_buffer_map[domain][LocationType::Right];
-        field2& v_back_buffer  = *v_buffer_map[domain][LocationType::Back];
-        field2& w_up_buffer    = *w_buffer_map[domain][LocationType::Up];
+        field2& u_xpos_buffer = *u_buffer_map[domain][LocationType::XPositive];
+        field2& v_back_buffer = *v_buffer_map[domain][LocationType::YPositive];
+        field2& w_zpos_buffer = *w_buffer_map[domain][LocationType::ZPositive];
 
-        field2& s_left_buffer  = *s_buffer_map[domain][LocationType::Left];
-        field2& s_right_buffer = *s_buffer_map[domain][LocationType::Right];
-        field2& s_front_buffer = *s_buffer_map[domain][LocationType::Front];
-        field2& s_back_buffer  = *s_buffer_map[domain][LocationType::Back];
-        field2& s_down_buffer  = *s_buffer_map[domain][LocationType::Down];
-        field2& s_up_buffer    = *s_buffer_map[domain][LocationType::Up];
+        field2& s_xneg_buffer = *s_buffer_map[domain][LocationType::XNegative];
+        field2& s_xpos_buffer = *s_buffer_map[domain][LocationType::XPositive];
+        field2& s_yneg_buffer = *s_buffer_map[domain][LocationType::YNegative];
+        field2& s_back_buffer = *s_buffer_map[domain][LocationType::YPositive];
+        field2& s_zneg_buffer = *s_buffer_map[domain][LocationType::ZNegative];
+        field2& s_zpos_buffer = *s_buffer_map[domain][LocationType::ZPositive];
 
         int    nx = u.get_nx();
         int    ny = u.get_ny();
@@ -345,36 +345,36 @@ void ScalarSolver3D::conv_uw1st_diff_cd2nd_outer()
             double u_ijk = u(i, j, k);
             double v_ijk = v(i, j, k);
             double w_ijk = w(i, j, k);
-            double u_ip1 = i == nx - 1 ? u_right_buffer(j, k) : u(i + 1, j, k);
+            double u_ip1 = i == nx - 1 ? u_xpos_buffer(j, k) : u(i + 1, j, k);
             double v_jp1 = j == ny - 1 ? v_back_buffer(i, k) : v(i, j + 1, k);
-            double w_kp1 = k == nz - 1 ? w_up_buffer(i, j) : w(i, j, k + 1);
+            double w_kp1 = k == nz - 1 ? w_zpos_buffer(i, j) : w(i, j, k + 1);
 
             double s_ijk = s(i, j, k);
-            double s_im1 = i == 0 ? s_left_buffer(j, k) : s(i - 1, j, k);
-            double s_ip1 = i == nx - 1 ? s_right_buffer(j, k) : s(i + 1, j, k);
-            double s_jm1 = j == 0 ? s_front_buffer(i, k) : s(i, j - 1, k);
+            double s_im1 = i == 0 ? s_xneg_buffer(j, k) : s(i - 1, j, k);
+            double s_ip1 = i == nx - 1 ? s_xpos_buffer(j, k) : s(i + 1, j, k);
+            double s_jm1 = j == 0 ? s_yneg_buffer(i, k) : s(i, j - 1, k);
             double s_jp1 = j == ny - 1 ? s_back_buffer(i, k) : s(i, j + 1, k);
-            double s_km1 = k == 0 ? s_down_buffer(i, j) : s(i, j, k - 1);
-            double s_kp1 = k == nz - 1 ? s_up_buffer(i, j) : s(i, j, k + 1);
+            double s_km1 = k == 0 ? s_zneg_buffer(i, j) : s(i, j, k - 1);
+            double s_kp1 = k == nz - 1 ? s_zpos_buffer(i, j) : s(i, j, k + 1);
 
             /**
              * Convective Term: First-Order Upwind Scheme
-             * Logic: If velocity > 0, transport from upstream (left/front/down).
-             * If velocity < 0, transport from downstream (right/back/up).
+             * Logic: If velocity > 0, transport from upstream (xneg/yneg/zneg).
+             * If velocity < 0, transport from znegstream (xpos/ypos/zpos).
              * This eliminates oscillations by adding numerical diffusion.
              */
 
-            double flux_x_right = (u_ip1 > 0) ? (u_ip1 * s_ijk) : (u_ip1 * s_ip1);
-            double flux_x_left  = (u_ijk > 0) ? (u_ijk * s_im1) : (u_ijk * s_ijk);
-            double conv_x       = (flux_x_right - flux_x_left) / hx;
+            double flux_x_xpos = (u_ip1 > 0) ? (u_ip1 * s_ijk) : (u_ip1 * s_ip1);
+            double flux_x_xneg = (u_ijk > 0) ? (u_ijk * s_im1) : (u_ijk * s_ijk);
+            double conv_x      = (flux_x_xpos - flux_x_xneg) / hx;
 
-            double flux_y_back  = (v_jp1 > 0) ? (v_jp1 * s_ijk) : (v_jp1 * s_jp1);
-            double flux_y_front = (v_ijk > 0) ? (v_ijk * s_jm1) : (v_ijk * s_ijk);
-            double conv_y       = (flux_y_back - flux_y_front) / hy;
+            double flux_y_ypos = (v_jp1 > 0) ? (v_jp1 * s_ijk) : (v_jp1 * s_jp1);
+            double flux_y_yneg = (v_ijk > 0) ? (v_ijk * s_jm1) : (v_ijk * s_ijk);
+            double conv_y      = (flux_y_ypos - flux_y_yneg) / hy;
 
-            double flux_z_up   = (w_kp1 > 0) ? (w_kp1 * s_ijk) : (w_kp1 * s_kp1);
-            double flux_z_down = (w_ijk > 0) ? (w_ijk * s_km1) : (w_ijk * s_ijk);
-            double conv_z      = (flux_z_up - flux_z_down) / hz;
+            double flux_z_zpos = (w_kp1 > 0) ? (w_kp1 * s_ijk) : (w_kp1 * s_kp1);
+            double flux_z_zneg = (w_ijk > 0) ? (w_ijk * s_km1) : (w_ijk * s_ijk);
+            double conv_z      = (flux_z_zpos - flux_z_zneg) / hz;
 
             /**
              * Diffusive Term: Second-Order Central Difference
@@ -515,16 +515,16 @@ void ScalarSolver3D::conv_QUICK_diff_cd2nd_outer()
 
         field3& s_temp = *s_temp_field_map[domain];
 
-        field2& u_right_buffer = *u_buffer_map[domain][LocationType::Right];
-        field2& v_back_buffer  = *v_buffer_map[domain][LocationType::Back];
-        field2& w_up_buffer    = *w_buffer_map[domain][LocationType::Up];
+        field2& u_xpos_buffer = *u_buffer_map[domain][LocationType::XPositive];
+        field2& v_back_buffer = *v_buffer_map[domain][LocationType::YPositive];
+        field2& w_zpos_buffer = *w_buffer_map[domain][LocationType::ZPositive];
 
-        field2& s_left_buffer  = *s_buffer_map[domain][LocationType::Left];
-        field2& s_right_buffer = *s_buffer_map[domain][LocationType::Right];
-        field2& s_front_buffer = *s_buffer_map[domain][LocationType::Front];
-        field2& s_back_buffer  = *s_buffer_map[domain][LocationType::Back];
-        field2& s_down_buffer  = *s_buffer_map[domain][LocationType::Down];
-        field2& s_up_buffer    = *s_buffer_map[domain][LocationType::Up];
+        field2& s_xneg_buffer = *s_buffer_map[domain][LocationType::XNegative];
+        field2& s_xpos_buffer = *s_buffer_map[domain][LocationType::XPositive];
+        field2& s_yneg_buffer = *s_buffer_map[domain][LocationType::YNegative];
+        field2& s_back_buffer = *s_buffer_map[domain][LocationType::YPositive];
+        field2& s_zneg_buffer = *s_buffer_map[domain][LocationType::ZNegative];
+        field2& s_zpos_buffer = *s_buffer_map[domain][LocationType::ZPositive];
 
         int    nx = u.get_nx();
         int    ny = u.get_ny();
@@ -537,36 +537,36 @@ void ScalarSolver3D::conv_QUICK_diff_cd2nd_outer()
             double u_ijk = u(i, j, k);
             double v_ijk = v(i, j, k);
             double w_ijk = w(i, j, k);
-            double u_ip1 = i == nx - 1 ? u_right_buffer(j, k) : u(i + 1, j, k);
+            double u_ip1 = i == nx - 1 ? u_xpos_buffer(j, k) : u(i + 1, j, k);
             double v_jp1 = j == ny - 1 ? v_back_buffer(i, k) : v(i, j + 1, k);
-            double w_kp1 = k == nz - 1 ? w_up_buffer(i, j) : w(i, j, k + 1);
+            double w_kp1 = k == nz - 1 ? w_zpos_buffer(i, j) : w(i, j, k + 1);
 
             double s_ijk = s(i, j, k);
-            double s_im1 = i == 0 ? s_left_buffer(j, k) : s(i - 1, j, k);
-            double s_ip1 = i == nx - 1 ? s_right_buffer(j, k) : s(i + 1, j, k);
-            double s_jm1 = j == 0 ? s_front_buffer(i, k) : s(i, j - 1, k);
+            double s_im1 = i == 0 ? s_xneg_buffer(j, k) : s(i - 1, j, k);
+            double s_ip1 = i == nx - 1 ? s_xpos_buffer(j, k) : s(i + 1, j, k);
+            double s_jm1 = j == 0 ? s_yneg_buffer(i, k) : s(i, j - 1, k);
             double s_jp1 = j == ny - 1 ? s_back_buffer(i, k) : s(i, j + 1, k);
-            double s_km1 = k == 0 ? s_down_buffer(i, j) : s(i, j, k - 1);
-            double s_kp1 = k == nz - 1 ? s_up_buffer(i, j) : s(i, j, k + 1);
+            double s_km1 = k == 0 ? s_zneg_buffer(i, j) : s(i, j, k - 1);
+            double s_kp1 = k == nz - 1 ? s_zpos_buffer(i, j) : s(i, j, k + 1);
 
             /**
              * Convective Term: First-Order Upwind Scheme
-             * Logic: If velocity > 0, transport from upstream (left/front/down).
-             * If velocity < 0, transport from downstream (right/back/up).
+             * Logic: If velocity > 0, transport from upstream (xneg/yneg/zneg).
+             * If velocity < 0, transport from znegstream (xpos/ypos/zpos).
              * This eliminates oscillations by adding numerical diffusion.
              */
 
-            double flux_x_right = (u_ip1 > 0) ? (u_ip1 * s_ijk) : (u_ip1 * s_ip1);
-            double flux_x_left  = (u_ijk > 0) ? (u_ijk * s_im1) : (u_ijk * s_ijk);
-            double conv_x       = (flux_x_right - flux_x_left) / hx;
+            double flux_x_xpos = (u_ip1 > 0) ? (u_ip1 * s_ijk) : (u_ip1 * s_ip1);
+            double flux_x_xneg = (u_ijk > 0) ? (u_ijk * s_im1) : (u_ijk * s_ijk);
+            double conv_x      = (flux_x_xpos - flux_x_xneg) / hx;
 
-            double flux_y_back  = (v_jp1 > 0) ? (v_jp1 * s_ijk) : (v_jp1 * s_jp1);
-            double flux_y_front = (v_ijk > 0) ? (v_ijk * s_jm1) : (v_ijk * s_ijk);
-            double conv_y       = (flux_y_back - flux_y_front) / hy;
+            double flux_y_ypos = (v_jp1 > 0) ? (v_jp1 * s_ijk) : (v_jp1 * s_jp1);
+            double flux_y_yneg = (v_ijk > 0) ? (v_ijk * s_jm1) : (v_ijk * s_ijk);
+            double conv_y      = (flux_y_ypos - flux_y_yneg) / hy;
 
-            double flux_z_up   = (w_kp1 > 0) ? (w_kp1 * s_ijk) : (w_kp1 * s_kp1);
-            double flux_z_down = (w_ijk > 0) ? (w_ijk * s_km1) : (w_ijk * s_ijk);
-            double conv_z      = (flux_z_up - flux_z_down) / hz;
+            double flux_z_zpos = (w_kp1 > 0) ? (w_kp1 * s_ijk) : (w_kp1 * s_kp1);
+            double flux_z_zneg = (w_ijk > 0) ? (w_ijk * s_km1) : (w_ijk * s_ijk);
+            double conv_z      = (flux_z_zpos - flux_z_zneg) / hz;
 
             /**
              * Diffusive Term: Second-Order Central Difference

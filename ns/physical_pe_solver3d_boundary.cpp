@@ -46,32 +46,32 @@ void PhysicalPESolver3D::nondiag_shared_boundary_update()
                 int              adj_nz     = adj_u.get_nz();
                 switch (loc)
                 {
-                    case LocationType::Left:
+                    case LocationType::XNegative:
                         copy_x_to_buffer(u_buffer, adj_u, adj_nx - 1);
                         copy_x_to_buffer(v_buffer, adj_v, adj_nx - 1);
                         copy_x_to_buffer(w_buffer, adj_w, adj_nx - 1);
                         break;
-                    case LocationType::Right:
+                    case LocationType::XPositive:
                         copy_x_to_buffer(u_buffer, adj_u, 0);
                         copy_x_to_buffer(v_buffer, adj_v, 0);
                         copy_x_to_buffer(w_buffer, adj_w, 0);
                         break;
-                    case LocationType::Front:
+                    case LocationType::YNegative:
                         copy_y_to_buffer(u_buffer, adj_u, adj_ny - 1);
                         copy_y_to_buffer(v_buffer, adj_v, adj_ny - 1);
                         copy_y_to_buffer(w_buffer, adj_w, adj_ny - 1);
                         break;
-                    case LocationType::Back:
+                    case LocationType::YPositive:
                         copy_y_to_buffer(u_buffer, adj_u, 0);
                         copy_y_to_buffer(v_buffer, adj_v, 0);
                         copy_y_to_buffer(w_buffer, adj_w, 0);
                         break;
-                    case LocationType::Down:
+                    case LocationType::ZNegative:
                         copy_z_to_buffer(u_buffer, adj_u, adj_nz - 1);
                         copy_z_to_buffer(v_buffer, adj_v, adj_nz - 1);
                         copy_z_to_buffer(w_buffer, adj_w, adj_nz - 1);
                         break;
-                    case LocationType::Up:
+                    case LocationType::ZPositive:
                         copy_z_to_buffer(u_buffer, adj_u, 0);
                         copy_z_to_buffer(v_buffer, adj_v, 0);
                         copy_z_to_buffer(w_buffer, adj_w, 0);

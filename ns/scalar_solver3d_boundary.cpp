@@ -23,7 +23,7 @@ void ScalarSolver3D::phys_boundary_update()
             {
                 field2* bound_val = has_bound_val_map[loc] ? bound_val_map[loc] : nullptr;
 
-                if (loc == LocationType::Left)
+                if (loc == LocationType::XNegative)
                 {
                     if (type == PDEBoundaryType::Dirichlet)
                         mirror_x_to_buffer(*buffer_map[loc], s, 0, bound_val, 0.0);
@@ -32,7 +32,7 @@ void ScalarSolver3D::phys_boundary_update()
                     else if (type == PDEBoundaryType::Periodic)
                         copy_x_to_buffer(*buffer_map[loc], s, nx - 1);
                 }
-                else if (loc == LocationType::Right)
+                else if (loc == LocationType::XPositive)
                 {
                     if (type == PDEBoundaryType::Dirichlet)
                         mirror_x_to_buffer(*buffer_map[loc], s, nx - 1, bound_val, 0.0);
@@ -41,7 +41,7 @@ void ScalarSolver3D::phys_boundary_update()
                     else if (type == PDEBoundaryType::Periodic)
                         copy_x_to_buffer(*buffer_map[loc], s, 0);
                 }
-                else if (loc == LocationType::Front)
+                else if (loc == LocationType::YNegative)
                 {
                     if (type == PDEBoundaryType::Dirichlet)
                         mirror_y_to_buffer(*buffer_map[loc], s, 0, bound_val, 0.0);
@@ -50,7 +50,7 @@ void ScalarSolver3D::phys_boundary_update()
                     else if (type == PDEBoundaryType::Periodic)
                         copy_y_to_buffer(*buffer_map[loc], s, ny - 1);
                 }
-                else if (loc == LocationType::Back)
+                else if (loc == LocationType::YPositive)
                 {
                     if (type == PDEBoundaryType::Dirichlet)
                         mirror_y_to_buffer(*buffer_map[loc], s, ny - 1, bound_val, 0.0);
@@ -59,7 +59,7 @@ void ScalarSolver3D::phys_boundary_update()
                     else if (type == PDEBoundaryType::Periodic)
                         copy_y_to_buffer(*buffer_map[loc], s, 0);
                 }
-                else if (loc == LocationType::Down)
+                else if (loc == LocationType::ZNegative)
                 {
                     if (type == PDEBoundaryType::Dirichlet)
                         mirror_z_to_buffer(*buffer_map[loc], s, 0, bound_val, 0.0);
@@ -68,7 +68,7 @@ void ScalarSolver3D::phys_boundary_update()
                     else if (type == PDEBoundaryType::Periodic)
                         copy_z_to_buffer(*buffer_map[loc], s, nz - 1);
                 }
-                else if (loc == LocationType::Up)
+                else if (loc == LocationType::ZPositive)
                 {
                     if (type == PDEBoundaryType::Dirichlet)
                         mirror_z_to_buffer(*buffer_map[loc], s, nz - 1, bound_val, 0.0);
@@ -105,22 +105,22 @@ void ScalarSolver3D::nondiag_shared_boundary_update()
                 int              adj_nz     = adj_s.get_nz();
                 switch (loc)
                 {
-                    case LocationType::Left:
+                    case LocationType::XNegative:
                         copy_x_to_buffer(s_buffer, adj_s, adj_nx - 1);
                         break;
-                    case LocationType::Right:
+                    case LocationType::XPositive:
                         copy_x_to_buffer(s_buffer, adj_s, 0);
                         break;
-                    case LocationType::Front:
+                    case LocationType::YNegative:
                         copy_y_to_buffer(s_buffer, adj_s, adj_ny - 1);
                         break;
-                    case LocationType::Back:
+                    case LocationType::YPositive:
                         copy_y_to_buffer(s_buffer, adj_s, 0);
                         break;
-                    case LocationType::Down:
+                    case LocationType::ZNegative:
                         copy_z_to_buffer(s_buffer, adj_s, adj_nz - 1);
                         break;
-                    case LocationType::Up:
+                    case LocationType::ZPositive:
                         copy_z_to_buffer(s_buffer, adj_s, 0);
                         break;
                     default:

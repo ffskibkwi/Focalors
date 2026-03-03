@@ -34,12 +34,12 @@ int main(int argc, char* argv[])
         Domain2DUniform T7(m6, n7, "T7");
 
         Geometry2D geo;
-        geo.connect(&T1, LocationType::Up, &T2);
-        geo.connect(&T2, LocationType::Right, &T3);
-        geo.connect(&T3, LocationType::Up, &T4);
-        geo.connect(&T3, LocationType::Right, &T5);
-        geo.connect(&T5, LocationType::Right, &T6);
-        geo.connect(&T6, LocationType::Down, &T7);
+        geo.connect(&T1, LocationType::YPositive, &T2);
+        geo.connect(&T2, LocationType::XPositive, &T3);
+        geo.connect(&T3, LocationType::YPositive, &T4);
+        geo.connect(&T3, LocationType::XPositive, &T5);
+        geo.connect(&T5, LocationType::XPositive, &T6);
+        geo.connect(&T6, LocationType::YNegative, &T7);
 
         geo.set_global_spatial_step(H, H);
 
@@ -66,8 +66,8 @@ int main(int argc, char* argv[])
 
         auto f_rhs = [&](double x, double y) { return 4 * k * (k * (x * x + y * y) - 1) * p_analy(x, y); };
 
-        geo.axis(&T1, LocationType::Left);
-        geo.axis(&T1, LocationType::Down);
+        geo.axis(&T1, LocationType::XNegative);
+        geo.axis(&T1, LocationType::YNegative);
 
         p.fill_boundary_type(PDEBoundaryType::Dirichlet);
         p.fill_buffer_value_from_func_global(p_analy);

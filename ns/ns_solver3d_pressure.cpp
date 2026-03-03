@@ -37,9 +37,9 @@ void ConcatNSSolver3D::velocity_div_outer()
         field3& w = *w_field_map[domain];
         field3& p = *p_field_map[domain];
 
-        field2& u_buffer_right = *u_buffer_map[domain][LocationType::Right];
-        field2& v_buffer_back  = *v_buffer_map[domain][LocationType::Back];
-        field2& w_buffer_up    = *w_buffer_map[domain][LocationType::Up];
+        field2& u_buffer_xpos = *u_buffer_map[domain][LocationType::XPositive];
+        field2& v_buffer_ypos = *v_buffer_map[domain][LocationType::YPositive];
+        field2& w_buffer_zpos = *w_buffer_map[domain][LocationType::ZPositive];
 
         int    nx = u.get_nx();
         int    ny = u.get_ny();
@@ -53,40 +53,40 @@ void ConcatNSSolver3D::velocity_div_outer()
             for (int j = 0; j < ny - 1; j++)
                 p(i, j, nz - 1) = (u(i + 1, j, nz - 1) - u(i, j, nz - 1)) / hx +
                                   (v(i, j + 1, nz - 1) - v(i, j, nz - 1)) / hy +
-                                  (w_buffer_up(i, j) - w(i, j, nz - 1)) / hz;
+                                  (w_buffer_zpos(i, j) - w(i, j, nz - 1)) / hz;
 
         OPENMP_PARALLEL_FOR()
         for (int i = 0; i < nx - 1; i++)
             for (int k = 0; k < nz - 1; k++)
                 p(i, ny - 1, k) = (u(i + 1, ny - 1, k) - u(i, ny - 1, k)) / hx +
-                                  (v_buffer_back(i, k) - v(i, ny - 1, k)) / hy +
+                                  (v_buffer_ypos(i, k) - v(i, ny - 1, k)) / hy +
                                   (w(i, ny - 1, k + 1) - w(i, ny - 1, k)) / hz;
 
         OPENMP_PARALLEL_FOR()
         for (int j = 0; j < ny - 1; j++)
             for (int k = 0; k < nz - 1; k++)
-                p(nx - 1, j, k) = (u_buffer_right(j, k) - u(nx - 1, j, k)) / hx +
+                p(nx - 1, j, k) = (u_buffer_xpos(j, k) - u(nx - 1, j, k)) / hx +
                                   (v(nx - 1, j + 1, k) - v(nx - 1, j, k)) / hy +
                                   (w(nx - 1, j, k + 1) - w(nx - 1, j, k)) / hz;
 
         for (int i = 0; i < nx - 1; i++)
             p(i, ny - 1, nz - 1) = (u(i + 1, ny - 1, nz - 1) - u(i, ny - 1, nz - 1)) / hx +
-                                   (v_buffer_back(i, nz - 1) - v(i, ny - 1, nz - 1)) / hy +
-                                   (w_buffer_up(i, ny - 1) - w(i, ny - 1, nz - 1)) / hz;
+                                   (v_buffer_ypos(i, nz - 1) - v(i, ny - 1, nz - 1)) / hy +
+                                   (w_buffer_zpos(i, ny - 1) - w(i, ny - 1, nz - 1)) / hz;
 
         for (int j = 0; j < ny - 1; j++)
-            p(nx - 1, j, nz - 1) = (u_buffer_right(j, nz - 1) - u(nx - 1, j, nz - 1)) / hx +
+            p(nx - 1, j, nz - 1) = (u_buffer_xpos(j, nz - 1) - u(nx - 1, j, nz - 1)) / hx +
                                    (v(nx - 1, j + 1, nz - 1) - v(nx - 1, j, nz - 1)) / hy +
-                                   (w_buffer_up(nx - 1, j) - w(nx - 1, j, nz - 1)) / hz;
+                                   (w_buffer_zpos(nx - 1, j) - w(nx - 1, j, nz - 1)) / hz;
 
         for (int k = 0; k < nz - 1; k++)
-            p(nx - 1, ny - 1, k) = (u_buffer_right(ny - 1, k) - u(nx - 1, ny - 1, k)) / hx +
-                                   (v_buffer_back(nx - 1, k) - v(nx - 1, ny - 1, k)) / hy +
+            p(nx - 1, ny - 1, k) = (u_buffer_xpos(ny - 1, k) - u(nx - 1, ny - 1, k)) / hx +
+                                   (v_buffer_ypos(nx - 1, k) - v(nx - 1, ny - 1, k)) / hy +
                                    (w(nx - 1, ny - 1, k + 1) - w(nx - 1, ny - 1, k)) / hz;
 
-        p(nx - 1, ny - 1, nz - 1) = (u_buffer_right(ny - 1, nz - 1) - u(nx - 1, ny - 1, nz - 1)) / hx +
-                                    (v_buffer_back(nx - 1, nz - 1) - v(nx - 1, ny - 1, nz - 1)) / hy +
-                                    (w_buffer_up(nx - 1, ny - 1) - w(nx - 1, ny - 1, nz - 1)) / hz;
+        p(nx - 1, ny - 1, nz - 1) = (u_buffer_xpos(ny - 1, nz - 1) - u(nx - 1, ny - 1, nz - 1)) / hx +
+                                    (v_buffer_ypos(nx - 1, nz - 1) - v(nx - 1, ny - 1, nz - 1)) / hy +
+                                    (w_buffer_zpos(nx - 1, ny - 1) - w(nx - 1, ny - 1, nz - 1)) / hz;
     }
 }
 
@@ -114,13 +114,13 @@ void ConcatNSSolver3D::pressure_buffer_update()
                 int              adj_nz     = adj_p.get_nz();
                 switch (loc)
                 {
-                    case LocationType::Left:
+                    case LocationType::XNegative:
                         copy_x_to_buffer(p_buffer, adj_p, adj_nx - 1);
                         break;
-                    case LocationType::Front:
+                    case LocationType::YNegative:
                         copy_y_to_buffer(p_buffer, adj_p, adj_ny - 1);
                         break;
-                    case LocationType::Down:
+                    case LocationType::ZNegative:
                         copy_z_to_buffer(p_buffer, adj_p, adj_nz - 1);
                         break;
                     default:
@@ -140,9 +140,9 @@ void ConcatNSSolver3D::add_pressure_gradient()
         field3& w = *w_field_map[domain];
         field3& p = *p_field_map[domain];
 
-        field2& p_buffer_left  = *p_buffer_map[domain][LocationType::Left];
-        field2& p_buffer_front = *p_buffer_map[domain][LocationType::Front];
-        field2& p_buffer_down  = *p_buffer_map[domain][LocationType::Down];
+        field2& p_buffer_xneg = *p_buffer_map[domain][LocationType::XNegative];
+        field2& p_buffer_yneg = *p_buffer_map[domain][LocationType::YNegative];
+        field2& p_buffer_zneg = *p_buffer_map[domain][LocationType::ZNegative];
 
         int    nx = u.get_nx();
         int    ny = u.get_ny();
@@ -169,20 +169,20 @@ void ConcatNSSolver3D::add_pressure_gradient()
                 for (int k = 1; k < nz; k++)
                     w(i, j, k) -= (p(i, j, k) - p(i, j, k - 1)) / hz;
 
-        if (u_var->boundary_type_map[domain][LocationType::Left] == PDEBoundaryType::Adjacented)
+        if (u_var->boundary_type_map[domain][LocationType::XNegative] == PDEBoundaryType::Adjacented)
             for (int j = 0; j < ny; j++)
                 for (int k = 0; k < nz; k++)
-                    u(0, j, k) -= (p(0, j, k) - p_buffer_left(j, k)) / hx;
+                    u(0, j, k) -= (p(0, j, k) - p_buffer_xneg(j, k)) / hx;
 
-        if (u_var->boundary_type_map[domain][LocationType::Front] == PDEBoundaryType::Adjacented)
+        if (u_var->boundary_type_map[domain][LocationType::YNegative] == PDEBoundaryType::Adjacented)
             for (int i = 0; i < nx; i++)
                 for (int k = 0; k < nz; k++)
-                    v(i, 0, k) -= (p(i, 0, k) - p_buffer_front(i, k)) / hy;
+                    v(i, 0, k) -= (p(i, 0, k) - p_buffer_yneg(i, k)) / hy;
 
-        if (u_var->boundary_type_map[domain][LocationType::Down] == PDEBoundaryType::Adjacented)
+        if (u_var->boundary_type_map[domain][LocationType::ZNegative] == PDEBoundaryType::Adjacented)
             for (int i = 0; i < nx; i++)
                 for (int j = 0; j < ny; j++)
-                    w(i, j, 0) -= (p(i, j, 0) - p_buffer_down(i, j)) / hz;
+                    w(i, j, 0) -= (p(i, j, 0) - p_buffer_zneg(i, j)) / hz;
     }
 }
 

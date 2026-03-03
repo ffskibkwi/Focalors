@@ -19,10 +19,10 @@ public:
     static constexpr double POWERLAW_ETA_C = 0.00604;
     static constexpr double CARREAU_ETA_C  = 0.00596;
     static constexpr double CASSON_ETA_C   = 0.00514;
-    static constexpr double POWERLAW_N      = 0.708;
-    static constexpr double CARREAU_N       = 0.3568;
-    static constexpr double CASSON_MU       = 0.00276;
-    static constexpr double CASSON_TAU0     = 0.0108;
+    static constexpr double POWERLAW_N     = 0.708;
+    static constexpr double CARREAU_N      = 0.3568;
+    static constexpr double CASSON_MU      = 0.00276;
+    static constexpr double CASSON_TAU0    = 0.0108;
 
     CrossShapedChannel3DCase(int argc, char* argv[])
         : CaseBase(argc, argv)
@@ -191,19 +191,19 @@ public:
 public:
     struct DomainTopology3D
     {
-        std::string center       = "A2";
-        std::string inlet_left   = "A1";
-        std::string inlet_right  = "A3";
-        std::string outlet_front = "A4";
-        std::string outlet_back  = "A5";
+        std::string center      = "A2";
+        std::string inlet_xneg  = "A1";
+        std::string inlet_xpos  = "A3";
+        std::string outlet_yneg = "A4";
+        std::string outlet_ypos = "A5";
 
-        LocationType link_a2_a1 = LocationType::Left;
-        LocationType link_a2_a3 = LocationType::Right;
-        LocationType link_a2_a4 = LocationType::Front;
-        LocationType link_a2_a5 = LocationType::Back;
+        LocationType link_a2_a1 = LocationType::XNegative;
+        LocationType link_a2_a3 = LocationType::XPositive;
+        LocationType link_a2_a4 = LocationType::YNegative;
+        LocationType link_a2_a5 = LocationType::YPositive;
 
-        LocationType outlet_a4_loc = LocationType::Front;
-        LocationType outlet_a5_loc = LocationType::Back;
+        LocationType outlet_a4_loc = LocationType::YNegative;
+        LocationType outlet_a5_loc = LocationType::YPositive;
     };
 
     struct MultiPhysicsSlots3D
@@ -226,22 +226,22 @@ public:
     double ly_2 = 1.0;
     double lz_2 = 1.0;
 
-    // A1 (left arm)
+    // A1 (xneg arm)
     double lx_1 = 8.0;
     double ly_1 = ly_2;
     double lz_1 = lz_2;
 
-    // A3 (right arm)
+    // A3 (xpos arm)
     double lx_3 = 8.0;
     double ly_3 = ly_2;
     double lz_3 = lz_2;
 
-    // A4 (front arm)
+    // A4 (yneg arm)
     double lx_4 = lx_2;
     double ly_4 = 8.0;
     double lz_4 = lz_2;
 
-    // A5 (back arm)
+    // A5 (ypos arm)
     double lx_5 = lx_2;
     double ly_5 = 8.0;
     double lz_5 = lz_2;
@@ -262,18 +262,18 @@ public:
     int    gmres_max_iter = 1000;
 
     // Non-Newtonian extension slots
-    int    model_type = 1;       // 0: Newtonian, 1: Power Law (paper default), 2: Carreau, 3: Casson
-    double n_index    = POWERLAW_N; // Power-law index (paper)
-    double mu_0       = 0.056;   // Zero-shear viscosity
-    double mu_inf     = 0.00345; // Infinite-shear viscosity
-    double lambda     = 3.313;   // Relaxation time (paper Bird-Carreau)
-    double a          = 2.0;     // Carreau model parameter
-    double casson_mu   = CASSON_MU;
-    double casson_tau0 = CASSON_TAU0;
-    double k_pl       = 0.017;   // Power-law consistency index (paper)
-    double mu_min_pl  = 0.00345;
-    double mu_max_pl  = 0.056;
-    double mu_ref         = POWERLAW_ETA_C;
+    int    model_type                  = 1; // 0: Newtonian, 1: Power Law (paper default), 2: Carreau, 3: Casson
+    double n_index                     = POWERLAW_N; // Power-law index (paper)
+    double mu_0                        = 0.056;      // Zero-shear viscosity
+    double mu_inf                      = 0.00345;    // Infinite-shear viscosity
+    double lambda                      = 3.313;      // Relaxation time (paper Bird-Carreau)
+    double a                           = 2.0;        // Carreau model parameter
+    double casson_mu                   = CASSON_MU;
+    double casson_tau0                 = CASSON_TAU0;
+    double k_pl                        = 0.017; // Power-law consistency index (paper)
+    double mu_min_pl                   = 0.00345;
+    double mu_max_pl                   = 0.056;
+    double mu_ref                      = POWERLAW_ETA_C;
     bool   use_dimensionless_viscosity = true;
 
     // MHD extension slots

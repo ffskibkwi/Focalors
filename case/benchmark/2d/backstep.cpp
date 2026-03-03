@@ -54,8 +54,8 @@ int main(int argc, char* argv[])
     geo.add_domain({&A1, &A2, &A3});
 
     // Construct cross connectivity
-    geo.connect(&A2, LocationType::Left, &A1);
-    geo.connect(&A2, LocationType::Down, &A3);
+    geo.connect(&A2, LocationType::XNegative, &A1);
+    geo.connect(&A2, LocationType::YNegative, &A3);
 
     // Variable2Ds
     Variable2D u("u"), v("v"), p("p");
@@ -92,7 +92,8 @@ int main(int argc, char* argv[])
 
     // Default outer boundaries
     std::vector<Domain2DUniform*> domains = {&A1, &A2, &A3};
-    std::vector<LocationType> dirs = {LocationType::Left, LocationType::Right, LocationType::Down, LocationType::Up};
+    std::vector<LocationType>     dirs    = {
+        LocationType::XNegative, LocationType::XPositive, LocationType::YNegative, LocationType::YPositive};
 
     for (auto* d : domains)
     {
@@ -109,17 +110,17 @@ int main(int argc, char* argv[])
     }
 
     // Inlet
-    u.has_boundary_value_map[&A1][LocationType::Left] = true;
+    u.has_boundary_value_map[&A1][LocationType::XNegative] = true;
     for (int j = 0; j < u_A1.get_ny(); ++j)
     {
-        double y                                         = j * h + 0.5 * h;
-        u.boundary_value_map[&A1][LocationType::Left][j] = -24.0 * y * y + 12.0 * y;
+        double y                                              = j * h + 0.5 * h;
+        u.boundary_value_map[&A1][LocationType::XNegative][j] = -24.0 * y * y + 12.0 * y;
     }
     // Outlet
-    u.set_boundary_type(&A2, LocationType::Right, PDEBoundaryType::Neumann);
-    u.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Neumann);
-    v.set_boundary_type(&A2, LocationType::Right, PDEBoundaryType::Neumann);
-    v.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Neumann);
+    u.set_boundary_type(&A2, LocationType::XPositive, PDEBoundaryType::Neumann);
+    u.set_boundary_type(&A3, LocationType::XPositive, PDEBoundaryType::Neumann);
+    v.set_boundary_type(&A2, LocationType::XPositive, PDEBoundaryType::Neumann);
+    v.set_boundary_type(&A3, LocationType::XPositive, PDEBoundaryType::Neumann);
 
     ConcatPoissonSolver2D p_solver(&p);
     ConcatNSSolver2D      ns_solver(&u, &v, &p, &p_solver);

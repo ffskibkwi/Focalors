@@ -129,9 +129,9 @@ int main(int argc, char* argv[])
     geo.connect(&A2, case_param.topology.link_a2_a4, &A4);
     geo.connect(&A2, case_param.topology.link_a2_a5, &A5);
 
-    geo.axis(&A1, LocationType::Left);
-    geo.axis(&A4, LocationType::Front);
-    geo.axis(&A2, LocationType::Down);
+    geo.axis(&A1, LocationType::XNegative);
+    geo.axis(&A4, LocationType::YNegative);
+    geo.axis(&A2, LocationType::ZNegative);
 
     Variable3D u("u"), v("v"), w("w"), p("p");
     u.set_geometry(geo);
@@ -201,12 +201,12 @@ int main(int argc, char* argv[])
     };
 
     std::vector<Domain3DUniform*> domains = {&A1, &A2, &A3, &A4, &A5};
-    std::vector<LocationType>     dirs    = {LocationType::Left,
-                                             LocationType::Right,
-                                             LocationType::Front,
-                                             LocationType::Back,
-                                             LocationType::Down,
-                                             LocationType::Up};
+    std::vector<LocationType>     dirs    = {LocationType::XNegative,
+                                             LocationType::XPositive,
+                                             LocationType::YNegative,
+                                             LocationType::YPositive,
+                                             LocationType::ZNegative,
+                                             LocationType::ZPositive};
 
     for (auto* d : domains)
     {
@@ -221,12 +221,12 @@ int main(int argc, char* argv[])
         }
     }
 
-    // Inlets: A1 Left and A3 Right (opposite Poiseuille profiles)
-    u.set_boundary_type(&A1, LocationType::Left, PDEBoundaryType::Dirichlet);
-    u.set_boundary_value(&A1, LocationType::Left, 0.0);
-    u.has_boundary_value_map[&A1][LocationType::Left] = true;
-    set_dirichlet_zero(v, &A1, LocationType::Left);
-    set_dirichlet_zero(w, &A1, LocationType::Left);
+    // Inlets: A1 XNegative and A3 XPositive (opposite Poiseuille profiles)
+    u.set_boundary_type(&A1, LocationType::XNegative, PDEBoundaryType::Dirichlet);
+    u.set_boundary_value(&A1, LocationType::XNegative, 0.0);
+    u.has_boundary_value_map[&A1][LocationType::XNegative] = true;
+    set_dirichlet_zero(v, &A1, LocationType::XNegative);
+    set_dirichlet_zero(w, &A1, LocationType::XNegative);
 
     for (int j = 0; j < u_A1.get_ny(); ++j)
     {
@@ -235,15 +235,15 @@ int main(int argc, char* argv[])
             double y_norm = (j + 0.5) / static_cast<double>(u_A1.get_ny());
             double z_norm = (k + 0.5) / static_cast<double>(u_A1.get_nz());
             double u_val  = 36.0 * y_norm * (1.0 - y_norm) * z_norm * (1.0 - z_norm);
-            (*u.boundary_value_map[&A1][LocationType::Left])(j, k) = u_val;
+            (*u.boundary_value_map[&A1][LocationType::XNegative])(j, k) = u_val;
         }
     }
 
-    u.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Dirichlet);
-    u.set_boundary_value(&A3, LocationType::Right, 0.0);
-    u.has_boundary_value_map[&A3][LocationType::Right] = true;
-    set_dirichlet_zero(v, &A3, LocationType::Right);
-    set_dirichlet_zero(w, &A3, LocationType::Right);
+    u.set_boundary_type(&A3, LocationType::XPositive, PDEBoundaryType::Dirichlet);
+    u.set_boundary_value(&A3, LocationType::XPositive, 0.0);
+    u.has_boundary_value_map[&A3][LocationType::XPositive] = true;
+    set_dirichlet_zero(v, &A3, LocationType::XPositive);
+    set_dirichlet_zero(w, &A3, LocationType::XPositive);
 
     for (int j = 0; j < u_A3.get_ny(); ++j)
     {
@@ -252,7 +252,7 @@ int main(int argc, char* argv[])
             double y_norm = (j + 0.5) / static_cast<double>(u_A3.get_ny());
             double z_norm = (k + 0.5) / static_cast<double>(u_A3.get_nz());
             double u_val  = -36.0 * y_norm * (1.0 - y_norm) * z_norm * (1.0 - z_norm);
-            (*u.boundary_value_map[&A3][LocationType::Right])(j, k) = u_val;
+            (*u.boundary_value_map[&A3][LocationType::XPositive])(j, k) = u_val;
         }
     }
 

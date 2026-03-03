@@ -65,12 +65,12 @@ int main(int argc, char* argv[])
     geo.add_domain(&A3);
 
     // Construct cross connectivity
-    geo.connect(&A2, LocationType::Left, &A1);
-    geo.connect(&A2, LocationType::Down, &A3);
+    geo.connect(&A2, LocationType::XNegative, &A1);
+    geo.connect(&A2, LocationType::ZNegative, &A3);
 
-    geo.axis(&A1, LocationType::Left);
-    geo.axis(&A1, LocationType::Front);
-    geo.axis(&A1, LocationType::Down);
+    geo.axis(&A1, LocationType::XNegative);
+    geo.axis(&A1, LocationType::YNegative);
+    geo.axis(&A1, LocationType::ZNegative);
 
     // Variable2Ds
     Variable3D u("u"), v("v"), w("w"), p("p");
@@ -112,12 +112,12 @@ int main(int argc, char* argv[])
 
     // Default outer boundaries
     std::vector<Domain3DUniform*> domains = {&A1, &A2, &A3};
-    std::vector<LocationType>     dirs    = {LocationType::Left,
-                                             LocationType::Right,
-                                             LocationType::Front,
-                                             LocationType::Back,
-                                             LocationType::Down,
-                                             LocationType::Up};
+    std::vector<LocationType>     dirs    = {LocationType::XNegative,
+                                             LocationType::XPositive,
+                                             LocationType::YNegative,
+                                             LocationType::YPositive,
+                                             LocationType::ZNegative,
+                                             LocationType::ZPositive};
 
     for (auto* d : domains)
     {
@@ -136,8 +136,8 @@ int main(int argc, char* argv[])
 
     // Inlet
     {
-        u.has_boundary_value_map[&A1][LocationType::Left] = true;
-        field2& u_inlet_buffer                            = *u.boundary_value_map[&A1][LocationType::Left];
+        u.has_boundary_value_map[&A1][LocationType::XNegative] = true;
+        field2& u_inlet_buffer                                 = *u.boundary_value_map[&A1][LocationType::XNegative];
         for (int j = 0; j < u_A1.get_ny(); ++j)
         {
             for (int k = 0; k < u_A1.get_nz(); ++k)
@@ -148,12 +148,12 @@ int main(int argc, char* argv[])
         }
     }
     // Outlet
-    u.set_boundary_type(&A2, LocationType::Right, PDEBoundaryType::Neumann);
-    u.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Neumann);
-    v.set_boundary_type(&A2, LocationType::Right, PDEBoundaryType::Neumann);
-    v.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Neumann);
-    w.set_boundary_type(&A2, LocationType::Right, PDEBoundaryType::Neumann);
-    w.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Neumann);
+    u.set_boundary_type(&A2, LocationType::XPositive, PDEBoundaryType::Neumann);
+    u.set_boundary_type(&A3, LocationType::XPositive, PDEBoundaryType::Neumann);
+    v.set_boundary_type(&A2, LocationType::XPositive, PDEBoundaryType::Neumann);
+    v.set_boundary_type(&A3, LocationType::XPositive, PDEBoundaryType::Neumann);
+    w.set_boundary_type(&A2, LocationType::XPositive, PDEBoundaryType::Neumann);
+    w.set_boundary_type(&A3, LocationType::XPositive, PDEBoundaryType::Neumann);
 
     ConcatPoissonSolver3D p_solver(&p);
     ConcatNSSolver3D      ns_solver(&u, &v, &w, &p, &p_solver);

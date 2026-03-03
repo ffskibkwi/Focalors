@@ -57,9 +57,9 @@ int main(int argc, char* argv[])
         field3 p_A1;
         p.set_center_field(&A1, p_A1);
 
-        geo.axis(&A1, LocationType::Left);
-        geo.axis(&A1, LocationType::Front);
-        geo.axis(&A1, LocationType::Down);
+        geo.axis(&A1, LocationType::XNegative);
+        geo.axis(&A1, LocationType::YNegative);
+        geo.axis(&A1, LocationType::ZNegative);
 
         p.fill_boundary_type(PDEBoundaryType::Dirichlet);
         p.fill_buffer_value_from_func_global(p_analy);

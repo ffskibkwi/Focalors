@@ -62,7 +62,7 @@ static void calc_diff_with_two_field_reversed_along_x(field2& src1, field2& src2
             diff(i, j) = src1(i, j + 1) + src2(i, src2.get_ny() - 1 - j);
 }
 
-// pretty print a field in matrix-aligned form (top-to-bottom), fixed 3 dp
+// pretty print a field in matrix-aligned form (ypos-to-yneg), fixed 3 dp
 static void print_field_aligned(const field2& f, const std::string& name)
 {
     std::ios old(nullptr);
@@ -97,7 +97,7 @@ int main(int argc, char* argv[])
     // Center domain
     Domain2DUniform A2(6, 6, 1.0, 1.0, "A2");
 
-    // Left / Right arms (ensure same ny as A2 after connect)
+    // XNegative / XPositive arms (ensure same ny as A2 after connect)
     Domain2DUniform A1("A1");
     A1.set_nx(6);
     A1.set_lx(1.0);
@@ -105,7 +105,7 @@ int main(int argc, char* argv[])
     A3.set_nx(6);
     A3.set_lx(1.0);
 
-    // Down / Up arms (ensure same nx as A2 after connect)
+    // YNegative / YPositive arms (ensure same nx as A2 after connect)
     Domain2DUniform A4("A4");
     A4.set_ny(6);
     A4.set_ly(1.0);
@@ -116,10 +116,10 @@ int main(int argc, char* argv[])
     geo.add_domain({&A1, &A2, &A3, &A4, &A5});
 
     // Construct cross connectivity
-    geo.connect(&A2, LocationType::Left, &A1);
-    geo.connect(&A2, LocationType::Right, &A3);
-    geo.connect(&A2, LocationType::Down, &A4);
-    geo.connect(&A2, LocationType::Up, &A5);
+    geo.connect(&A2, LocationType::XNegative, &A1);
+    geo.connect(&A2, LocationType::XPositive, &A3);
+    geo.connect(&A2, LocationType::YNegative, &A4);
+    geo.connect(&A2, LocationType::YPositive, &A5);
 
     // Variable2Ds
     Variable2D u("u"), v("v"), p("p");
@@ -162,7 +162,8 @@ int main(int argc, char* argv[])
 
     // Default outer boundaries
     std::vector<Domain2DUniform*> domains = {&A1, &A2, &A3, &A4, &A5};
-    std::vector<LocationType> dirs = {LocationType::Left, LocationType::Right, LocationType::Down, LocationType::Up};
+    std::vector<LocationType>     dirs    = {
+        LocationType::XNegative, LocationType::XPositive, LocationType::YNegative, LocationType::YPositive};
 
     for (auto* d : domains)
     {
@@ -181,35 +182,35 @@ int main(int argc, char* argv[])
     // Inlet profiles for symmetry validation (Poiseuille)
     const double U0 = 1.0;
 
-    u.set_boundary_type(&A1, LocationType::Left, PDEBoundaryType::Dirichlet);
-    u.has_boundary_value_map[&A1][LocationType::Left] = true;
-    set_dirichlet_zero(v, &A1, LocationType::Left);
-    // A1 Left: u(y_norm) = +6*U0*y_norm*(1-y_norm)
+    u.set_boundary_type(&A1, LocationType::XNegative, PDEBoundaryType::Dirichlet);
+    u.has_boundary_value_map[&A1][LocationType::XNegative] = true;
+    set_dirichlet_zero(v, &A1, LocationType::XNegative);
+    // A1 XNegative: u(y_norm) = +6*U0*y_norm*(1-y_norm)
     for (int j = 0; j < u_A1.get_ny(); ++j)
     {
-        double y_norm                                    = (j + 0.5) / static_cast<double>(u_A1.get_ny());
-        double u_val                                     = 6.0 * U0 * y_norm * (1.0 - y_norm);
-        u.boundary_value_map[&A1][LocationType::Left][j] = u_val;
+        double y_norm                                         = (j + 0.5) / static_cast<double>(u_A1.get_ny());
+        double u_val                                          = 6.0 * U0 * y_norm * (1.0 - y_norm);
+        u.boundary_value_map[&A1][LocationType::XNegative][j] = u_val;
     }
-    set_dirichlet_zero(v, &A1, LocationType::Left);
-    // A3 Right: u(y_norm) = -6*U0*y_norm*(1-y_norm)
-    u.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Dirichlet);
-    u.has_boundary_value_map[&A3][LocationType::Right] = true;
-    set_dirichlet_zero(v, &A3, LocationType::Right);
+    set_dirichlet_zero(v, &A1, LocationType::XNegative);
+    // A3 XPositive: u(y_norm) = -6*U0*y_norm*(1-y_norm)
+    u.set_boundary_type(&A3, LocationType::XPositive, PDEBoundaryType::Dirichlet);
+    u.has_boundary_value_map[&A3][LocationType::XPositive] = true;
+    set_dirichlet_zero(v, &A3, LocationType::XPositive);
     for (int j = 0; j < u_A3.get_ny(); ++j)
     {
-        double y_norm                                     = (j + 0.5) / static_cast<double>(u_A3.get_ny());
-        double u_val                                      = -6.0 * U0 * y_norm * (1.0 - y_norm);
-        u.boundary_value_map[&A3][LocationType::Right][j] = u_val;
+        double y_norm                                         = (j + 0.5) / static_cast<double>(u_A3.get_ny());
+        double u_val                                          = -6.0 * U0 * y_norm * (1.0 - y_norm);
+        u.boundary_value_map[&A3][LocationType::XPositive][j] = u_val;
     }
 
-    // A4 Down: open/symmetry as Neumann for u and v
-    set_neumann_zero(u, &A4, LocationType::Down);
-    set_neumann_zero(v, &A4, LocationType::Down);
+    // A4 YNegative: open/symmetry as Neumann for u and v
+    set_neumann_zero(u, &A4, LocationType::YNegative);
+    set_neumann_zero(v, &A4, LocationType::YNegative);
 
-    // A5 Up: open/symmetry as Neumann for u and v
-    set_neumann_zero(u, &A5, LocationType::Up);
-    set_neumann_zero(v, &A5, LocationType::Up);
+    // A5 YPositive: open/symmetry as Neumann for u and v
+    set_neumann_zero(u, &A5, LocationType::YPositive);
+    set_neumann_zero(v, &A5, LocationType::YPositive);
 
     int nx = u_A2.get_nx();
     int ny = u_A2.get_ny();
@@ -378,55 +379,55 @@ int main(int argc, char* argv[])
     // 输出的u为结束时刻的u 输出buffer只能得到前一dt的值，无法和field做比较
     std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, double*>> u_buffer_map, v_buffer_map,
         p_buffer_map;
-    std::unordered_map<Domain2DUniform*, double>& left_up_corner_value_map    = v.left_up_corner_value_map;
-    std::unordered_map<Domain2DUniform*, double>& right_down_corner_value_map = u.right_down_corner_value_map;
-    u_buffer_map                                                              = u.buffer_map;
-    v_buffer_map                                                              = v.buffer_map;
-    p_buffer_map                                                              = p.buffer_map;
-    double* v1_left_buffer  = get_buffer_ptr(v_buffer_map, &A1, LocationType::Left);
-    double* u1_left_buffer  = get_buffer_ptr(u_buffer_map, &A1, LocationType::Left);
-    double* v1_right_buffer = get_buffer_ptr(v_buffer_map, &A1, LocationType::Right);
-    double* u1_right_buffer = get_buffer_ptr(u_buffer_map, &A1, LocationType::Right);
-    double* u1_down_buffer  = get_buffer_ptr(u_buffer_map, &A1, LocationType::Down);
-    double* v1_down_buffer  = get_buffer_ptr(v_buffer_map, &A1, LocationType::Down);
-    double* u1_up_buffer    = get_buffer_ptr(u_buffer_map, &A1, LocationType::Up);
-    double* v1_up_buffer    = get_buffer_ptr(v_buffer_map, &A1, LocationType::Up);
+    std::unordered_map<Domain2DUniform*, double>& xneg_ypos_corner_value_map = v.xneg_ypos_corner_value_map;
+    std::unordered_map<Domain2DUniform*, double>& xpos_yneg_corner_value_map = u.xpos_yneg_corner_value_map;
+    u_buffer_map                                                             = u.buffer_map;
+    v_buffer_map                                                             = v.buffer_map;
+    p_buffer_map                                                             = p.buffer_map;
+    double* v1_xneg_buffer = get_buffer_ptr(v_buffer_map, &A1, LocationType::XNegative);
+    double* u1_xneg_buffer = get_buffer_ptr(u_buffer_map, &A1, LocationType::XNegative);
+    double* v1_xpos_buffer = get_buffer_ptr(v_buffer_map, &A1, LocationType::XPositive);
+    double* u1_xpos_buffer = get_buffer_ptr(u_buffer_map, &A1, LocationType::XPositive);
+    double* u1_yneg_buffer = get_buffer_ptr(u_buffer_map, &A1, LocationType::YNegative);
+    double* v1_yneg_buffer = get_buffer_ptr(v_buffer_map, &A1, LocationType::YNegative);
+    double* u1_ypos_buffer = get_buffer_ptr(u_buffer_map, &A1, LocationType::YPositive);
+    double* v1_ypos_buffer = get_buffer_ptr(v_buffer_map, &A1, LocationType::YPositive);
 
-    double* v2_left_buffer  = get_buffer_ptr(v_buffer_map, &A2, LocationType::Left);
-    double* u2_left_buffer  = get_buffer_ptr(u_buffer_map, &A2, LocationType::Left);
-    double* v2_right_buffer = get_buffer_ptr(v_buffer_map, &A2, LocationType::Right);
-    double* u2_right_buffer = get_buffer_ptr(u_buffer_map, &A2, LocationType::Right);
-    double* u2_down_buffer  = get_buffer_ptr(u_buffer_map, &A2, LocationType::Down);
-    double* v2_down_buffer  = get_buffer_ptr(v_buffer_map, &A2, LocationType::Down);
-    double* u2_up_buffer    = get_buffer_ptr(u_buffer_map, &A2, LocationType::Up);
-    double* v2_up_buffer    = get_buffer_ptr(v_buffer_map, &A2, LocationType::Up);
+    double* v2_xneg_buffer = get_buffer_ptr(v_buffer_map, &A2, LocationType::XNegative);
+    double* u2_xneg_buffer = get_buffer_ptr(u_buffer_map, &A2, LocationType::XNegative);
+    double* v2_xpos_buffer = get_buffer_ptr(v_buffer_map, &A2, LocationType::XPositive);
+    double* u2_xpos_buffer = get_buffer_ptr(u_buffer_map, &A2, LocationType::XPositive);
+    double* u2_yneg_buffer = get_buffer_ptr(u_buffer_map, &A2, LocationType::YNegative);
+    double* v2_yneg_buffer = get_buffer_ptr(v_buffer_map, &A2, LocationType::YNegative);
+    double* u2_ypos_buffer = get_buffer_ptr(u_buffer_map, &A2, LocationType::YPositive);
+    double* v2_ypos_buffer = get_buffer_ptr(v_buffer_map, &A2, LocationType::YPositive);
 
-    double* v3_left_buffer  = get_buffer_ptr(v_buffer_map, &A3, LocationType::Left);
-    double* u3_left_buffer  = get_buffer_ptr(u_buffer_map, &A3, LocationType::Left);
-    double* v3_right_buffer = get_buffer_ptr(v_buffer_map, &A3, LocationType::Right);
-    double* u3_right_buffer = get_buffer_ptr(u_buffer_map, &A3, LocationType::Right);
-    double* u3_down_buffer  = get_buffer_ptr(u_buffer_map, &A3, LocationType::Down);
-    double* v3_down_buffer  = get_buffer_ptr(v_buffer_map, &A3, LocationType::Down);
-    double* u3_up_buffer    = get_buffer_ptr(u_buffer_map, &A3, LocationType::Up);
-    double* v3_up_buffer    = get_buffer_ptr(v_buffer_map, &A3, LocationType::Up);
+    double* v3_xneg_buffer = get_buffer_ptr(v_buffer_map, &A3, LocationType::XNegative);
+    double* u3_xneg_buffer = get_buffer_ptr(u_buffer_map, &A3, LocationType::XNegative);
+    double* v3_xpos_buffer = get_buffer_ptr(v_buffer_map, &A3, LocationType::XPositive);
+    double* u3_xpos_buffer = get_buffer_ptr(u_buffer_map, &A3, LocationType::XPositive);
+    double* u3_yneg_buffer = get_buffer_ptr(u_buffer_map, &A3, LocationType::YNegative);
+    double* v3_yneg_buffer = get_buffer_ptr(v_buffer_map, &A3, LocationType::YNegative);
+    double* u3_ypos_buffer = get_buffer_ptr(u_buffer_map, &A3, LocationType::YPositive);
+    double* v3_ypos_buffer = get_buffer_ptr(v_buffer_map, &A3, LocationType::YPositive);
 
-    double* v4_left_buffer  = get_buffer_ptr(v_buffer_map, &A4, LocationType::Left);
-    double* u4_left_buffer  = get_buffer_ptr(u_buffer_map, &A4, LocationType::Left);
-    double* v4_right_buffer = get_buffer_ptr(v_buffer_map, &A4, LocationType::Right);
-    double* u4_right_buffer = get_buffer_ptr(u_buffer_map, &A4, LocationType::Right);
-    double* v4_down_buffer  = get_buffer_ptr(v_buffer_map, &A4, LocationType::Down);
-    double* u4_down_buffer  = get_buffer_ptr(u_buffer_map, &A4, LocationType::Down);
-    double* v4_up_buffer    = get_buffer_ptr(v_buffer_map, &A4, LocationType::Up);
-    double* u4_up_buffer    = get_buffer_ptr(u_buffer_map, &A4, LocationType::Up);
+    double* v4_xneg_buffer = get_buffer_ptr(v_buffer_map, &A4, LocationType::XNegative);
+    double* u4_xneg_buffer = get_buffer_ptr(u_buffer_map, &A4, LocationType::XNegative);
+    double* v4_xpos_buffer = get_buffer_ptr(v_buffer_map, &A4, LocationType::XPositive);
+    double* u4_xpos_buffer = get_buffer_ptr(u_buffer_map, &A4, LocationType::XPositive);
+    double* v4_yneg_buffer = get_buffer_ptr(v_buffer_map, &A4, LocationType::YNegative);
+    double* u4_yneg_buffer = get_buffer_ptr(u_buffer_map, &A4, LocationType::YNegative);
+    double* v4_ypos_buffer = get_buffer_ptr(v_buffer_map, &A4, LocationType::YPositive);
+    double* u4_ypos_buffer = get_buffer_ptr(u_buffer_map, &A4, LocationType::YPositive);
 
-    double* v5_left_buffer  = get_buffer_ptr(v_buffer_map, &A5, LocationType::Left);
-    double* u5_left_buffer  = get_buffer_ptr(u_buffer_map, &A5, LocationType::Left);
-    double* v5_right_buffer = get_buffer_ptr(v_buffer_map, &A5, LocationType::Right);
-    double* u5_right_buffer = get_buffer_ptr(u_buffer_map, &A5, LocationType::Right);
-    double* u5_down_buffer  = get_buffer_ptr(u_buffer_map, &A5, LocationType::Down);
-    double* v5_down_buffer  = get_buffer_ptr(v_buffer_map, &A5, LocationType::Down);
-    double* u5_up_buffer    = get_buffer_ptr(u_buffer_map, &A5, LocationType::Up);
-    double* v5_up_buffer    = get_buffer_ptr(v_buffer_map, &A5, LocationType::Up);
+    double* v5_xneg_buffer = get_buffer_ptr(v_buffer_map, &A5, LocationType::XNegative);
+    double* u5_xneg_buffer = get_buffer_ptr(u_buffer_map, &A5, LocationType::XNegative);
+    double* v5_xpos_buffer = get_buffer_ptr(v_buffer_map, &A5, LocationType::XPositive);
+    double* u5_xpos_buffer = get_buffer_ptr(u_buffer_map, &A5, LocationType::XPositive);
+    double* u5_yneg_buffer = get_buffer_ptr(u_buffer_map, &A5, LocationType::YNegative);
+    double* v5_yneg_buffer = get_buffer_ptr(v_buffer_map, &A5, LocationType::YNegative);
+    double* u5_ypos_buffer = get_buffer_ptr(u_buffer_map, &A5, LocationType::YPositive);
+    double* v5_ypos_buffer = get_buffer_ptr(v_buffer_map, &A5, LocationType::YPositive);
 
     // Symmetry validation
     field2 u_diff_r_1_3(u_A1.get_nx() - 1, u_A1.get_ny(), "u_diff_r_1_3");
@@ -438,35 +439,35 @@ int main(int argc, char* argv[])
         for (int j = 0; j < 5; ++j)
         {
             std::cout << "u_A1(0, " << j << "): " << u_A1(0, j) << std::endl;
-            std::cout << "u3_right_buffer[" << j << "]: " << u3_right_buffer[j] << std::endl;
-            std::cout << "u_A1(0, " << j << ") + u3_right_buffer[" << j << "]: " << u_A1(0, j) + u3_right_buffer[j]
+            std::cout << "u3_xpos_buffer[" << j << "]: " << u3_xpos_buffer[j] << std::endl;
+            std::cout << "u_A1(0, " << j << ") + u3_xpos_buffer[" << j << "]: " << u_A1(0, j) + u3_xpos_buffer[j]
                       << std::endl;
             std::cout << std::endl;
 
             std::cout << "u_A3(0, " << j << "): " << u_A3(0, j) << std::endl;
-            std::cout << "u1_right_buffer[" << j << "]: " << u1_right_buffer[j] << std::endl;
-            std::cout << "u1_right_buffer[" << j << "] + u_A3(0, " << j << "): " << u1_right_buffer[j] + u_A3(0, j)
+            std::cout << "u1_xpos_buffer[" << j << "]: " << u1_xpos_buffer[j] << std::endl;
+            std::cout << "u1_xpos_buffer[" << j << "] + u_A3(0, " << j << "): " << u1_xpos_buffer[j] + u_A3(0, j)
                       << std::endl;
-            std::cout << "u1_right_buffer[" << j << "] - u_A2(0, " << j << "): " << u1_right_buffer[j] - u_A2(0, j)
+            std::cout << "u1_xpos_buffer[" << j << "] - u_A2(0, " << j << "): " << u1_xpos_buffer[j] - u_A2(0, j)
                       << std::endl;
             std::cout << std::endl;
 
-            std::cout << "u2_right_buffer[" << j << "]: " << u2_right_buffer[j] << std::endl;
-            std::cout << "u2_right_buffer[" << j << "] - u_A3(0, " << j << "): " << u2_right_buffer[j] - u_A3(0, j)
+            std::cout << "u2_xpos_buffer[" << j << "]: " << u2_xpos_buffer[j] << std::endl;
+            std::cout << "u2_xpos_buffer[" << j << "] - u_A3(0, " << j << "): " << u2_xpos_buffer[j] - u_A3(0, j)
                       << std::endl;
-            std::cout << "u2_right_buffer[" << j << "] + u_A2(0, " << j << "): " << u2_right_buffer[j] + u_A2(0, j)
+            std::cout << "u2_xpos_buffer[" << j << "] + u_A2(0, " << j << "): " << u2_xpos_buffer[j] + u_A2(0, j)
                       << std::endl;
             std::cout << std::endl;
 
             std::cout << "u_A4(0, " << j << "): " << u_A4(0, j) << std::endl;
-            std::cout << "u4_right_buffer[" << j << "]: " << u4_right_buffer[j] << std::endl;
-            std::cout << "u_A4(0, " << j << ") + u5_left_buffer[" << j << "]: " << u_A4(0, j) + u5_left_buffer[j]
+            std::cout << "u4_xpos_buffer[" << j << "]: " << u4_xpos_buffer[j] << std::endl;
+            std::cout << "u_A4(0, " << j << ") + u5_xneg_buffer[" << j << "]: " << u_A4(0, j) + u5_xneg_buffer[j]
                       << std::endl;
             std::cout << std::endl;
 
             std::cout << "u_A5(0, " << j << "): " << u_A5(0, j) << std::endl;
-            std::cout << "u5_right_buffer[" << j << "]: " << u5_right_buffer[j] << std::endl;
-            std::cout << "u_A5(0, " << j << ") + u5_right_buffer[" << j << "]: " << u_A5(0, j) + u5_right_buffer[j]
+            std::cout << "u5_xpos_buffer[" << j << "]: " << u5_xpos_buffer[j] << std::endl;
+            std::cout << "u_A5(0, " << j << ") + u5_xpos_buffer[" << j << "]: " << u_A5(0, j) + u5_xpos_buffer[j]
                       << std::endl;
             std::cout << std::endl;
         }
@@ -474,77 +475,77 @@ int main(int argc, char* argv[])
         for (int i = 0; i < 5; ++i)
         {
             std::cout << "v_A4(" << i << ", 0): " << v_A4(i, 0) << std::endl;
-            std::cout << "v5_up_buffer[" << i << "]: " << v5_up_buffer[i] << std::endl;
-            std::cout << "v_A4(" << i << ", 0) + v5_up_buffer[" << i << "]: " << v_A4(i, 0) + v5_up_buffer[i]
+            std::cout << "v5_ypos_buffer[" << i << "]: " << v5_ypos_buffer[i] << std::endl;
+            std::cout << "v_A4(" << i << ", 0) + v5_ypos_buffer[" << i << "]: " << v_A4(i, 0) + v5_ypos_buffer[i]
                       << std::endl;
             std::cout << std::endl;
 
             std::cout << "v_A5(" << i << ", 0): " << v_A5(i, 0) << std::endl;
-            std::cout << "v4_up_buffer[" << i << "]: " << v4_up_buffer[i] << std::endl;
-            std::cout << "v_A5(" << i << ", 0) + v4_up_buffer[" << i << "]: " << v_A5(i, 0) + v4_up_buffer[i]
+            std::cout << "v4_ypos_buffer[" << i << "]: " << v4_ypos_buffer[i] << std::endl;
+            std::cout << "v_A5(" << i << ", 0) + v4_ypos_buffer[" << i << "]: " << v_A5(i, 0) + v4_ypos_buffer[i]
                       << std::endl;
-            std::cout << "v_A2(" << i << ", 0) - v4_up_buffer[" << i << "]: " << v_A2(i, 0) - v4_up_buffer[i]
+            std::cout << "v_A2(" << i << ", 0) - v4_ypos_buffer[" << i << "]: " << v_A2(i, 0) - v4_ypos_buffer[i]
                       << std::endl;
-            std::cout << "v_A2(" << i << ", 0) + v2_up_buffer[" << i << "]: " << v_A2(i, 0) + v2_up_buffer[i]
+            std::cout << "v_A2(" << i << ", 0) + v2_ypos_buffer[" << i << "]: " << v_A2(i, 0) + v2_ypos_buffer[i]
                       << std::endl;
             std::cout << std::endl;
 
             std::cout << "v_A1(" << i << ", 0): " << v_A1(i, 0) << std::endl;
-            std::cout << "v1_up_buffer[" << i << "]: " << v1_up_buffer[i] << std::endl;
-            std::cout << "v_A1(" << i << ", 0) + v1_up_buffer[" << i << "]: " << v_A1(i, 0) + v1_up_buffer[i]
+            std::cout << "v1_ypos_buffer[" << i << "]: " << v1_ypos_buffer[i] << std::endl;
+            std::cout << "v_A1(" << i << ", 0) + v1_ypos_buffer[" << i << "]: " << v_A1(i, 0) + v1_ypos_buffer[i]
                       << std::endl;
             std::cout << std::endl;
 
             std::cout << "v_A3(" << i << ", 0): " << v_A3(i, 0) << std::endl;
-            std::cout << "v3_up_buffer[" << i << "]: " << v3_up_buffer[i] << std::endl;
-            std::cout << "v_A3(" << i << ", 0) + v3_up_buffer[" << i << "]: " << v_A3(i, 0) + v3_up_buffer[i]
+            std::cout << "v3_ypos_buffer[" << i << "]: " << v3_ypos_buffer[i] << std::endl;
+            std::cout << "v_A3(" << i << ", 0) + v3_ypos_buffer[" << i << "]: " << v_A3(i, 0) + v3_ypos_buffer[i]
                       << std::endl;
             std::cout << std::endl;
         }
-        std::cout << "right_down_corner_value_map[&A1]"
-                  << " : " << right_down_corner_value_map[&A1] << std::endl;
+        std::cout << "xpos_yneg_corner_value_map[&A1]"
+                  << " : " << xpos_yneg_corner_value_map[&A1] << std::endl;
         std::cout << "u_A4(0, ny - 1) : " << u_A4(0, ny - 1) << std::endl;
-        std::cout << "right_down_corner_value_map[&A1] - u_A4(0, ny - 1) : "
-                  << right_down_corner_value_map[&A1] - u_A4(0, ny - 1) << std::endl;
+        std::cout << "xpos_yneg_corner_value_map[&A1] - u_A4(0, ny - 1) : "
+                  << xpos_yneg_corner_value_map[&A1] - u_A4(0, ny - 1) << std::endl;
         std::cout << std::endl;
 
-        std::cout << "left_up_corner_value_map[&A2]"
-                  << " : " << left_up_corner_value_map[&A2] << std::endl;
-        std::cout << "v1_up_buffer[nx - 1]: " << v1_up_buffer[nx - 1] << std::endl;
-        std::cout << "left_up_corner_value_map[&A2] - v1_up_buffer[nx - 1]: "
-                  << left_up_corner_value_map[&A2] - v1_up_buffer[nx - 1] << std::endl;
+        std::cout << "xneg_ypos_corner_value_map[&A2]"
+                  << " : " << xneg_ypos_corner_value_map[&A2] << std::endl;
+        std::cout << "v1_ypos_buffer[nx - 1]: " << v1_ypos_buffer[nx - 1] << std::endl;
+        std::cout << "xneg_ypos_corner_value_map[&A2] - v1_ypos_buffer[nx - 1]: "
+                  << xneg_ypos_corner_value_map[&A2] - v1_ypos_buffer[nx - 1] << std::endl;
         std::cout << std::endl;
 
-        std::cout << "right_down_corner_value_map[&A2]"
-                  << " : " << right_down_corner_value_map[&A2] << std::endl;
-        std::cout << "u4_right_buffer[ny - 1]"
-                  << " : " << u4_right_buffer[ny - 1] << std::endl;
-        std::cout << "right_down_corner_value_map[&A2] - u4_right_buffer[ny - 1]: "
-                  << right_down_corner_value_map[&A2] - u4_right_buffer[ny - 1] << std::endl;
+        std::cout << "xpos_yneg_corner_value_map[&A2]"
+                  << " : " << xpos_yneg_corner_value_map[&A2] << std::endl;
+        std::cout << "u4_xpos_buffer[ny - 1]"
+                  << " : " << u4_xpos_buffer[ny - 1] << std::endl;
+        std::cout << "xpos_yneg_corner_value_map[&A2] - u4_xpos_buffer[ny - 1]: "
+                  << xpos_yneg_corner_value_map[&A2] - u4_xpos_buffer[ny - 1] << std::endl;
         std::cout << std::endl;
 
-        std::cout << "left_up_corner_value_map[&A3]"
-                  << " : " << left_up_corner_value_map[&A3] << std::endl;
-        std::cout << "v2_up_buffer[nx - 1]"
-                  << " : " << v2_up_buffer[nx - 1] << std::endl;
-        std::cout << "left_up_corner_value_map[&A3] - v2_up_buffer[nx - 1]: "
-                  << left_up_corner_value_map[&A3] - v2_up_buffer[nx - 1] << std::endl;
+        std::cout << "xneg_ypos_corner_value_map[&A3]"
+                  << " : " << xneg_ypos_corner_value_map[&A3] << std::endl;
+        std::cout << "v2_ypos_buffer[nx - 1]"
+                  << " : " << v2_ypos_buffer[nx - 1] << std::endl;
+        std::cout << "xneg_ypos_corner_value_map[&A3] - v2_ypos_buffer[nx - 1]: "
+                  << xneg_ypos_corner_value_map[&A3] - v2_ypos_buffer[nx - 1] << std::endl;
         std::cout << std::endl;
 
-        std::cout << "left_up_corner_value_map[&A4]"
-                  << " : " << left_up_corner_value_map[&A4] << std::endl;
+        std::cout << "xneg_ypos_corner_value_map[&A4]"
+                  << " : " << xneg_ypos_corner_value_map[&A4] << std::endl;
         std::cout << "v_A1(nx - 1, 0)"
                   << " : " << v_A1(nx - 1, 0) << std::endl;
-        std::cout << "left_up_corner_value_map[&A4] - v3_up_buffer[ny - 1]: "
-                  << left_up_corner_value_map[&A4] - v3_up_buffer[ny - 1] << std::endl;
+        std::cout << "xneg_ypos_corner_value_map[&A4] - v3_ypos_buffer[ny - 1]: "
+                  << xneg_ypos_corner_value_map[&A4] - v3_ypos_buffer[ny - 1] << std::endl;
         std::cout << std::endl;
 
-        std::cout << "right_down_corner_value_map[&A5]"
-                  << " : " << right_down_corner_value_map[&A5] << std::endl;
-        std::cout << "u2_right_buffer[ny - 1]"
-                  << " : " << u2_right_buffer[ny - 1] << std::endl;
-        std::cout << "right_down_corner_value_map[&A5] - u2_right_buffer[ny - 1]: "
-                  << right_down_corner_value_map[&A5] - u2_right_buffer[ny - 1] << std::endl;
+        std::cout << "xpos_yneg_corner_value_map[&A5]"
+                  << " : " << xpos_yneg_corner_value_map[&A5] << std::endl;
+        std::cout << "u2_xpos_buffer[ny - 1]"
+                  << " : " << u2_xpos_buffer[ny - 1] << std::endl;
+        std::cout << "xpos_yneg_corner_value_map[&A5] - u2_xpos_buffer[ny - 1]: "
+                  << xpos_yneg_corner_value_map[&A5] - u2_xpos_buffer[ny - 1] << std::endl;
         std::cout << std::endl;
     };
     auto print_all_field = [&]() {

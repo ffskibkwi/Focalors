@@ -270,21 +270,21 @@ namespace IO
                 int ny = field->get_ny();
                 if (var.position_type == VariablePositionType::XFace)
                 {
-                    if (boundary_type.at(LocationType::Right) == PDEBoundaryType::Adjacented)
+                    if (boundary_type.at(LocationType::XPositive) == PDEBoundaryType::Adjacented)
                         write_csv(*field, filename + "_" + domain->name);
                     else
                         write_csv(*field,
-                                  buffers.at(LocationType::Right),
+                                  buffers.at(LocationType::XPositive),
                                   filename + "_" + domain->name,
                                   VariablePositionType::XFace);
                 }
                 else if (var.position_type == VariablePositionType::YFace)
                 {
-                    if (boundary_type.at(LocationType::Up) == PDEBoundaryType::Adjacented)
+                    if (boundary_type.at(LocationType::YPositive) == PDEBoundaryType::Adjacented)
                         write_csv(*field, filename + "_" + domain->name);
                     else
                         write_csv(*field,
-                                  buffers.at(LocationType::Up),
+                                  buffers.at(LocationType::YPositive),
                                   filename + "_" + domain->name,
                                   VariablePositionType::YFace);
                 }

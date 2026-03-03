@@ -46,10 +46,10 @@ int main(int argc, char* argv[])
         Domain2DUniformMPI T5(n2, m5, "T5");
 
         Geometry2D geo;
-        geo.connect(&T2, LocationType::Left, &T1);
-        geo.connect(&T2, LocationType::Right, &T3);
-        geo.connect(&T2, LocationType::Down, &T4);
-        geo.connect(&T2, LocationType::Up, &T5);
+        geo.connect(&T2, LocationType::XNegative, &T1);
+        geo.connect(&T2, LocationType::XPositive, &T3);
+        geo.connect(&T2, LocationType::YNegative, &T4);
+        geo.connect(&T2, LocationType::YPositive, &T5);
 
         geo.set_global_spatial_step(H, H);
 
@@ -76,8 +76,8 @@ int main(int argc, char* argv[])
 
         auto f_rhs = [&](double x, double y) { return 4 * k * (k * (x * x + y * y) - 1) * p_analy(x, y); };
 
-        geo.axis(&T1, LocationType::Left);
-        geo.axis(&T1, LocationType::Down);
+        geo.axis(&T1, LocationType::XNegative);
+        geo.axis(&T1, LocationType::YNegative);
 
         p.fill_boundary_type(PDEBoundaryType::Dirichlet);
         p.fill_buffer_value_from_func_global(p_analy);

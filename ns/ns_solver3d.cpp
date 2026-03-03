@@ -108,7 +108,7 @@ void ConcatNSSolver3D::solve()
         add_pressure_gradient();
     }
 
-    // update boundary at last to ensure other solver get right value at boundary
+    // update boundary at last to ensure other solver get xpos value at boundary
     phys_boundary_update();
     nondiag_shared_boundary_update();
     diag_shared_boundary_update();
@@ -227,26 +227,26 @@ void ConcatNSSolver3D::euler_conv_diff_outer()
         field3& v_temp = *v_temp_field_map[domain];
         field3& w_temp = *w_temp_field_map[domain];
 
-        field2& u_left_buffer  = *u_buffer_map[domain][LocationType::Left];
-        field2& u_right_buffer = *u_buffer_map[domain][LocationType::Right];
-        field2& u_front_buffer = *u_buffer_map[domain][LocationType::Front];
-        field2& u_back_buffer  = *u_buffer_map[domain][LocationType::Back];
-        field2& u_down_buffer  = *u_buffer_map[domain][LocationType::Down];
-        field2& u_up_buffer    = *u_buffer_map[domain][LocationType::Up];
+        field2& u_xneg_buffer = *u_buffer_map[domain][LocationType::XNegative];
+        field2& u_xpos_buffer = *u_buffer_map[domain][LocationType::XPositive];
+        field2& u_yneg_buffer = *u_buffer_map[domain][LocationType::YNegative];
+        field2& u_back_buffer = *u_buffer_map[domain][LocationType::YPositive];
+        field2& u_zneg_buffer = *u_buffer_map[domain][LocationType::ZNegative];
+        field2& u_zpos_buffer = *u_buffer_map[domain][LocationType::ZPositive];
 
-        field2& v_left_buffer  = *v_buffer_map[domain][LocationType::Left];
-        field2& v_right_buffer = *v_buffer_map[domain][LocationType::Right];
-        field2& v_front_buffer = *v_buffer_map[domain][LocationType::Front];
-        field2& v_back_buffer  = *v_buffer_map[domain][LocationType::Back];
-        field2& v_down_buffer  = *v_buffer_map[domain][LocationType::Down];
-        field2& v_up_buffer    = *v_buffer_map[domain][LocationType::Up];
+        field2& v_xneg_buffer = *v_buffer_map[domain][LocationType::XNegative];
+        field2& v_xpos_buffer = *v_buffer_map[domain][LocationType::XPositive];
+        field2& v_yneg_buffer = *v_buffer_map[domain][LocationType::YNegative];
+        field2& v_back_buffer = *v_buffer_map[domain][LocationType::YPositive];
+        field2& v_zneg_buffer = *v_buffer_map[domain][LocationType::ZNegative];
+        field2& v_zpos_buffer = *v_buffer_map[domain][LocationType::ZPositive];
 
-        field2& w_left_buffer  = *w_buffer_map[domain][LocationType::Left];
-        field2& w_right_buffer = *w_buffer_map[domain][LocationType::Right];
-        field2& w_front_buffer = *w_buffer_map[domain][LocationType::Front];
-        field2& w_back_buffer  = *w_buffer_map[domain][LocationType::Back];
-        field2& w_down_buffer  = *w_buffer_map[domain][LocationType::Down];
-        field2& w_up_buffer    = *w_buffer_map[domain][LocationType::Up];
+        field2& w_xneg_buffer = *w_buffer_map[domain][LocationType::XNegative];
+        field2& w_xpos_buffer = *w_buffer_map[domain][LocationType::XPositive];
+        field2& w_yneg_buffer = *w_buffer_map[domain][LocationType::YNegative];
+        field2& w_back_buffer = *w_buffer_map[domain][LocationType::YPositive];
+        field2& w_zneg_buffer = *w_buffer_map[domain][LocationType::ZNegative];
+        field2& w_zpos_buffer = *w_buffer_map[domain][LocationType::ZPositive];
 
         double* u_corner_along_y = u_corner_value_map_y[domain];
         double* u_corner_along_z = u_corner_value_map_z[domain];
@@ -264,22 +264,22 @@ void ConcatNSSolver3D::euler_conv_diff_outer()
 
         auto bound_cal_u = [&](int i, int j, int k) {
             double u_ijk = u(i, j, k);
-            double u_im1 = i == 0 ? u_left_buffer(j, k) : u(i - 1, j, k);
-            double u_ip1 = i == nx - 1 ? u_right_buffer(j, k) : u(i + 1, j, k);
-            double u_jm1 = j == 0 ? u_front_buffer(i, k) : u(i, j - 1, k);
+            double u_im1 = i == 0 ? u_xneg_buffer(j, k) : u(i - 1, j, k);
+            double u_ip1 = i == nx - 1 ? u_xpos_buffer(j, k) : u(i + 1, j, k);
+            double u_jm1 = j == 0 ? u_yneg_buffer(i, k) : u(i, j - 1, k);
             double u_jp1 = j == ny - 1 ? u_back_buffer(i, k) : u(i, j + 1, k);
-            double u_km1 = k == 0 ? u_down_buffer(i, j) : u(i, j, k - 1);
-            double u_kp1 = k == nz - 1 ? u_up_buffer(i, j) : u(i, j, k + 1);
+            double u_km1 = k == 0 ? u_zneg_buffer(i, j) : u(i, j, k - 1);
+            double u_kp1 = k == nz - 1 ? u_zpos_buffer(i, j) : u(i, j, k + 1);
 
-            double v_im1_jp1 = i == 0 ? (j == ny - 1 ? v_corner_along_z[k] : v_left_buffer(j + 1, k)) :
+            double v_im1_jp1 = i == 0 ? (j == ny - 1 ? v_corner_along_z[k] : v_xneg_buffer(j + 1, k)) :
                                         (j == ny - 1 ? v_back_buffer(i - 1, k) : v(i - 1, j + 1, k));
             double v_jp1     = j == ny - 1 ? v_back_buffer(i, k) : v(i, j + 1, k);
-            double v_im1     = i == 0 ? v_left_buffer(j, k) : v(i - 1, j, k);
+            double v_im1     = i == 0 ? v_xneg_buffer(j, k) : v(i - 1, j, k);
 
-            double w_im1_kp1 = i == 0 ? (k == nz - 1 ? w_corner_along_y[j] : w_left_buffer(j, k + 1)) :
-                                        (k == nz - 1 ? w_up_buffer(i - 1, j) : w(i - 1, j, k + 1));
-            double w_kp1     = k == nz - 1 ? w_up_buffer(i, j) : w(i, j, k + 1);
-            double w_im1     = i == 0 ? w_left_buffer(j, k) : w(i - 1, j, k);
+            double w_im1_kp1 = i == 0 ? (k == nz - 1 ? w_corner_along_y[j] : w_xneg_buffer(j, k + 1)) :
+                                        (k == nz - 1 ? w_zpos_buffer(i - 1, j) : w(i - 1, j, k + 1));
+            double w_kp1     = k == nz - 1 ? w_zpos_buffer(i, j) : w(i, j, k + 1);
+            double w_im1     = i == 0 ? w_xneg_buffer(j, k) : w(i - 1, j, k);
 
             double conv_x = 0.25 / hx * (u_ip1 * (u_ip1 + 2.0 * u_ijk) - u_im1 * (u_im1 + 2.0 * u_ijk));
             double conv_y =
@@ -295,22 +295,22 @@ void ConcatNSSolver3D::euler_conv_diff_outer()
 
         auto bound_cal_v = [&](int i, int j, int k) {
             double v_ijk = v(i, j, k);
-            double v_im1 = i == 0 ? v_left_buffer(j, k) : v(i - 1, j, k);
-            double v_ip1 = i == nx - 1 ? v_right_buffer(j, k) : v(i + 1, j, k);
-            double v_jm1 = j == 0 ? v_front_buffer(i, k) : v(i, j - 1, k);
+            double v_im1 = i == 0 ? v_xneg_buffer(j, k) : v(i - 1, j, k);
+            double v_ip1 = i == nx - 1 ? v_xpos_buffer(j, k) : v(i + 1, j, k);
+            double v_jm1 = j == 0 ? v_yneg_buffer(i, k) : v(i, j - 1, k);
             double v_jp1 = j == ny - 1 ? v_back_buffer(i, k) : v(i, j + 1, k);
-            double v_km1 = k == 0 ? v_down_buffer(i, j) : v(i, j, k - 1);
-            double v_kp1 = k == nz - 1 ? v_up_buffer(i, j) : v(i, j, k + 1);
+            double v_km1 = k == 0 ? v_zneg_buffer(i, j) : v(i, j, k - 1);
+            double v_kp1 = k == nz - 1 ? v_zpos_buffer(i, j) : v(i, j, k + 1);
 
-            double u_ip1_jm1 = i == nx - 1 ? (j == 0 ? u_corner_along_z[k] : u_right_buffer(j - 1, k)) :
-                                             (j == 0 ? u_front_buffer(i + 1, k) : u(i + 1, j - 1, k));
-            double u_ip1     = i == nx - 1 ? u_right_buffer(j, k) : u(i + 1, j, k);
-            double u_jm1     = j == 0 ? u_front_buffer(i, k) : u(i, j - 1, k);
+            double u_ip1_jm1 = i == nx - 1 ? (j == 0 ? u_corner_along_z[k] : u_xpos_buffer(j - 1, k)) :
+                                             (j == 0 ? u_yneg_buffer(i + 1, k) : u(i + 1, j - 1, k));
+            double u_ip1     = i == nx - 1 ? u_xpos_buffer(j, k) : u(i + 1, j, k);
+            double u_jm1     = j == 0 ? u_yneg_buffer(i, k) : u(i, j - 1, k);
 
-            double w_jm1_kp1 = j == 0 ? (k == nz - 1 ? w_corner_along_x[i] : w_front_buffer(i, k + 1)) :
-                                        (k == nz - 1 ? w_up_buffer(i, j - 1) : w(i, j - 1, k + 1));
-            double w_kp1     = k == nz - 1 ? w_up_buffer(i, j) : w(i, j, k + 1);
-            double w_jm1     = j == 0 ? w_front_buffer(i, k) : w(i, j - 1, k);
+            double w_jm1_kp1 = j == 0 ? (k == nz - 1 ? w_corner_along_x[i] : w_yneg_buffer(i, k + 1)) :
+                                        (k == nz - 1 ? w_zpos_buffer(i, j - 1) : w(i, j - 1, k + 1));
+            double w_kp1     = k == nz - 1 ? w_zpos_buffer(i, j) : w(i, j, k + 1);
+            double w_jm1     = j == 0 ? w_yneg_buffer(i, k) : w(i, j - 1, k);
 
             double conv_x =
                 0.25 / hx * ((v_ijk + v_ip1) * (u_ip1_jm1 + u_ip1) - (v_im1 + v_ijk) * (u_jm1 + u(i, j, k)));
@@ -326,22 +326,22 @@ void ConcatNSSolver3D::euler_conv_diff_outer()
 
         auto bound_cal_w = [&](int i, int j, int k) {
             double w_ijk = w(i, j, k);
-            double w_im1 = i == 0 ? w_left_buffer(j, k) : w(i - 1, j, k);
-            double w_ip1 = i == nx - 1 ? w_right_buffer(j, k) : w(i + 1, j, k);
-            double w_jm1 = j == 0 ? w_front_buffer(i, k) : w(i, j - 1, k);
+            double w_im1 = i == 0 ? w_xneg_buffer(j, k) : w(i - 1, j, k);
+            double w_ip1 = i == nx - 1 ? w_xpos_buffer(j, k) : w(i + 1, j, k);
+            double w_jm1 = j == 0 ? w_yneg_buffer(i, k) : w(i, j - 1, k);
             double w_jp1 = j == ny - 1 ? w_back_buffer(i, k) : w(i, j + 1, k);
-            double w_km1 = k == 0 ? w_down_buffer(i, j) : w(i, j, k - 1);
-            double w_kp1 = k == nz - 1 ? w_up_buffer(i, j) : w(i, j, k + 1);
+            double w_km1 = k == 0 ? w_zneg_buffer(i, j) : w(i, j, k - 1);
+            double w_kp1 = k == nz - 1 ? w_zpos_buffer(i, j) : w(i, j, k + 1);
 
-            double u_ip1_km1 = i == nx - 1 ? (k == 0 ? u_corner_along_y[j] : u_right_buffer(j, k - 1)) :
-                                             (k == 0 ? u_down_buffer(i + 1, j) : u(i + 1, j, k - 1));
-            double u_ip1     = i == nx - 1 ? u_right_buffer(j, k) : u(i + 1, j, k);
-            double u_km1     = k == 0 ? u_down_buffer(i, j) : u(i, j, k - 1);
+            double u_ip1_km1 = i == nx - 1 ? (k == 0 ? u_corner_along_y[j] : u_xpos_buffer(j, k - 1)) :
+                                             (k == 0 ? u_zneg_buffer(i + 1, j) : u(i + 1, j, k - 1));
+            double u_ip1     = i == nx - 1 ? u_xpos_buffer(j, k) : u(i + 1, j, k);
+            double u_km1     = k == 0 ? u_zneg_buffer(i, j) : u(i, j, k - 1);
 
             double v_jp1_km1 = j == ny - 1 ? (k == 0 ? v_corner_along_x[i] : v_back_buffer(i, k - 1)) :
-                                             (k == 0 ? v_down_buffer(i, j + 1) : v(i, j + 1, k - 1));
+                                             (k == 0 ? v_zneg_buffer(i, j + 1) : v(i, j + 1, k - 1));
             double v_jp1     = j == ny - 1 ? v_back_buffer(i, k) : v(i, j + 1, k);
-            double v_km1     = k == 0 ? v_down_buffer(i, j) : v(i, j, k - 1);
+            double v_km1     = k == 0 ? v_zneg_buffer(i, j) : v(i, j, k - 1);
 
             double conv_x =
                 0.25 / hx * ((w_ijk + w_ip1) * (u_ip1_km1 + u_ip1) - (w_im1 + w_ijk) * (u_km1 + u(i, j, k)));
@@ -361,7 +361,7 @@ void ConcatNSSolver3D::euler_conv_diff_outer()
         {
             for (int k = 0; k < nz; k++)
             {
-                if (u_var->boundary_type_map[domain][LocationType::Left] == PDEBoundaryType::Adjacented)
+                if (u_var->boundary_type_map[domain][LocationType::XNegative] == PDEBoundaryType::Adjacented)
                     bound_cal_u(0, j, k);
                 bound_cal_u(nx - 1, j, k);
                 bound_cal_v(0, j, k);
@@ -378,7 +378,7 @@ void ConcatNSSolver3D::euler_conv_diff_outer()
             {
                 bound_cal_u(i, 0, k);
                 bound_cal_u(i, ny - 1, k);
-                if (v_var->boundary_type_map[domain][LocationType::Front] == PDEBoundaryType::Adjacented)
+                if (v_var->boundary_type_map[domain][LocationType::YNegative] == PDEBoundaryType::Adjacented)
                     bound_cal_v(i, 0, k);
                 bound_cal_v(i, ny - 1, k);
                 bound_cal_w(i, 0, k);
@@ -395,7 +395,7 @@ void ConcatNSSolver3D::euler_conv_diff_outer()
                 bound_cal_u(i, j, nz - 1);
                 bound_cal_v(i, j, 0);
                 bound_cal_v(i, j, nz - 1);
-                if (w_var->boundary_type_map[domain][LocationType::Down] == PDEBoundaryType::Adjacented)
+                if (w_var->boundary_type_map[domain][LocationType::ZNegative] == PDEBoundaryType::Adjacented)
                     bound_cal_w(i, j, 0);
                 bound_cal_w(i, j, nz - 1);
             }

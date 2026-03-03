@@ -112,14 +112,13 @@ int main(int argc, char* argv[])
 
     if (case_param.model_type == 1) // Power Law
     {
-        physics_cfg.set_power_law_dimensionless(
-            case_param.k_pl,
-            case_param.n_index,
-            case_param.Re,
-            case_param.mu_ref,
-            case_param.use_dimensionless_viscosity,
-            case_param.mu_min_pl,
-            case_param.mu_max_pl);
+        physics_cfg.set_power_law_dimensionless(case_param.k_pl,
+                                                case_param.n_index,
+                                                case_param.Re,
+                                                case_param.mu_ref,
+                                                case_param.use_dimensionless_viscosity,
+                                                case_param.mu_min_pl,
+                                                case_param.mu_max_pl);
         std::cout << "Configuring Power Law Model (Dimensionless):" << std::endl;
         std::cout << "  k_pl:      " << case_param.k_pl << std::endl;
         std::cout << "  Re:        " << case_param.Re << std::endl;
@@ -175,7 +174,7 @@ int main(int argc, char* argv[])
         case_param.pv_output_step > 0 ? case_param.pv_output_step : std::max(1, time_cfg.num_iterations / 10);
     int final_step_to_save = case_param.step_to_save > 0 ? case_param.step_to_save : time_cfg.num_iterations;
 
-    // Grid construction - Split into two domains D1 (Left) and D2 (Right)
+    // Grid construction - Split into two domains D1 (XNegative) and D2 (XPositive)
     int nx_total = static_cast<int>(Lx / h);
     int nx1      = nx_total / 2;
     int nx2      = nx_total - nx1;
@@ -195,8 +194,8 @@ int main(int argc, char* argv[])
     // geo.add_domain({&D1, &D2});
 
     // Connectivity
-    // D1 Right -> D2 Left (Internal)
-    geo.connect(&D1, LocationType::Right, &D2);
+    // D1 XPositive -> D2 XNegative (Internal)
+    geo.connect(&D1, LocationType::XPositive, &D2);
 
     // Variable2Ds
     Variable2D u("u"), v("v"), p("p");
@@ -251,23 +250,23 @@ int main(int argc, char* argv[])
     // Walls (Top/Bottom) for BOTH domains
     for (auto* d : {&D1, &D2})
     {
-        set_dirichlet_zero(u, d, LocationType::Down);
-        set_dirichlet_zero(u, d, LocationType::Up);
-        set_dirichlet_zero(v, d, LocationType::Down);
-        set_dirichlet_zero(v, d, LocationType::Up);
-        set_neumann_zero(p, d, LocationType::Down);
-        set_neumann_zero(p, d, LocationType::Up);
+        set_dirichlet_zero(u, d, LocationType::YNegative);
+        set_dirichlet_zero(u, d, LocationType::YPositive);
+        set_dirichlet_zero(v, d, LocationType::YNegative);
+        set_dirichlet_zero(v, d, LocationType::YPositive);
+        set_neumann_zero(p, d, LocationType::YNegative);
+        set_neumann_zero(p, d, LocationType::YPositive);
     }
 
-    // Inlet at D1 Left (Velocity Profile)
-    u.set_boundary_type(&D1, LocationType::Left, PDEBoundaryType::Dirichlet);
+    // Inlet at D1 XNegative (Velocity Profile)
+    u.set_boundary_type(&D1, LocationType::XNegative, PDEBoundaryType::Dirichlet);
     // CRITICAL FIX: Allocate memory for boundary values first!
-    // TODO  WHY if comment out the following line, u.boundary_value_map[&D1][LocationType::Left] will cause segfault
-    // later.
-    u.set_boundary_value(&D1, LocationType::Left, 0.0);
-    u.has_boundary_value_map[&D1][LocationType::Left] = true;
-    set_dirichlet_zero(v, &D1, LocationType::Left);
-    set_neumann_zero(p, &D1, LocationType::Left);
+    // TODO  WHY if comment out the following line, u.boundary_value_map[&D1][LocationType::XNegative] will cause
+    // segfault later.
+    u.set_boundary_value(&D1, LocationType::XNegative, 0.0);
+    u.has_boundary_value_map[&D1][LocationType::XNegative] = true;
+    set_dirichlet_zero(v, &D1, LocationType::XNegative);
+    set_neumann_zero(p, &D1, LocationType::XNegative);
 
     // Calculate Inlet Profile and overwrite
     double H = Ly / 2.0;
@@ -288,13 +287,13 @@ int main(int argc, char* argv[])
         }
 
         // Now it's safe to access
-        u.boundary_value_map[&D1][LocationType::Left][j] = u_val;
+        u.boundary_value_map[&D1][LocationType::XNegative][j] = u_val;
     }
 
-    // Outlet at D2 Right (Open/Neumann)
-    set_neumann_zero(u, &D2, LocationType::Right);
-    set_neumann_zero(v, &D2, LocationType::Right);
-    set_dirichlet_zero(p, &D2, LocationType::Right); // Pressure outlet p=0
+    // Outlet at D2 XPositive (Open/Neumann)
+    set_neumann_zero(u, &D2, LocationType::XPositive);
+    set_neumann_zero(v, &D2, LocationType::XPositive);
+    set_dirichlet_zero(p, &D2, LocationType::XPositive); // Pressure outlet p=0
 
     // Solver Initialization
     ConcatPoissonSolver2D p_solver(&p);
@@ -411,7 +410,7 @@ int main(int argc, char* argv[])
     IO::write_csv(p, nowtime_dir + "/final/p_" + std::to_string(final_step));
     IO::write_csv(mu, nowtime_dir + "/final/mu_" + std::to_string(final_step));
 
-    // Analytical Verification (At Outlet D2 Right)
+    // Analytical Verification (At Outlet D2 XPositive)
     if (case_param.model_type == 1)
     {
         std::cout << "Calculating analytical solution verification at outlet..." << std::endl;

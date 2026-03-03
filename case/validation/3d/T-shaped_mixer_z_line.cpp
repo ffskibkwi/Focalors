@@ -111,13 +111,13 @@ int main(int argc, char* argv[])
     geo.add_domain(&A4);
 
     // Construct cross connectivity
-    geo.connect(&A2, LocationType::Left, &A1);
-    geo.connect(&A2, LocationType::Right, &A3);
-    geo.connect(&A2, LocationType::Front, &A4);
+    geo.connect(&A2, LocationType::XNegative, &A1);
+    geo.connect(&A2, LocationType::XPositive, &A3);
+    geo.connect(&A2, LocationType::YNegative, &A4);
 
-    geo.axis(&A1, LocationType::Left);
-    geo.axis(&A1, LocationType::Front);
-    geo.axis(&A1, LocationType::Down);
+    geo.axis(&A1, LocationType::XNegative);
+    geo.axis(&A1, LocationType::YNegative);
+    geo.axis(&A1, LocationType::ZNegative);
 
     // Variable2Ds
     Variable3D u("u"), v("v"), w("w"), p("p");
@@ -166,12 +166,12 @@ int main(int argc, char* argv[])
 
     // Default outer boundaries
     std::vector<Domain3DUniform*> domains = {&A1, &A2, &A3, &A4};
-    std::vector<LocationType>     dirs    = {LocationType::Left,
-                                             LocationType::Right,
-                                             LocationType::Front,
-                                             LocationType::Back,
-                                             LocationType::Down,
-                                             LocationType::Up};
+    std::vector<LocationType>     dirs    = {LocationType::XNegative,
+                                             LocationType::XPositive,
+                                             LocationType::YNegative,
+                                             LocationType::YPositive,
+                                             LocationType::ZNegative,
+                                             LocationType::ZPositive};
 
     for (auto* d : domains)
     {
@@ -190,11 +190,11 @@ int main(int argc, char* argv[])
 
     // Inlet
     {
-        u.has_boundary_value_map[&A1][LocationType::Left]  = true;
-        u.has_boundary_value_map[&A3][LocationType::Right] = true;
+        u.has_boundary_value_map[&A1][LocationType::XNegative] = true;
+        u.has_boundary_value_map[&A3][LocationType::XPositive] = true;
 
-        field2& u_inlet_buffer_left  = *u.boundary_value_map[&A1][LocationType::Left];
-        field2& u_inlet_buffer_right = *u.boundary_value_map[&A3][LocationType::Right];
+        field2& u_inlet_buffer_xneg = *u.boundary_value_map[&A1][LocationType::XNegative];
+        field2& u_inlet_buffer_xpos = *u.boundary_value_map[&A3][LocationType::XPositive];
 
         for (int j = 0; j < u_A1.get_ny(); ++j)
         {
@@ -202,16 +202,16 @@ int main(int argc, char* argv[])
             {
                 double z = k * hz + 0.5 * hz;
                 z /= lz1;
-                double vel                 = 6.0 * feature_velocity * (1.0 - z) * z;
-                u_inlet_buffer_left(j, k)  = vel;
-                u_inlet_buffer_right(j, k) = -vel;
+                double vel                = 6.0 * feature_velocity * (1.0 - z) * z;
+                u_inlet_buffer_xneg(j, k) = vel;
+                u_inlet_buffer_xpos(j, k) = -vel;
             }
         }
     }
     // Outlet
-    u.set_boundary_type(&A4, LocationType::Front, PDEBoundaryType::Neumann);
-    v.set_boundary_type(&A4, LocationType::Front, PDEBoundaryType::Neumann);
-    w.set_boundary_type(&A4, LocationType::Front, PDEBoundaryType::Neumann);
+    u.set_boundary_type(&A4, LocationType::YNegative, PDEBoundaryType::Neumann);
+    v.set_boundary_type(&A4, LocationType::YNegative, PDEBoundaryType::Neumann);
+    w.set_boundary_type(&A4, LocationType::YNegative, PDEBoundaryType::Neumann);
 
     ConcatPoissonSolver3D p_solver(&p);
     ConcatNSSolver3D      ns_solver(&u, &v, &w, &p, &p_solver);
@@ -237,9 +237,9 @@ int main(int argc, char* argv[])
     int offset_x = 0.002 / hx;
 
     auto get_max_vel_at_plane = [&]() {
-        field2& u_buffer_right = *u.buffer_map[&A2][LocationType::Right];
-        field2& w_buffer_up    = *w.buffer_map[&A2][LocationType::Up];
-        double  max_vel        = 0.0;
+        field2& u_buffer_xpos = *u.buffer_map[&A2][LocationType::XPositive];
+        field2& w_buffer_zpos = *w.buffer_map[&A2][LocationType::ZPositive];
+        double  max_vel       = 0.0;
         for (int i = 0; i < nx2; i++)
         {
             for (int k = 0; k < nz2; k++)
@@ -254,8 +254,8 @@ int main(int argc, char* argv[])
                             (u_A2(i, juc - 1, k) + u_A2(i, juc, k) + u_A2(i + 1, juc - 1, k) + u_A2(i + 1, juc, k)) /
                             4.0;
                     else
-                        u_val = (u_A2(i, juc - 1, k) + u_A2(i, juc, k) + u_buffer_right(juc - 1, k) +
-                                 u_buffer_right(juc, k)) /
+                        u_val = (u_A2(i, juc - 1, k) + u_A2(i, juc, k) + u_buffer_xpos(juc - 1, k) +
+                                 u_buffer_xpos(juc, k)) /
                                 4.0;
                 }
                 else
@@ -263,7 +263,7 @@ int main(int argc, char* argv[])
                     if (i < nx2 - 1)
                         u_val = (u_A2(i, juc, k) + u_A2(i + 1, juc, k)) / 2.0;
                     else
-                        u_val = (u_A2(i, juc, k) + u_buffer_right(juc, k)) / 2.0;
+                        u_val = (u_A2(i, juc, k) + u_buffer_xpos(juc, k)) / 2.0;
                 }
 
                 // calc w
@@ -274,16 +274,16 @@ int main(int argc, char* argv[])
                             (w_A2(i, juc - 1, k) + w_A2(i, juc, k) + w_A2(i, juc - 1, k + 1) + w_A2(i, juc, k + 1)) /
                             4.0;
                     else
-                        w_val =
-                            (w_A2(i, juc - 1, k) + w_A2(i, juc, k) + w_buffer_up(juc - 1, k) + w_buffer_up(juc, k)) /
-                            4.0;
+                        w_val = (w_A2(i, juc - 1, k) + w_A2(i, juc, k) + w_buffer_zpos(juc - 1, k) +
+                                 w_buffer_zpos(juc, k)) /
+                                4.0;
                 }
                 else
                 {
                     if (k < nz2 - 1)
                         w_val = (w_A2(i, juc, k) + w_A2(i, juc, k + 1)) / 2.0;
                     else
-                        w_val = (w_A2(i, juc, k) + w_buffer_up(i, juc)) / 2.0;
+                        w_val = (w_A2(i, juc, k) + w_buffer_zpos(i, juc)) / 2.0;
                 }
                 max_vel = std::max(max_vel, std::sqrt(u_val * u_val + w_val * w_val));
             }

@@ -190,7 +190,8 @@ bool isAllNeumannBoundary(const Variable2D& var)
     if (var.geometry == nullptr)
         return false;
 
-    const LocationType locs[4] = {LocationType::Left, LocationType::Right, LocationType::Down, LocationType::Up};
+    const LocationType locs[4] = {
+        LocationType::XNegative, LocationType::XPositive, LocationType::YNegative, LocationType::YPositive};
 
     for (auto* domain : var.geometry->domains)
     {
@@ -284,27 +285,27 @@ double normalizeRhsForNeumannBc(const Variable2D&                               
             return s;
         };
 
-        const auto left_type  = type_map.at(LocationType::Left);
-        const auto right_type = type_map.at(LocationType::Right);
-        const auto down_type  = type_map.at(LocationType::Down);
-        const auto up_type    = type_map.at(LocationType::Up);
+        const auto xneg_type = type_map.at(LocationType::XNegative);
+        const auto xpos_type = type_map.at(LocationType::XPositive);
+        const auto yneg_type = type_map.at(LocationType::YNegative);
+        const auto up_type   = type_map.at(LocationType::YPositive);
 
         // Neumann contributions follow PoissonSolver2D::boundary_assembly() sign conventions.
-        if (left_type == PDEBoundaryType::Neumann && hasBoundaryValue(LocationType::Left))
+        if (xneg_type == PDEBoundaryType::Neumann && hasBoundaryValue(LocationType::XNegative))
         {
-            bc_sum += sum_or_default(requireBoundaryValuePtr(LocationType::Left), ny, 0.0) / hx;
+            bc_sum += sum_or_default(requireBoundaryValuePtr(LocationType::XNegative), ny, 0.0) / hx;
         }
-        if (right_type == PDEBoundaryType::Neumann && hasBoundaryValue(LocationType::Right))
+        if (xpos_type == PDEBoundaryType::Neumann && hasBoundaryValue(LocationType::XPositive))
         {
-            bc_sum -= sum_or_default(requireBoundaryValuePtr(LocationType::Right), ny, 0.0) / hx;
+            bc_sum -= sum_or_default(requireBoundaryValuePtr(LocationType::XPositive), ny, 0.0) / hx;
         }
-        if (down_type == PDEBoundaryType::Neumann && hasBoundaryValue(LocationType::Down))
+        if (yneg_type == PDEBoundaryType::Neumann && hasBoundaryValue(LocationType::YNegative))
         {
-            bc_sum += sum_or_default(requireBoundaryValuePtr(LocationType::Down), nx, 0.0) / hy;
+            bc_sum += sum_or_default(requireBoundaryValuePtr(LocationType::YNegative), nx, 0.0) / hy;
         }
-        if (up_type == PDEBoundaryType::Neumann && hasBoundaryValue(LocationType::Up))
+        if (up_type == PDEBoundaryType::Neumann && hasBoundaryValue(LocationType::YPositive))
         {
-            bc_sum -= sum_or_default(requireBoundaryValuePtr(LocationType::Up), nx, 0.0) / hy;
+            bc_sum -= sum_or_default(requireBoundaryValuePtr(LocationType::YPositive), nx, 0.0) / hy;
         }
     }
 
@@ -328,22 +329,22 @@ double get_u_with_boundary(int           i,
                            int           nx,
                            int           ny,
                            const field2& u,
-                           double*       u_left_buffer,
-                           double*       u_right_buffer,
-                           double*       u_down_buffer,
-                           double*       u_up_buffer,
-                           double        right_down_corner_value)
+                           double*       u_xneg_buffer,
+                           double*       u_xpos_buffer,
+                           double*       u_yneg_buffer,
+                           double*       u_ypos_buffer,
+                           double        xpos_yneg_corner_value)
 {
     if (i >= 0 && i < nx && j >= 0 && j < ny)
         return u(i, j);
     if (j < 0)
-        return (i >= nx) ? right_down_corner_value : u_down_buffer[i];
+        return (i >= nx) ? xpos_yneg_corner_value : u_yneg_buffer[i];
     if (j >= ny)
-        return u_up_buffer[i];
+        return u_ypos_buffer[i];
     if (i >= nx)
-        return u_right_buffer[j];
+        return u_xpos_buffer[j];
     // i < 0
-    return u_left_buffer[j];
+    return u_xneg_buffer[j];
 }
 
 double get_v_with_boundary(int           i,
@@ -351,22 +352,22 @@ double get_v_with_boundary(int           i,
                            int           nx,
                            int           ny,
                            const field2& v,
-                           double*       v_left_buffer,
-                           double*       v_right_buffer,
-                           double*       v_down_buffer,
-                           double*       v_up_buffer,
-                           double        left_up_corner_value)
+                           double*       v_xneg_buffer,
+                           double*       v_xpos_buffer,
+                           double*       v_yneg_buffer,
+                           double*       v_ypos_buffer,
+                           double        xneg_ypos_corner_value)
 {
     if (i >= 0 && i < nx && j >= 0 && j < ny)
         return v(i, j);
     if (i < 0)
-        return (j >= ny) ? left_up_corner_value : v_left_buffer[j];
+        return (j >= ny) ? xneg_ypos_corner_value : v_xneg_buffer[j];
     if (i >= nx)
-        return v_right_buffer[j];
+        return v_xpos_buffer[j];
     if (j >= ny)
-        return v_up_buffer[i];
+        return v_ypos_buffer[i];
     // j < 0
-    return v_down_buffer[i];
+    return v_yneg_buffer[i];
 }
 
 double get_scalar_with_boundary(int             i,
@@ -374,13 +375,13 @@ double get_scalar_with_boundary(int             i,
                                 int             nx,
                                 int             ny,
                                 const field2&   f,
-                                double*         left_buffer,
-                                double*         down_buffer,
+                                double*         xneg_buffer,
+                                double*         yneg_buffer,
                                 double          hx,
                                 double          hy,
-                                PDEBoundaryType right_bc_type,
-                                double*         right_bc_val,
-                                double          right_bc_default,
+                                PDEBoundaryType xpos_bc_type,
+                                double*         xpos_bc_val,
+                                double          xpos_bc_default,
                                 PDEBoundaryType up_bc_type,
                                 double*         up_bc_val,
                                 double          up_bc_default)
@@ -406,25 +407,25 @@ double get_scalar_with_boundary(int             i,
     if (i < 0)
     {
         const int jj = clamp_j(j);
-        return left_buffer ? left_buffer[jj] : f(0, jj);
+        return xneg_buffer ? xneg_buffer[jj] : f(0, jj);
     }
     if (j < 0)
     {
         const int ii = clamp_i(i);
-        return down_buffer ? down_buffer[ii] : f(ii, 0);
+        return yneg_buffer ? yneg_buffer[ii] : f(ii, 0);
     }
 
     if (i >= nx)
     {
         const int jj = clamp_j(j);
-        if (right_bc_type == PDEBoundaryType::Dirichlet)
+        if (xpos_bc_type == PDEBoundaryType::Dirichlet)
         {
-            const double g = right_bc_val ? right_bc_val[jj] : right_bc_default;
+            const double g = xpos_bc_val ? xpos_bc_val[jj] : xpos_bc_default;
             return 2.0 * g - f(nx - 1, jj);
         }
-        if (right_bc_type == PDEBoundaryType::Neumann)
+        if (xpos_bc_type == PDEBoundaryType::Neumann)
         {
-            const double q = right_bc_val ? right_bc_val[jj] : right_bc_default;
+            const double q = xpos_bc_val ? xpos_bc_val[jj] : xpos_bc_default;
             return f(nx - 1, jj) + q * hx;
         }
         return f(nx - 1, jj);

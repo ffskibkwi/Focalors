@@ -38,14 +38,14 @@ int main(int argc, char* argv[])
         Domain3DUniform T9(m8, n9, l1, "T9");
 
         Geometry3D geo;
-        geo.connect(&T1, LocationType::Up, &T2);
-        geo.connect(&T2, LocationType::Right, &T3);
-        geo.connect(&T3, LocationType::Up, &T4);
-        geo.connect(&T3, LocationType::Right, &T5);
-        geo.connect(&T5, LocationType::Right, &T6);
-        geo.connect(&T6, LocationType::Down, &T7);
-        geo.connect(&T6, LocationType::Right, &T8);
-        geo.connect(&T8, LocationType::Up, &T9);
+        geo.connect(&T1, LocationType::ZPositive, &T2);
+        geo.connect(&T2, LocationType::XPositive, &T3);
+        geo.connect(&T3, LocationType::ZPositive, &T4);
+        geo.connect(&T3, LocationType::XPositive, &T5);
+        geo.connect(&T5, LocationType::XPositive, &T6);
+        geo.connect(&T6, LocationType::ZNegative, &T7);
+        geo.connect(&T6, LocationType::XPositive, &T8);
+        geo.connect(&T8, LocationType::ZPositive, &T9);
 
         geo.set_global_spatial_step(H, H, H);
 
@@ -71,9 +71,9 @@ int main(int argc, char* argv[])
             return (-6.0 * k + 4.0 * k * k * (x * x + y * y + z * z)) * p_analy(x, y, z);
         };
 
-        geo.axis(&T1, LocationType::Left);
-        geo.axis(&T1, LocationType::Down);
-        geo.axis(&T1, LocationType::Front);
+        geo.axis(&T1, LocationType::XNegative);
+        geo.axis(&T1, LocationType::ZNegative);
+        geo.axis(&T1, LocationType::YNegative);
 
         p.fill_boundary_type(PDEBoundaryType::Dirichlet);
         p.fill_buffer_value_from_func_global(p_analy);

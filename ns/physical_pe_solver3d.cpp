@@ -197,26 +197,26 @@ void PhysicalPESolver3D::calc_conv_outer()
         field3& c_v = *c_v_map[domain];
         field3& c_w = *c_w_map[domain];
 
-        field2& u_left_buffer  = *u_var->buffer_map[domain][LocationType::Left];
-        field2& u_right_buffer = *u_var->buffer_map[domain][LocationType::Right];
-        field2& u_front_buffer = *u_var->buffer_map[domain][LocationType::Front];
-        field2& u_back_buffer  = *u_var->buffer_map[domain][LocationType::Back];
-        field2& u_down_buffer  = *u_var->buffer_map[domain][LocationType::Down];
-        field2& u_up_buffer    = *u_var->buffer_map[domain][LocationType::Up];
+        field2& u_xneg_buffer = *u_var->buffer_map[domain][LocationType::XNegative];
+        field2& u_xpos_buffer = *u_var->buffer_map[domain][LocationType::XPositive];
+        field2& u_yneg_buffer = *u_var->buffer_map[domain][LocationType::YNegative];
+        field2& u_back_buffer = *u_var->buffer_map[domain][LocationType::YPositive];
+        field2& u_zneg_buffer = *u_var->buffer_map[domain][LocationType::ZNegative];
+        field2& u_zpos_buffer = *u_var->buffer_map[domain][LocationType::ZPositive];
 
-        field2& v_left_buffer  = *v_var->buffer_map[domain][LocationType::Left];
-        field2& v_right_buffer = *v_var->buffer_map[domain][LocationType::Right];
-        field2& v_front_buffer = *v_var->buffer_map[domain][LocationType::Front];
-        field2& v_back_buffer  = *v_var->buffer_map[domain][LocationType::Back];
-        field2& v_down_buffer  = *v_var->buffer_map[domain][LocationType::Down];
-        field2& v_up_buffer    = *v_var->buffer_map[domain][LocationType::Up];
+        field2& v_xneg_buffer = *v_var->buffer_map[domain][LocationType::XNegative];
+        field2& v_xpos_buffer = *v_var->buffer_map[domain][LocationType::XPositive];
+        field2& v_yneg_buffer = *v_var->buffer_map[domain][LocationType::YNegative];
+        field2& v_back_buffer = *v_var->buffer_map[domain][LocationType::YPositive];
+        field2& v_zneg_buffer = *v_var->buffer_map[domain][LocationType::ZNegative];
+        field2& v_zpos_buffer = *v_var->buffer_map[domain][LocationType::ZPositive];
 
-        field2& w_left_buffer  = *w_var->buffer_map[domain][LocationType::Left];
-        field2& w_right_buffer = *w_var->buffer_map[domain][LocationType::Right];
-        field2& w_front_buffer = *w_var->buffer_map[domain][LocationType::Front];
-        field2& w_back_buffer  = *w_var->buffer_map[domain][LocationType::Back];
-        field2& w_down_buffer  = *w_var->buffer_map[domain][LocationType::Down];
-        field2& w_up_buffer    = *w_var->buffer_map[domain][LocationType::Up];
+        field2& w_xneg_buffer = *w_var->buffer_map[domain][LocationType::XNegative];
+        field2& w_xpos_buffer = *w_var->buffer_map[domain][LocationType::XPositive];
+        field2& w_yneg_buffer = *w_var->buffer_map[domain][LocationType::YNegative];
+        field2& w_back_buffer = *w_var->buffer_map[domain][LocationType::YPositive];
+        field2& w_zneg_buffer = *w_var->buffer_map[domain][LocationType::ZNegative];
+        field2& w_zpos_buffer = *w_var->buffer_map[domain][LocationType::ZPositive];
 
         double* u_corner_along_y = u_var->corner_value_map_y[domain];
         double* u_corner_along_z = u_var->corner_value_map_z[domain];
@@ -234,43 +234,43 @@ void PhysicalPESolver3D::calc_conv_outer()
 
         auto bound_cal = [&](int i, int j, int k) {
             double u_ijk = u(i, j, k);
-            double u_im1 = i == 0 ? u_left_buffer(j, k) : u(i - 1, j, k);
-            double u_ip1 = i == nx - 1 ? u_right_buffer(j, k) : u(i + 1, j, k);
-            double u_jm1 = j == 0 ? u_front_buffer(i, k) : u(i, j - 1, k);
+            double u_im1 = i == 0 ? u_xneg_buffer(j, k) : u(i - 1, j, k);
+            double u_ip1 = i == nx - 1 ? u_xpos_buffer(j, k) : u(i + 1, j, k);
+            double u_jm1 = j == 0 ? u_yneg_buffer(i, k) : u(i, j - 1, k);
             double u_jp1 = j == ny - 1 ? u_back_buffer(i, k) : u(i, j + 1, k);
-            double u_km1 = k == 0 ? u_down_buffer(i, j) : u(i, j, k - 1);
-            double u_kp1 = k == nz - 1 ? u_up_buffer(i, j) : u(i, j, k + 1);
+            double u_km1 = k == 0 ? u_zneg_buffer(i, j) : u(i, j, k - 1);
+            double u_kp1 = k == nz - 1 ? u_zpos_buffer(i, j) : u(i, j, k + 1);
 
-            double u_ip1_jm1 = i == nx - 1 ? (j == 0 ? u_corner_along_z[k] : u_right_buffer(j - 1, k)) :
-                                             (j == 0 ? u_front_buffer(i + 1, k) : u(i + 1, j - 1, k));
-            double u_ip1_km1 = i == nx - 1 ? (k == 0 ? u_corner_along_y[j] : u_right_buffer(j, k - 1)) :
-                                             (k == 0 ? u_down_buffer(i + 1, j) : u(i + 1, j, k - 1));
+            double u_ip1_jm1 = i == nx - 1 ? (j == 0 ? u_corner_along_z[k] : u_xpos_buffer(j - 1, k)) :
+                                             (j == 0 ? u_yneg_buffer(i + 1, k) : u(i + 1, j - 1, k));
+            double u_ip1_km1 = i == nx - 1 ? (k == 0 ? u_corner_along_y[j] : u_xpos_buffer(j, k - 1)) :
+                                             (k == 0 ? u_zneg_buffer(i + 1, j) : u(i + 1, j, k - 1));
 
             double v_ijk = v(i, j, k);
-            double v_im1 = i == 0 ? v_left_buffer(j, k) : v(i - 1, j, k);
-            double v_ip1 = i == nx - 1 ? v_right_buffer(j, k) : v(i + 1, j, k);
-            double v_jm1 = j == 0 ? v_front_buffer(i, k) : v(i, j - 1, k);
+            double v_im1 = i == 0 ? v_xneg_buffer(j, k) : v(i - 1, j, k);
+            double v_ip1 = i == nx - 1 ? v_xpos_buffer(j, k) : v(i + 1, j, k);
+            double v_jm1 = j == 0 ? v_yneg_buffer(i, k) : v(i, j - 1, k);
             double v_jp1 = j == ny - 1 ? v_back_buffer(i, k) : v(i, j + 1, k);
-            double v_km1 = k == 0 ? v_down_buffer(i, j) : v(i, j, k - 1);
-            double v_kp1 = k == nz - 1 ? v_up_buffer(i, j) : v(i, j, k + 1);
+            double v_km1 = k == 0 ? v_zneg_buffer(i, j) : v(i, j, k - 1);
+            double v_kp1 = k == nz - 1 ? v_zpos_buffer(i, j) : v(i, j, k + 1);
 
-            double v_im1_jp1 = i == 0 ? (j == ny - 1 ? v_corner_along_z[k] : v_left_buffer(j + 1, k)) :
+            double v_im1_jp1 = i == 0 ? (j == ny - 1 ? v_corner_along_z[k] : v_xneg_buffer(j + 1, k)) :
                                         (j == ny - 1 ? v_back_buffer(i - 1, k) : v(i - 1, j + 1, k));
             double v_jp1_km1 = j == ny - 1 ? (k == 0 ? v_corner_along_x[i] : v_back_buffer(i, k - 1)) :
-                                             (k == 0 ? v_down_buffer(i, j + 1) : v(i, j + 1, k - 1));
+                                             (k == 0 ? v_zneg_buffer(i, j + 1) : v(i, j + 1, k - 1));
 
             double w_ijk = w(i, j, k);
-            double w_im1 = i == 0 ? w_left_buffer(j, k) : w(i - 1, j, k);
-            double w_ip1 = i == nx - 1 ? w_right_buffer(j, k) : w(i + 1, j, k);
-            double w_jm1 = j == 0 ? w_front_buffer(i, k) : w(i, j - 1, k);
+            double w_im1 = i == 0 ? w_xneg_buffer(j, k) : w(i - 1, j, k);
+            double w_ip1 = i == nx - 1 ? w_xpos_buffer(j, k) : w(i + 1, j, k);
+            double w_jm1 = j == 0 ? w_yneg_buffer(i, k) : w(i, j - 1, k);
             double w_jp1 = j == ny - 1 ? w_back_buffer(i, k) : w(i, j + 1, k);
-            double w_km1 = k == 0 ? w_down_buffer(i, j) : w(i, j, k - 1);
-            double w_kp1 = k == nz - 1 ? w_up_buffer(i, j) : w(i, j, k + 1);
+            double w_km1 = k == 0 ? w_zneg_buffer(i, j) : w(i, j, k - 1);
+            double w_kp1 = k == nz - 1 ? w_zpos_buffer(i, j) : w(i, j, k + 1);
 
-            double w_im1_kp1 = i == 0 ? (k == nz - 1 ? w_corner_along_y[j] : w_left_buffer(j, k + 1)) :
-                                        (k == nz - 1 ? w_up_buffer(i - 1, j) : w(i - 1, j, k + 1));
-            double w_jm1_kp1 = j == 0 ? (k == nz - 1 ? w_corner_along_x[i] : w_front_buffer(i, k + 1)) :
-                                        (k == nz - 1 ? w_up_buffer(i, j - 1) : w(i, j - 1, k + 1));
+            double w_im1_kp1 = i == 0 ? (k == nz - 1 ? w_corner_along_y[j] : w_xneg_buffer(j, k + 1)) :
+                                        (k == nz - 1 ? w_zpos_buffer(i - 1, j) : w(i - 1, j, k + 1));
+            double w_jm1_kp1 = j == 0 ? (k == nz - 1 ? w_corner_along_x[i] : w_yneg_buffer(i, k + 1)) :
+                                        (k == nz - 1 ? w_zpos_buffer(i, j - 1) : w(i, j - 1, k + 1));
             double conv_u_x  = 0.25 / hx * (u_ip1 * (u_ip1 + 2.0 * u_ijk) - u_im1 * (u_im1 + 2.0 * u_ijk));
             double conv_u_y =
                 0.25 / hy * ((u_ijk + u_jp1) * (v_im1_jp1 + v_jp1) - (u_jm1 + u_ijk) * (v_im1 + v(i, j, k)));
@@ -287,7 +287,7 @@ void PhysicalPESolver3D::calc_conv_outer()
                 std::cout << "hy = " << hy << std::endl;
                 std::cout << "conv_u_y = " << conv_u_y << std::endl;
 
-                std::cout << "v_left_buffer(0, 0) = " << v_left_buffer(0, 0) << std::endl;
+                std::cout << "v_xneg_buffer(0, 0) = " << v_xneg_buffer(0, 0) << std::endl;
             }
             double conv_u_z =
                 0.25 / hz * ((u_ijk + u_kp1) * (w_im1_kp1 + w_kp1) - (u_km1 + u_ijk) * (w_im1 + w(i, j, k)));
@@ -365,9 +365,9 @@ void PhysicalPESolver3D::calc_rhs()
         field3& p = *p_var->field_map[domain];
 
         // redirect in convenience of using ns code
-        field2& u_buffer_right = *c_u_buffer_map[domain][LocationType::Right];
-        field2& v_buffer_back  = *c_v_buffer_map[domain][LocationType::Back];
-        field2& w_buffer_up    = *c_w_buffer_map[domain][LocationType::Up];
+        field2& u_buffer_xpos = *c_u_buffer_map[domain][LocationType::XPositive];
+        field2& v_buffer_ypos = *c_v_buffer_map[domain][LocationType::YPositive];
+        field2& w_buffer_zpos = *c_w_buffer_map[domain][LocationType::ZPositive];
 
         int    nx = u.get_nx();
         int    ny = u.get_ny();
@@ -386,41 +386,41 @@ void PhysicalPESolver3D::calc_rhs()
         OPENMP_PARALLEL_FOR()
         for (int i = 0; i < nx - 1; i++)
             for (int j = 0; j < ny - 1; j++)
-                p(i, j, nz - 1) =
-                    -rho * ((u(i + 1, j, nz - 1) - u(i, j, nz - 1)) / hx +
-                            (v(i, j + 1, nz - 1) - v(i, j, nz - 1)) / hy + (w_buffer_up(i, j) - w(i, j, nz - 1)) / hz);
+                p(i, j, nz - 1) = -rho * ((u(i + 1, j, nz - 1) - u(i, j, nz - 1)) / hx +
+                                          (v(i, j + 1, nz - 1) - v(i, j, nz - 1)) / hy +
+                                          (w_buffer_zpos(i, j) - w(i, j, nz - 1)) / hz);
 
         OPENMP_PARALLEL_FOR()
         for (int i = 0; i < nx - 1; i++)
             for (int k = 0; k < nz - 1; k++)
                 p(i, ny - 1, k) = -rho * ((u(i + 1, ny - 1, k) - u(i, ny - 1, k)) / hx +
-                                          (v_buffer_back(i, k) - v(i, ny - 1, k)) / hy +
+                                          (v_buffer_ypos(i, k) - v(i, ny - 1, k)) / hy +
                                           (w(i, ny - 1, k + 1) - w(i, ny - 1, k)) / hz);
 
         OPENMP_PARALLEL_FOR()
         for (int j = 0; j < ny - 1; j++)
             for (int k = 0; k < nz - 1; k++)
-                p(nx - 1, j, k) = -rho * ((u_buffer_right(j, k) - u(nx - 1, j, k)) / hx +
+                p(nx - 1, j, k) = -rho * ((u_buffer_xpos(j, k) - u(nx - 1, j, k)) / hx +
                                           (v(nx - 1, j + 1, k) - v(nx - 1, j, k)) / hy +
                                           (w(nx - 1, j, k + 1) - w(nx - 1, j, k)) / hz);
 
         for (int i = 0; i < nx - 1; i++)
             p(i, ny - 1, nz - 1) = -rho * ((u(i + 1, ny - 1, nz - 1) - u(i, ny - 1, nz - 1)) / hx +
-                                           (v_buffer_back(i, nz - 1) - v(i, ny - 1, nz - 1)) / hy +
-                                           (w_buffer_up(i, ny - 1) - w(i, ny - 1, nz - 1)) / hz);
+                                           (v_buffer_ypos(i, nz - 1) - v(i, ny - 1, nz - 1)) / hy +
+                                           (w_buffer_zpos(i, ny - 1) - w(i, ny - 1, nz - 1)) / hz);
 
         for (int j = 0; j < ny - 1; j++)
-            p(nx - 1, j, nz - 1) = -rho * ((u_buffer_right(j, nz - 1) - u(nx - 1, j, nz - 1)) / hx +
+            p(nx - 1, j, nz - 1) = -rho * ((u_buffer_xpos(j, nz - 1) - u(nx - 1, j, nz - 1)) / hx +
                                            (v(nx - 1, j + 1, nz - 1) - v(nx - 1, j, nz - 1)) / hy +
-                                           (w_buffer_up(nx - 1, j) - w(nx - 1, j, nz - 1)) / hz);
+                                           (w_buffer_zpos(nx - 1, j) - w(nx - 1, j, nz - 1)) / hz);
 
         for (int k = 0; k < nz - 1; k++)
-            p(nx - 1, ny - 1, k) = -rho * ((u_buffer_right(ny - 1, k) - u(nx - 1, ny - 1, k)) / hx +
-                                           (v_buffer_back(nx - 1, k) - v(nx - 1, ny - 1, k)) / hy +
+            p(nx - 1, ny - 1, k) = -rho * ((u_buffer_xpos(ny - 1, k) - u(nx - 1, ny - 1, k)) / hx +
+                                           (v_buffer_ypos(nx - 1, k) - v(nx - 1, ny - 1, k)) / hy +
                                            (w(nx - 1, ny - 1, k + 1) - w(nx - 1, ny - 1, k)) / hz);
 
-        p(nx - 1, ny - 1, nz - 1) = -rho * ((u_buffer_right(ny - 1, nz - 1) - u(nx - 1, ny - 1, nz - 1)) / hx +
-                                            (v_buffer_back(nx - 1, nz - 1) - v(nx - 1, ny - 1, nz - 1)) / hy +
-                                            (w_buffer_up(nx - 1, ny - 1) - w(nx - 1, ny - 1, nz - 1)) / hz);
+        p(nx - 1, ny - 1, nz - 1) = -rho * ((u_buffer_xpos(ny - 1, nz - 1) - u(nx - 1, ny - 1, nz - 1)) / hx +
+                                            (v_buffer_ypos(nx - 1, nz - 1) - v(nx - 1, ny - 1, nz - 1)) / hy +
+                                            (w_buffer_zpos(nx - 1, ny - 1) - w(nx - 1, ny - 1, nz - 1)) / hz);
     }
 }

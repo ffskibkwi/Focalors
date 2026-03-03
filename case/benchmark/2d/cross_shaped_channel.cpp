@@ -107,10 +107,10 @@ int main(int argc, char* argv[])
     geo.add_domain({&A1, &A2, &A3, &A4, &A5});
 
     // Construct cross connectivity
-    geo.connect(&A2, LocationType::Left, &A1);
-    geo.connect(&A2, LocationType::Right, &A3);
-    geo.connect(&A2, LocationType::Down, &A4);
-    geo.connect(&A2, LocationType::Up, &A5);
+    geo.connect(&A2, LocationType::XNegative, &A1);
+    geo.connect(&A2, LocationType::XPositive, &A3);
+    geo.connect(&A2, LocationType::YNegative, &A4);
+    geo.connect(&A2, LocationType::YPositive, &A5);
 
     Variable2D u("u"), v("v"), p("p");
     u.set_geometry(geo);
@@ -165,7 +165,8 @@ int main(int argc, char* argv[])
     };
     // Default outer boundaries
     std::vector<Domain2DUniform*> domains = {&A1, &A2, &A3, &A4, &A5};
-    std::vector<LocationType> dirs = {LocationType::Left, LocationType::Right, LocationType::Down, LocationType::Up};
+    std::vector<LocationType>     dirs    = {
+        LocationType::XNegative, LocationType::XPositive, LocationType::YNegative, LocationType::YPositive};
 
     for (auto* d : domains)
     {
@@ -181,44 +182,44 @@ int main(int argc, char* argv[])
         }
     }
 
-    // Outlet pressure: Dirichlet p = 0 (A4 Down, A5 Up)
-    set_dirichlet_zero(p, &A4, LocationType::Down);
-    set_dirichlet_zero(p, &A5, LocationType::Up);
+    // Outlet pressure: Dirichlet p = 0 (A4 YNegative, A5 YPositive)
+    set_dirichlet_zero(p, &A4, LocationType::YNegative);
+    set_dirichlet_zero(p, &A5, LocationType::YPositive);
 
     // Inlet profiles for symmetry validation (Poiseuille, nondimensional amplitude = 1.0)
 
-    u.set_boundary_type(&A1, LocationType::Left, PDEBoundaryType::Dirichlet);
-    u.set_boundary_value(&A1, LocationType::Left, 0.0); // ← 添加这行来分配内存
-    u.has_boundary_value_map[&A1][LocationType::Left] = true;
-    set_dirichlet_zero(v, &A1, LocationType::Left);
-    // A1 Left: u(y_norm) = +6*y_norm*(1-y_norm)
+    u.set_boundary_type(&A1, LocationType::XNegative, PDEBoundaryType::Dirichlet);
+    u.set_boundary_value(&A1, LocationType::XNegative, 0.0); // ← 添加这行来分配内存
+    u.has_boundary_value_map[&A1][LocationType::XNegative] = true;
+    set_dirichlet_zero(v, &A1, LocationType::XNegative);
+    // A1 XNegative: u(y_norm) = +6*y_norm*(1-y_norm)
     for (int j = 0; j < u_A1.get_ny(); ++j)
     {
-        double y_norm                                    = (j + 0.5) / static_cast<double>(u_A1.get_ny());
-        double u_val                                     = 6.0 * y_norm * (1.0 - y_norm);
-        u.boundary_value_map[&A1][LocationType::Left][j] = u_val;
+        double y_norm                                         = (j + 0.5) / static_cast<double>(u_A1.get_ny());
+        double u_val                                          = 6.0 * y_norm * (1.0 - y_norm);
+        u.boundary_value_map[&A1][LocationType::XNegative][j] = u_val;
     }
-    set_dirichlet_zero(v, &A1, LocationType::Left);
+    set_dirichlet_zero(v, &A1, LocationType::XNegative);
 
-    // A3 Right: u(y_norm) = -6*y_norm*(1-y_norm)
-    u.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Dirichlet);
-    u.set_boundary_value(&A3, LocationType::Right, 0.0); // ← 添加这行来分配内存
-    u.has_boundary_value_map[&A3][LocationType::Right] = true;
-    set_dirichlet_zero(v, &A3, LocationType::Right);
+    // A3 XPositive: u(y_norm) = -6*y_norm*(1-y_norm)
+    u.set_boundary_type(&A3, LocationType::XPositive, PDEBoundaryType::Dirichlet);
+    u.set_boundary_value(&A3, LocationType::XPositive, 0.0); // ← 添加这行来分配内存
+    u.has_boundary_value_map[&A3][LocationType::XPositive] = true;
+    set_dirichlet_zero(v, &A3, LocationType::XPositive);
     for (int j = 0; j < u_A3.get_ny(); ++j)
     {
-        double y_norm                                     = (j + 0.5) / static_cast<double>(u_A3.get_ny());
-        double u_val                                      = -6.0 * y_norm * (1.0 - y_norm);
-        u.boundary_value_map[&A3][LocationType::Right][j] = u_val;
+        double y_norm                                         = (j + 0.5) / static_cast<double>(u_A3.get_ny());
+        double u_val                                          = -6.0 * y_norm * (1.0 - y_norm);
+        u.boundary_value_map[&A3][LocationType::XPositive][j] = u_val;
     }
 
-    // A4 Down: open/symmetry as Neumann for u and v
-    set_neumann_zero(u, &A4, LocationType::Down);
-    set_neumann_zero(v, &A4, LocationType::Down);
+    // A4 YNegative: open/symmetry as Neumann for u and v
+    set_neumann_zero(u, &A4, LocationType::YNegative);
+    set_neumann_zero(v, &A4, LocationType::YNegative);
 
-    // A5 Up: open/symmetry as Neumann for u and v
-    set_neumann_zero(u, &A5, LocationType::Up);
-    set_neumann_zero(v, &A5, LocationType::Up);
+    // A5 YPositive: open/symmetry as Neumann for u and v
+    set_neumann_zero(u, &A5, LocationType::YPositive);
+    set_neumann_zero(v, &A5, LocationType::YPositive);
 
     ConcatPoissonSolver2D p_solver(&p);
     ConcatNSSolver2D      ns_solver(&u, &v, &p, &p_solver);

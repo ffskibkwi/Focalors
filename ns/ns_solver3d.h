@@ -76,7 +76,7 @@ public:
      * Iterate through each boundary that may require updating,
      * and determine whether updating is needed based on the connection conditions.
      *
-     * Updating strategy is similar to nondiag_shared_boundary_update.
+     * ZPositivedating strategy is similar to nondiag_shared_boundary_update.
      *
      * The importance of diagonal shared boundary updating:
      * When performing NS calculations on shared boundary, if the calculation point is an endpoint of a column or row,

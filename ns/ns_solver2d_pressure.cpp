@@ -32,8 +32,8 @@ void ConcatNSSolver2D::velocity_div_outer()
         field2& v = *v_field_map[domain];
         field2& p = *p_field_map[domain];
 
-        double* u_buffer_right = u_buffer_map[domain][LocationType::Right];
-        double* v_buffer_up    = v_buffer_map[domain][LocationType::Up];
+        double* u_buffer_xpos = u_buffer_map[domain][LocationType::XPositive];
+        double* v_buffer_ypos = v_buffer_map[domain][LocationType::YPositive];
 
         int    nx = u.get_nx();
         int    ny = u.get_ny();
@@ -41,13 +41,13 @@ void ConcatNSSolver2D::velocity_div_outer()
         double hy = domain->hy;
 
         for (int i = 0; i < nx - 1; i++)
-            p(i, ny - 1) = (u(i + 1, ny - 1) - u(i, ny - 1)) / hx + (v_buffer_up[i] - v(i, ny - 1)) / hy;
+            p(i, ny - 1) = (u(i + 1, ny - 1) - u(i, ny - 1)) / hx + (v_buffer_ypos[i] - v(i, ny - 1)) / hy;
 
         for (int j = 0; j < ny - 1; j++)
-            p(nx - 1, j) = (u_buffer_right[j] - u(nx - 1, j)) / hx + (v(nx - 1, j + 1) - v(nx - 1, j)) / hy;
+            p(nx - 1, j) = (u_buffer_xpos[j] - u(nx - 1, j)) / hx + (v(nx - 1, j + 1) - v(nx - 1, j)) / hy;
 
         p(nx - 1, ny - 1) =
-            (u_buffer_right[ny - 1] - u(nx - 1, ny - 1)) / hx + (v_buffer_up[nx - 1] - v(nx - 1, ny - 1)) / hy;
+            (u_buffer_xpos[ny - 1] - u(nx - 1, ny - 1)) / hx + (v_buffer_ypos[nx - 1] - v(nx - 1, ny - 1)) / hy;
     }
 }
 
@@ -74,16 +74,16 @@ void ConcatNSSolver2D::pressure_buffer_update()
                 std::string      loc_str;
                 switch (loc)
                 {
-                    case LocationType::Left:
+                    case LocationType::XNegative:
                         for (int j = 0; j < ny; j++)
                             p_buffer[j] = adj_p(adj_nx - 1, j);
                         break;
-                    case LocationType::Down:
+                    case LocationType::YNegative:
                         for (int i = 0; i < nx; i++)
                             p_buffer[i] = adj_p(i, adj_ny - 1);
                         break;
                     default:
-                        // For center pressure, only Left/Down buffers are owned; ignore Right/Up.
+                        // For center pressure, only XNegative/YNegative buffers are owned; ignore XPositive/YPositive.
                         break;
                 }
             }
@@ -99,8 +99,8 @@ void ConcatNSSolver2D::add_pressure_gradient()
         field2& v = *v_field_map[domain];
         field2& p = *p_field_map[domain];
 
-        double* p_buffer_down = p_buffer_map[domain][LocationType::Down];
-        double* p_buffer_left = p_buffer_map[domain][LocationType::Left];
+        double* p_buffer_yneg = p_buffer_map[domain][LocationType::YNegative];
+        double* p_buffer_xneg = p_buffer_map[domain][LocationType::XNegative];
 
         int    nx = u.get_nx();
         int    ny = u.get_ny();
@@ -117,13 +117,13 @@ void ConcatNSSolver2D::add_pressure_gradient()
             for (int j = 1; j < ny; j++)
                 v(i, j) -= (p(i, j) - p(i, j - 1)) / hy;
 
-        if (u_var->boundary_type_map[domain][LocationType::Down] == PDEBoundaryType::Adjacented)
+        if (u_var->boundary_type_map[domain][LocationType::YNegative] == PDEBoundaryType::Adjacented)
             for (int i = 0; i < nx; i++)
-                v(i, 0) -= (p(i, 0) - p_buffer_down[i]) / hy;
+                v(i, 0) -= (p(i, 0) - p_buffer_yneg[i]) / hy;
 
-        if (u_var->boundary_type_map[domain][LocationType::Left] == PDEBoundaryType::Adjacented)
+        if (u_var->boundary_type_map[domain][LocationType::XNegative] == PDEBoundaryType::Adjacented)
             for (int j = 0; j < ny; j++)
-                u(0, j) -= (p(0, j) - p_buffer_left[j]) / hx;
+                u(0, j) -= (p(0, j) - p_buffer_xneg[j]) / hx;
     }
 }
 void ConcatNSSolver2D::normalize_pressure()

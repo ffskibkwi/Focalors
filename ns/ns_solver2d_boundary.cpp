@@ -22,7 +22,7 @@ void ConcatNSSolver2D::phys_boundary_update()
             {
                 auto bound_val = has_bound_val_map[loc] ? bound_val_map[loc] : nullptr;
 
-                if (loc == LocationType::Left)
+                if (loc == LocationType::XNegative)
                 {
                     if (type == PDEBoundaryType::Dirichlet)
                         assign_x(u, 0, bound_val, 0.0);
@@ -31,7 +31,7 @@ void ConcatNSSolver2D::phys_boundary_update()
                     else if (type == PDEBoundaryType::Periodic)
                         copy_x(u, nx - 1, 0);
                 }
-                else if (loc == LocationType::Right)
+                else if (loc == LocationType::XPositive)
                 {
                     if (type == PDEBoundaryType::Dirichlet)
                         assign_val_to_buffer(buffer_map[loc], ny, bound_val, 0.0);
@@ -40,7 +40,7 @@ void ConcatNSSolver2D::phys_boundary_update()
                     else if (type == PDEBoundaryType::Periodic)
                         copy_x_to_buffer(buffer_map[loc], u, 1);
                 }
-                else if (loc == LocationType::Down)
+                else if (loc == LocationType::YNegative)
                 {
                     if (type == PDEBoundaryType::Dirichlet)
                         mirror_y_to_buffer(buffer_map[loc], u, 0, bound_val, 0.0);
@@ -49,7 +49,7 @@ void ConcatNSSolver2D::phys_boundary_update()
                     else if (type == PDEBoundaryType::Periodic)
                         copy_y_to_buffer(buffer_map[loc], u, ny - 1);
                 }
-                else if (loc == LocationType::Up)
+                else if (loc == LocationType::YPositive)
                 {
                     if (type == PDEBoundaryType::Dirichlet)
                         mirror_y_to_buffer(buffer_map[loc], u, ny - 1, bound_val, 0.0);
@@ -71,7 +71,7 @@ void ConcatNSSolver2D::phys_boundary_update()
             {
                 auto bound_val = has_bound_val_map[loc] ? bound_val_map[loc] : nullptr;
 
-                if (loc == LocationType::Left)
+                if (loc == LocationType::XNegative)
                 {
                     if (type == PDEBoundaryType::Dirichlet)
                         mirror_x_to_buffer(buffer_map[loc], v, 0, bound_val, 0.0);
@@ -80,7 +80,7 @@ void ConcatNSSolver2D::phys_boundary_update()
                     else if (type == PDEBoundaryType::Periodic)
                         copy_x_to_buffer(buffer_map[loc], v, nx - 1);
                 }
-                else if (loc == LocationType::Right)
+                else if (loc == LocationType::XPositive)
                 {
                     if (type == PDEBoundaryType::Dirichlet)
                         mirror_x_to_buffer(buffer_map[loc], v, nx - 1, bound_val, 0.0);
@@ -89,7 +89,7 @@ void ConcatNSSolver2D::phys_boundary_update()
                     else if (type == PDEBoundaryType::Periodic)
                         copy_x_to_buffer(buffer_map[loc], v, 0);
                 }
-                else if (loc == LocationType::Down)
+                else if (loc == LocationType::YNegative)
                 {
                     if (type == PDEBoundaryType::Dirichlet)
                         assign_y(v, 0, bound_val, 0.0);
@@ -98,7 +98,7 @@ void ConcatNSSolver2D::phys_boundary_update()
                     else if (type == PDEBoundaryType::Periodic)
                         copy_y(v, ny - 1, 0);
                 }
-                else if (loc == LocationType::Up)
+                else if (loc == LocationType::YPositive)
                 {
                     if (type == PDEBoundaryType::Dirichlet)
                         assign_val_to_buffer(buffer_map[loc], nx, bound_val, 0.0);
@@ -138,21 +138,23 @@ void ConcatNSSolver2D::nondiag_shared_boundary_update()
                 int              adj_ny     = adj_u.get_ny();
                 switch (loc)
                 {
-                    case LocationType::Left:
+                    case LocationType::XNegative:
                         copy_x_to_buffer(u_buffer, adj_u, adj_nx - 1);
                         copy_x_to_buffer(v_buffer, adj_v, adj_nx - 1);
-                        left_up_corner_value_map[domain] = v_buffer_map[adj_domain][LocationType::Up][adj_nx - 1];
+                        xneg_ypos_corner_value_map[domain] =
+                            v_buffer_map[adj_domain][LocationType::YPositive][adj_nx - 1];
                         break;
-                    case LocationType::Right:
+                    case LocationType::XPositive:
                         copy_x_to_buffer(u_buffer, adj_u, 0);
                         copy_x_to_buffer(v_buffer, adj_v, 0);
                         break;
-                    case LocationType::Down:
+                    case LocationType::YNegative:
                         copy_y_to_buffer(u_buffer, adj_u, adj_ny - 1);
                         copy_y_to_buffer(v_buffer, adj_v, adj_ny - 1);
-                        right_down_corner_value_map[domain] = u_buffer_map[adj_domain][LocationType::Right][adj_ny - 1];
+                        xpos_yneg_corner_value_map[domain] =
+                            u_buffer_map[adj_domain][LocationType::XPositive][adj_ny - 1];
                         break;
-                    case LocationType::Up:
+                    case LocationType::YPositive:
                         copy_y_to_buffer(u_buffer, adj_u, 0);
                         copy_y_to_buffer(v_buffer, adj_v, 0);
                         break;
@@ -181,62 +183,62 @@ void ConcatNSSolver2D::diag_shared_boundary_update()
                 Domain2DUniform* adj_domain         = adjacency[domain][loc];
                 auto&            adj_bound_type_map = u_var->boundary_type_map[adj_domain];
 
-                if (loc == LocationType::Left)
+                if (loc == LocationType::XNegative)
                 {
-                    if (adj_bound_type_map[LocationType::Down] == PDEBoundaryType::Adjacented)
+                    if (adj_bound_type_map[LocationType::YNegative] == PDEBoundaryType::Adjacented)
                     {
-                        Domain2DUniform* diag_domain  = adjacency[adj_domain][LocationType::Down];
-                        double*          diag_buffer  = u_buffer_map[diag_domain][LocationType::Right];
-                        double*          local_buffer = u_buffer_map[domain][LocationType::Down];
+                        Domain2DUniform* diag_domain  = adjacency[adj_domain][LocationType::YNegative];
+                        double*          diag_buffer  = u_buffer_map[diag_domain][LocationType::XPositive];
+                        double*          local_buffer = u_buffer_map[domain][LocationType::YNegative];
 
                         local_buffer[0] = diag_buffer[diag_domain->get_ny() - 1];
                     }
-                    if (adj_bound_type_map[LocationType::Up] == PDEBoundaryType::Adjacented)
+                    if (adj_bound_type_map[LocationType::YPositive] == PDEBoundaryType::Adjacented)
                     {
-                        Domain2DUniform* diag_domain  = adjacency[adj_domain][LocationType::Up];
-                        double*          diag_buffer  = u_buffer_map[diag_domain][LocationType::Right];
-                        double*          local_buffer = u_buffer_map[domain][LocationType::Up];
+                        Domain2DUniform* diag_domain  = adjacency[adj_domain][LocationType::YPositive];
+                        double*          diag_buffer  = u_buffer_map[diag_domain][LocationType::XPositive];
+                        double*          local_buffer = u_buffer_map[domain][LocationType::YPositive];
 
                         local_buffer[0] = diag_buffer[0];
                     }
                 }
-                else if (loc == LocationType::Right)
+                else if (loc == LocationType::XPositive)
                 {
-                    if (adj_bound_type_map[LocationType::Down] == PDEBoundaryType::Adjacented)
+                    if (adj_bound_type_map[LocationType::YNegative] == PDEBoundaryType::Adjacented)
                     {
-                        Domain2DUniform* diag_domain = adjacency[adj_domain][LocationType::Down];
+                        Domain2DUniform* diag_domain = adjacency[adj_domain][LocationType::YNegative];
                         auto&            diag_u      = *u_field_map[diag_domain];
 
-                        right_down_corner_value_map[domain] = diag_u(0, diag_domain->get_ny() - 1);
+                        xpos_yneg_corner_value_map[domain] = diag_u(0, diag_domain->get_ny() - 1);
                     }
                 }
-                else if (loc == LocationType::Down)
+                else if (loc == LocationType::YNegative)
                 {
-                    if (adj_bound_type_map[LocationType::Left] == PDEBoundaryType::Adjacented)
+                    if (adj_bound_type_map[LocationType::XNegative] == PDEBoundaryType::Adjacented)
                     {
-                        Domain2DUniform* diag_domain  = adjacency[adj_domain][LocationType::Left];
-                        double*          diag_buffer  = v_buffer_map[diag_domain][LocationType::Up];
-                        double*          local_buffer = v_buffer_map[domain][LocationType::Left];
+                        Domain2DUniform* diag_domain  = adjacency[adj_domain][LocationType::XNegative];
+                        double*          diag_buffer  = v_buffer_map[diag_domain][LocationType::YPositive];
+                        double*          local_buffer = v_buffer_map[domain][LocationType::XNegative];
 
                         local_buffer[0] = diag_buffer[diag_domain->get_nx() - 1];
                     }
-                    if (adj_bound_type_map[LocationType::Right] == PDEBoundaryType::Adjacented)
+                    if (adj_bound_type_map[LocationType::XPositive] == PDEBoundaryType::Adjacented)
                     {
-                        Domain2DUniform* diag_domain  = adjacency[adj_domain][LocationType::Right];
-                        double*          diag_buffer  = v_buffer_map[diag_domain][LocationType::Up];
-                        double*          local_buffer = v_buffer_map[domain][LocationType::Right];
+                        Domain2DUniform* diag_domain  = adjacency[adj_domain][LocationType::XPositive];
+                        double*          diag_buffer  = v_buffer_map[diag_domain][LocationType::YPositive];
+                        double*          local_buffer = v_buffer_map[domain][LocationType::XPositive];
 
                         local_buffer[0] = diag_buffer[0];
                     }
                 }
-                else if (loc == LocationType::Up)
+                else if (loc == LocationType::YPositive)
                 {
-                    if (adj_bound_type_map[LocationType::Left] == PDEBoundaryType::Adjacented)
+                    if (adj_bound_type_map[LocationType::XNegative] == PDEBoundaryType::Adjacented)
                     {
-                        Domain2DUniform* diag_domain = adjacency[adj_domain][LocationType::Left];
+                        Domain2DUniform* diag_domain = adjacency[adj_domain][LocationType::XNegative];
                         auto&            diag_v      = *v_field_map[diag_domain];
 
-                        left_up_corner_value_map[domain] = diag_v(diag_domain->get_nx() - 1, 0);
+                        xneg_ypos_corner_value_map[domain] = diag_v(diag_domain->get_nx() - 1, 0);
                     }
                 }
             }
