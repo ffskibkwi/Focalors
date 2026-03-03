@@ -20,15 +20,12 @@ public:
 
     void solve();
 
-    void phys_boundary_update() {}
-    void nondiag_shared_boundary_update();
-    void diag_shared_boundary_update() {}
+    void diag_shared_boundary_update();
     void calc_rhs();
 
     Variable3D *           u_var = nullptr, *v_var = nullptr, *w_var = nullptr, *p_var = nullptr;
     ConcatPoissonSolver3D* p_solver = nullptr;
 
-    std::unordered_map<Domain3DUniform*, field2*> u_xpos2_buffer_map, v_ypos2_buffer_map, w_zpos2_buffer_map;
     std::unordered_map<Domain3DUniform*, double*> u_xpos_ypos_corner_map, u_xpos_zpos_corner_map,
         v_xpos_ypos_corner_map, v_ypos_zpos_corner_map, w_xpos_zpos_corner_map, w_ypos_zpos_corner_map;
 

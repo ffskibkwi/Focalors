@@ -3,77 +3,7 @@
 #include "boundary_2d_utils.h"
 #include "boundary_3d_utils.h"
 
-void PhysicalPESolver3D::nondiag_shared_boundary_update()
+void PhysicalPESolver3D::diag_shared_boundary_update()
 {
-    auto& u_field_map = u_var->field_map;
-    auto& v_field_map = v_var->field_map;
-    auto& w_field_map = w_var->field_map;
-
-    auto& domains   = u_var->geometry->domains;
-    auto& adjacency = u_var->geometry->adjacency;
-    for (auto& domain : domains)
-    {
-        field3& u = *u_field_map[domain];
-        field3& v = *v_field_map[domain];
-        field3& w = *w_field_map[domain];
-
-        int nx = u.get_nx();
-        int ny = u.get_ny();
-        int nz = u.get_nz();
-
-        for (auto& [loc, type] : u_var->boundary_type_map[domain])
-        {
-            // While u has adjacented boundary, it means v and p also have adjacented boundary
-            if (type == PDEBoundaryType::Adjacented)
-            {
-                field2& u_buffer = *u_xpos2_buffer_map[domain];
-                field2& v_buffer = *v_ypos2_buffer_map[domain];
-                field2& w_buffer = *w_zpos2_buffer_map[domain];
-
-                // TODO:
-                Domain3DUniform* adj_domain = adjacency[domain][loc];
-                field3&          adj_u      = *u_field_map[adj_domain];
-                field3&          adj_v      = *v_field_map[adj_domain];
-                field3&          adj_w      = *w_field_map[adj_domain];
-                int              adj_nx     = adj_u.get_nx();
-                int              adj_ny     = adj_u.get_ny();
-                int              adj_nz     = adj_u.get_nz();
-                switch (loc)
-                {
-                    case LocationType::XNegative:
-                        copy_x_to_buffer(u_buffer, adj_u, adj_nx - 1);
-                        copy_x_to_buffer(v_buffer, adj_v, adj_nx - 1);
-                        copy_x_to_buffer(w_buffer, adj_w, adj_nx - 1);
-                        break;
-                    case LocationType::XPositive:
-                        copy_x_to_buffer(u_buffer, adj_u, 0);
-                        copy_x_to_buffer(v_buffer, adj_v, 0);
-                        copy_x_to_buffer(w_buffer, adj_w, 0);
-                        break;
-                    case LocationType::YNegative:
-                        copy_y_to_buffer(u_buffer, adj_u, adj_ny - 1);
-                        copy_y_to_buffer(v_buffer, adj_v, adj_ny - 1);
-                        copy_y_to_buffer(w_buffer, adj_w, adj_ny - 1);
-                        break;
-                    case LocationType::YPositive:
-                        copy_y_to_buffer(u_buffer, adj_u, 0);
-                        copy_y_to_buffer(v_buffer, adj_v, 0);
-                        copy_y_to_buffer(w_buffer, adj_w, 0);
-                        break;
-                    case LocationType::ZNegative:
-                        copy_z_to_buffer(u_buffer, adj_u, adj_nz - 1);
-                        copy_z_to_buffer(v_buffer, adj_v, adj_nz - 1);
-                        copy_z_to_buffer(w_buffer, adj_w, adj_nz - 1);
-                        break;
-                    case LocationType::ZPositive:
-                        copy_z_to_buffer(u_buffer, adj_u, 0);
-                        copy_z_to_buffer(v_buffer, adj_v, 0);
-                        copy_z_to_buffer(w_buffer, adj_w, 0);
-                        break;
-                    default:
-                        throw std::runtime_error("ConcatNSSolver3D: invalid location type");
-                }
-            }
-        }
-    }
+    // TODO:
 }
