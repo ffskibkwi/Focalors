@@ -230,21 +230,21 @@ void ConcatNSSolver3D::euler_conv_diff_outer()
         field2& u_xneg_buffer = *u_buffer_map[domain][LocationType::XNegative];
         field2& u_xpos_buffer = *u_buffer_map[domain][LocationType::XPositive];
         field2& u_yneg_buffer = *u_buffer_map[domain][LocationType::YNegative];
-        field2& u_back_buffer = *u_buffer_map[domain][LocationType::YPositive];
+        field2& u_ypos_buffer = *u_buffer_map[domain][LocationType::YPositive];
         field2& u_zneg_buffer = *u_buffer_map[domain][LocationType::ZNegative];
         field2& u_zpos_buffer = *u_buffer_map[domain][LocationType::ZPositive];
 
         field2& v_xneg_buffer = *v_buffer_map[domain][LocationType::XNegative];
         field2& v_xpos_buffer = *v_buffer_map[domain][LocationType::XPositive];
         field2& v_yneg_buffer = *v_buffer_map[domain][LocationType::YNegative];
-        field2& v_back_buffer = *v_buffer_map[domain][LocationType::YPositive];
+        field2& v_ypos_buffer = *v_buffer_map[domain][LocationType::YPositive];
         field2& v_zneg_buffer = *v_buffer_map[domain][LocationType::ZNegative];
         field2& v_zpos_buffer = *v_buffer_map[domain][LocationType::ZPositive];
 
         field2& w_xneg_buffer = *w_buffer_map[domain][LocationType::XNegative];
         field2& w_xpos_buffer = *w_buffer_map[domain][LocationType::XPositive];
         field2& w_yneg_buffer = *w_buffer_map[domain][LocationType::YNegative];
-        field2& w_back_buffer = *w_buffer_map[domain][LocationType::YPositive];
+        field2& w_ypos_buffer = *w_buffer_map[domain][LocationType::YPositive];
         field2& w_zneg_buffer = *w_buffer_map[domain][LocationType::ZNegative];
         field2& w_zpos_buffer = *w_buffer_map[domain][LocationType::ZPositive];
 
@@ -267,13 +267,13 @@ void ConcatNSSolver3D::euler_conv_diff_outer()
             double u_im1 = i == 0 ? u_xneg_buffer(j, k) : u(i - 1, j, k);
             double u_ip1 = i == nx - 1 ? u_xpos_buffer(j, k) : u(i + 1, j, k);
             double u_jm1 = j == 0 ? u_yneg_buffer(i, k) : u(i, j - 1, k);
-            double u_jp1 = j == ny - 1 ? u_back_buffer(i, k) : u(i, j + 1, k);
+            double u_jp1 = j == ny - 1 ? u_ypos_buffer(i, k) : u(i, j + 1, k);
             double u_km1 = k == 0 ? u_zneg_buffer(i, j) : u(i, j, k - 1);
             double u_kp1 = k == nz - 1 ? u_zpos_buffer(i, j) : u(i, j, k + 1);
 
             double v_im1_jp1 = i == 0 ? (j == ny - 1 ? v_corner_along_z[k] : v_xneg_buffer(j + 1, k)) :
-                                        (j == ny - 1 ? v_back_buffer(i - 1, k) : v(i - 1, j + 1, k));
-            double v_jp1     = j == ny - 1 ? v_back_buffer(i, k) : v(i, j + 1, k);
+                                        (j == ny - 1 ? v_ypos_buffer(i - 1, k) : v(i - 1, j + 1, k));
+            double v_jp1     = j == ny - 1 ? v_ypos_buffer(i, k) : v(i, j + 1, k);
             double v_im1     = i == 0 ? v_xneg_buffer(j, k) : v(i - 1, j, k);
 
             double w_im1_kp1 = i == 0 ? (k == nz - 1 ? w_corner_along_y[j] : w_xneg_buffer(j, k + 1)) :
@@ -298,7 +298,7 @@ void ConcatNSSolver3D::euler_conv_diff_outer()
             double v_im1 = i == 0 ? v_xneg_buffer(j, k) : v(i - 1, j, k);
             double v_ip1 = i == nx - 1 ? v_xpos_buffer(j, k) : v(i + 1, j, k);
             double v_jm1 = j == 0 ? v_yneg_buffer(i, k) : v(i, j - 1, k);
-            double v_jp1 = j == ny - 1 ? v_back_buffer(i, k) : v(i, j + 1, k);
+            double v_jp1 = j == ny - 1 ? v_ypos_buffer(i, k) : v(i, j + 1, k);
             double v_km1 = k == 0 ? v_zneg_buffer(i, j) : v(i, j, k - 1);
             double v_kp1 = k == nz - 1 ? v_zpos_buffer(i, j) : v(i, j, k + 1);
 
@@ -329,7 +329,7 @@ void ConcatNSSolver3D::euler_conv_diff_outer()
             double w_im1 = i == 0 ? w_xneg_buffer(j, k) : w(i - 1, j, k);
             double w_ip1 = i == nx - 1 ? w_xpos_buffer(j, k) : w(i + 1, j, k);
             double w_jm1 = j == 0 ? w_yneg_buffer(i, k) : w(i, j - 1, k);
-            double w_jp1 = j == ny - 1 ? w_back_buffer(i, k) : w(i, j + 1, k);
+            double w_jp1 = j == ny - 1 ? w_ypos_buffer(i, k) : w(i, j + 1, k);
             double w_km1 = k == 0 ? w_zneg_buffer(i, j) : w(i, j, k - 1);
             double w_kp1 = k == nz - 1 ? w_zpos_buffer(i, j) : w(i, j, k + 1);
 
@@ -338,9 +338,9 @@ void ConcatNSSolver3D::euler_conv_diff_outer()
             double u_ip1     = i == nx - 1 ? u_xpos_buffer(j, k) : u(i + 1, j, k);
             double u_km1     = k == 0 ? u_zneg_buffer(i, j) : u(i, j, k - 1);
 
-            double v_jp1_km1 = j == ny - 1 ? (k == 0 ? v_corner_along_x[i] : v_back_buffer(i, k - 1)) :
+            double v_jp1_km1 = j == ny - 1 ? (k == 0 ? v_corner_along_x[i] : v_ypos_buffer(i, k - 1)) :
                                              (k == 0 ? v_zneg_buffer(i, j + 1) : v(i, j + 1, k - 1));
-            double v_jp1     = j == ny - 1 ? v_back_buffer(i, k) : v(i, j + 1, k);
+            double v_jp1     = j == ny - 1 ? v_ypos_buffer(i, k) : v(i, j + 1, k);
             double v_km1     = k == 0 ? v_zneg_buffer(i, j) : v(i, j, k - 1);
 
             double conv_x =

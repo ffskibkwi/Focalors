@@ -82,124 +82,82 @@ int main(int argc, char* argv[])
                (2 * pi);
     };
 
-    const double pi2 = pi * pi;
-    const double pi3 = pi * pi * pi;
+    const double pi2   = pi * pi;
+    const double kx    = 2.0 * pi / Lx;
+    const double ky    = 2.0 * pi / Ly;
+    const double kz    = 2.0 * pi / Lz;
+    const double kx2   = kx * kx;
+    const double ky2   = ky * ky;
+    const double k2_xy = kx2 + ky2; // 即 (4*pi^2/Lx^2 + 4*pi^2/Ly^2)
 
-    auto get_common_vars = [&](double x, double y, double z) {
-        return std::make_tuple(std::sin((2 * pi * x) / Lx),
-                               std::cos((2 * pi * x) / Lx),
-                               std::sin((2 * pi * y) / Ly),
-                               std::cos((2 * pi * y) / Ly),
-                               std::sin((2 * pi * z) / Lz),
-                               std::cos((2 * pi * z) / Lz),
-                               (4 * pi2) / (Lx * Lx) + (4 * pi2) / (Ly * Ly) // k2_xy
-        );
+    const double coeff_u = kx;
+    const double coeff_v = ky;
+    const double coeff_w = -k2_xy / kz;
+
+    // --- u 的偏导数 ---
+    auto dudx = [&](double x, double y, double z) {
+        return -kx * kx * std::sin(kx * x) * std::sin(ky * y) * std::sin(kz * z);
     };
 
-    // --- conv_u 系列 ---
-    auto calc_conv_u_x = [&](double x, double y, double z) {
-        auto [sinX, cosX, sinY, cosY, sinZ, cosZ, k2_xy] = get_common_vars(x, y, z);
-        return -(8 * pi3 * cosX * sinX * sinY * sinY * sinZ * sinZ) / (Lx * Lx * Lx);
+    auto dudy = [&](double x, double y, double z) {
+        return kx * ky * std::cos(kx * x) * std::cos(ky * y) * std::sin(kz * z);
     };
 
-    auto calc_conv_u_y = [&](double x, double y, double z) {
-        auto [sinX, cosX, sinY, cosY, sinZ, cosZ, k2_xy] = get_common_vars(x, y, z);
-        return (8 * pi3 * cosX * cosY * cosY * sinX * sinZ * sinZ) / (Lx * Ly * Ly);
+    auto dudz = [&](double x, double y, double z) {
+        return kx * kz * std::cos(kx * x) * std::sin(ky * y) * std::cos(kz * z);
     };
 
-    auto calc_conv_u_z = [&](double x, double y, double z) {
-        auto [sinX, cosX, sinY, cosY, sinZ, cosZ, k2_xy] = get_common_vars(x, y, z);
-        return -(2 * pi * cosX * cosZ * cosZ * sinX * sinY * sinY * k2_xy) / Lx;
+    // --- v 的偏导数 ---
+    auto dvdx = [&](double x, double y, double z) {
+        return kx * ky * std::cos(kx * x) * std::cos(ky * y) * std::sin(kz * z);
     };
 
-    // --- conv_v 系列 ---
-    auto calc_conv_v_x = [&](double x, double y, double z) {
-        auto [sinX, cosX, sinY, cosY, sinZ, cosZ, k2_xy] = get_common_vars(x, y, z);
-        return (8 * pi3 * cosX * cosX * cosY * sinY * sinZ * sinZ) / (Lx * Lx * Ly);
+    auto dvdy = [&](double x, double y, double z) {
+        return -ky * ky * std::sin(kx * x) * std::sin(ky * y) * std::sin(kz * z);
     };
 
-    auto calc_conv_v_y = [&](double x, double y, double z) {
-        auto [sinX, cosX, sinY, cosY, sinZ, cosZ, k2_xy] = get_common_vars(x, y, z);
-        return -(8 * pi3 * cosY * sinX * sinX * sinY * sinZ * sinZ) / (Ly * Ly * Ly);
+    auto dvdz = [&](double x, double y, double z) {
+        return ky * kz * std::sin(kx * x) * std::cos(ky * y) * std::cos(kz * z);
     };
 
-    auto calc_conv_v_z = [&](double x, double y, double z) {
-        auto [sinX, cosX, sinY, cosY, sinZ, cosZ, k2_xy] = get_common_vars(x, y, z);
-        return -(2 * pi * cosY * cosZ * cosZ * sinX * sinX * sinY * k2_xy) / Ly;
+    // --- w 的偏导数 ---
+    auto dwdx = [&](double x, double y, double z) {
+        return -(kx * k2_xy / kz) * std::cos(kx * x) * std::sin(ky * y) * std::cos(kz * z);
     };
 
-    // --- conv_w 系列 ---
-    auto calc_conv_w_x = [&](double x, double y, double z) {
-        auto [sinX, cosX, sinY, cosY, sinZ, cosZ, k2_xy] = get_common_vars(x, y, z);
-        return -(2 * Lz * pi * cosX * cosX * cosZ * sinY * sinY * sinZ * k2_xy) / (Lx * Lx);
+    auto dwdy = [&](double x, double y, double z) {
+        return -(ky * k2_xy / kz) * std::sin(kx * x) * std::cos(ky * y) * std::cos(kz * z);
     };
 
-    auto calc_conv_w_y = [&](double x, double y, double z) {
-        auto [sinX, cosX, sinY, cosY, sinZ, cosZ, k2_xy] = get_common_vars(x, y, z);
-        return -(2 * Lz * pi * cosY * cosY * cosZ * sinX * sinX * sinZ * k2_xy) / (Ly * Ly);
+    auto dwdz = [&](double x, double y, double z) {
+        return k2_xy * std::sin(kx * x) * std::sin(ky * y) * std::sin(kz * z);
     };
 
-    auto calc_conv_w_z = [&](double x, double y, double z) {
-        auto [sinX, cosX, sinY, cosY, sinZ, cosZ, k2_xy] = get_common_vars(x, y, z);
-        return -(Lz * cosZ * sinX * sinX * sinY * sinY * sinZ * k2_xy * k2_xy) / (2 * pi);
-    };
+    auto calc_div_u_grad_u = [&](double x, double y, double z) {
+        // 统一计算三角函数，避免 9 个分量重复调用 std::sin/cos
+        double sX = std::sin(kx * x);
+        double cX = std::cos(kx * x);
+        double sY = std::sin(ky * y);
+        double cY = std::cos(ky * y);
+        double sZ = std::sin(kz * z);
+        double cZ = std::cos(kz * z);
 
-    auto calc_conv_x = [&](double x, double y, double z) {
-        double sinX = std::sin((2 * pi * x) / Lx);
-        double cosX = std::cos((2 * pi * x) / Lx);
-        double sinY = std::sin((2 * pi * y) / Ly);
-        double cosY = std::cos((2 * pi * y) / Ly);
-        double sinZ = std::sin((2 * pi * z) / Lz);
-        double cosZ = std::cos((2 * pi * z) / Lz);
+        // 计算分量值
+        double L11 = -kx2 * sX * sY * sZ;
+        double L12 = kx * ky * cX * cY * sZ;
+        double L13 = kx * kz * cX * sY * cZ;
 
-        double pi3   = pi * pi * pi;
-        double Lx2   = Lx * Lx;
-        double Ly2   = Ly * Ly;
-        double k2_xy = (4 * pi * pi) / Lx2 + (4 * pi * pi) / Ly2;
+        double L21 = kx * ky * cX * cY * sZ;
+        double L22 = -ky2 * sX * sY * sZ;
+        double L23 = ky * kz * sX * cY * cZ;
 
-        double term1 = (8 * pi3 * cosX * cosY * cosY * sinX * sinZ * sinZ) / (Lx * Ly2);
-        double term2 = (8 * pi3 * cosX * sinX * sinY * sinY * sinZ * sinZ) / (Lx2 * Lx);
-        double term3 = (2 * pi * cosX * cosZ * cosZ * sinX * sinY * sinY * k2_xy) / Lx;
+        double L31 = -(kx * k2_xy / kz) * cX * sY * cZ;
+        double L32 = -(ky * k2_xy / kz) * sX * cY * cZ;
+        double L33 = k2_xy * sX * sY * sZ;
 
-        return term1 - term2 - term3;
-    };
-
-    auto calc_conv_y = [&](double x, double y, double z) {
-        double sinX = std::sin((2 * pi * x) / Lx);
-        double cosX = std::cos((2 * pi * x) / Lx);
-        double sinY = std::sin((2 * pi * y) / Ly);
-        double cosY = std::cos((2 * pi * y) / Ly);
-        double sinZ = std::sin((2 * pi * z) / Lz);
-        double cosZ = std::cos((2 * pi * z) / Lz);
-
-        double pi3   = pi * pi * pi;
-        double Lx2   = Lx * Lx;
-        double Ly2   = Ly * Ly;
-        double k2_xy = (4 * pi * pi) / Lx2 + (4 * pi * pi) / Ly2;
-
-        double term1 = (8 * pi3 * cosX * cosX * cosY * sinY * sinZ * sinZ) / (Lx2 * Ly);
-        double term2 = (8 * pi3 * cosY * sinX * sinX * sinY * sinZ * sinZ) / (Ly2 * Ly);
-        double term3 = (2 * pi * cosY * cosZ * cosZ * sinX * sinX * sinY * k2_xy) / Ly;
-
-        return term1 - term2 - term3;
-    };
-
-    auto calc_conv_z = [&](double x, double y, double z) {
-        double sinX = std::sin((2 * pi * x) / Lx);
-        double cosX = std::cos((2 * pi * x) / Lx);
-        double sinY = std::sin((2 * pi * y) / Ly);
-        double cosY = std::cos((2 * pi * y) / Ly);
-        double sinZ = std::sin((2 * pi * z) / Lz);
-        double cosZ = std::cos((2 * pi * z) / Lz);
-
-        double pi2   = pi * pi;
-        double k2_xy = (4 * pi2) / (Lx * Lx) + (4 * pi2) / (Ly * Ly);
-
-        double term1 = (Lz * cosZ * sinX * sinX * sinY * sinY * sinZ * k2_xy * k2_xy) / (2 * pi);
-        double term2 = (2 * Lz * pi * cosX * cosX * cosZ * sinY * sinY * sinZ * k2_xy) / (Lx * Lx);
-        double term3 = (2 * Lz * pi * cosY * cosY * cosZ * sinX * sinX * sinZ * k2_xy) / (Ly * Ly);
-
-        return -term1 - term2 - term3;
+        // 根据公式: L11*L11 + L22*L22 + L33*L33 + 2*(L12*L21 + L13*L31 + L23*L32)
+        // 注意: 在本流场中 L12=L21, 但 L13 != L31, L23 != L32
+        return L11 * L11 + L22 * L22 + L33 * L33 + 2.0 * L12 * L21 + 2.0 * L13 * L31 + 2.0 * L23 * L32;
     };
 
     auto calc_p = [&](double x, double y, double z) {
@@ -260,38 +218,6 @@ int main(int argc, char* argv[])
                            term12 - term13 + term14 + term15 + term16 + term17 - term18 + term19 + term20;
 
         return numerator / (Lx4 * Ly4 * Lz2);
-    };
-
-    auto calc_rho_div_u_grad_u = [&](double x, double y, double z) {
-        double sinX = std::sin((2 * pi * x) / Lx);
-        double sinY = std::sin((2 * pi * y) / Ly);
-        double sinZ = std::sin((2 * pi * z) / Lz);
-
-        double sinX2 = sinX * sinX;
-        double sinY2 = sinY * sinY;
-        double sinZ2 = sinZ * sinZ;
-
-        double Lx2 = Lx * Lx;
-        double Lx4 = Lx2 * Lx2;
-        double Ly2 = Ly * Ly;
-        double Ly4 = Ly2 * Ly2;
-        double pi4 = (pi * pi) * (pi * pi);
-
-        double term1  = Lx4 * sinX2 * sinY2;
-        double term2  = Ly4 * sinY2;
-        double term3  = Lx4 * sinX2;
-        double term4  = Ly4 * sinX2 * sinY2;
-        double term5  = Lx4 * sinX2 * sinZ2;
-        double term6  = Ly4 * sinY2 * sinZ2;
-        double term7  = Lx2 * Ly2 * sinX2;
-        double term8  = Lx2 * Ly2 * sinY2;
-        double term9  = Lx2 * Ly2 * sinZ2;
-        double term10 = 2 * Lx2 * Ly2 * sinX2 * sinY2;
-
-        double numerator =
-            32 * rho * pi4 * (term1 - term2 - term3 + term4 + term5 + term6 - term7 - term8 + term9 + term10);
-
-        return numerator / (Lx4 * Ly4);
     };
 
     u.fill_boundary_type(PDEBoundaryType::Dirichlet);
@@ -447,9 +373,9 @@ int main(int argc, char* argv[])
         std::cout << "error_w = " << error << std::endl;
     }
 
-    ppe_solver.calc_conv_inner();
-    ppe_solver.calc_conv_outer();
+    ppe_solver.phys_boundary_update();
     ppe_solver.nondiag_shared_boundary_update();
+    ppe_solver.diag_shared_boundary_update();
     ppe_solver.calc_rhs();
 
     auto calc_error_u = [&](const std::string& name, field3& target, std::function<double(double, double, double)> f) {
@@ -516,21 +442,6 @@ int main(int argc, char* argv[])
         std::cout << "error " << name << " = " << error << std::endl;
     };
 
-    calc_error_u("conv u x", *ppe_solver.conv_u_x_map[&A1], calc_conv_u_x);
-    calc_error_u("conv u y", *ppe_solver.conv_u_y_map[&A1], calc_conv_u_y);
-    calc_error_u("conv u z", *ppe_solver.conv_u_z_map[&A1], calc_conv_u_z);
-    calc_error_u("conv u", *ppe_solver.c_u_map[&A1], calc_conv_x);
-
-    calc_error_v("conv v x", *ppe_solver.conv_v_x_map[&A1], calc_conv_v_x);
-    calc_error_v("conv v y", *ppe_solver.conv_v_y_map[&A1], calc_conv_v_y);
-    calc_error_v("conv v z", *ppe_solver.conv_v_z_map[&A1], calc_conv_v_z);
-    calc_error_v("conv v", *ppe_solver.c_v_map[&A1], calc_conv_y);
-
-    calc_error_w("conv w x", *ppe_solver.conv_w_x_map[&A1], calc_conv_w_x);
-    calc_error_w("conv w y", *ppe_solver.conv_w_y_map[&A1], calc_conv_w_y);
-    calc_error_w("conv w z", *ppe_solver.conv_w_z_map[&A1], calc_conv_w_z);
-    calc_error_w("conv w", *ppe_solver.c_w_map[&A1], calc_conv_z);
-
     double error_rho_div_u_grad_u = 0.0;
     for (int i = 0; i < p_A1.get_nx(); i++)
     {
@@ -541,7 +452,7 @@ int main(int argc, char* argv[])
                 double x    = (i + 0.5) * hx;
                 double y    = (j + 0.5) * hy;
                 double z    = (k + 0.5) * hz;
-                double diff = p_A1(i, j, k) + calc_rho_div_u_grad_u(x, y, z);
+                double diff = p_A1(i, j, k) + rho * calc_div_u_grad_u(x, y, z);
                 error_rho_div_u_grad_u += diff * diff;
             }
         }

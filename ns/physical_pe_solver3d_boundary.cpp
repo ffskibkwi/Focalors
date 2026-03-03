@@ -5,24 +5,17 @@
 
 void PhysicalPESolver3D::nondiag_shared_boundary_update()
 {
-    // redirect in convenience of using ns code
-    auto& u_field_map = c_u_map;
-    auto& v_field_map = c_v_map;
-    auto& w_field_map = c_w_map;
+    auto& u_field_map = u_var->field_map;
+    auto& v_field_map = v_var->field_map;
+    auto& w_field_map = w_var->field_map;
 
     auto& domains   = u_var->geometry->domains;
     auto& adjacency = u_var->geometry->adjacency;
     for (auto& domain : domains)
     {
-        // redirect in convenience of using ns code
-        field3& u = *c_u_map[domain];
-        field3& v = *c_v_map[domain];
-        field3& w = *c_w_map[domain];
-
-        // redirect in convenience of using ns code
-        auto& u_buffer_map = c_u_buffer_map;
-        auto& v_buffer_map = c_v_buffer_map;
-        auto& w_buffer_map = c_w_buffer_map;
+        field3& u = *u_field_map[domain];
+        field3& v = *v_field_map[domain];
+        field3& w = *w_field_map[domain];
 
         int nx = u.get_nx();
         int ny = u.get_ny();
@@ -33,10 +26,11 @@ void PhysicalPESolver3D::nondiag_shared_boundary_update()
             // While u has adjacented boundary, it means v and p also have adjacented boundary
             if (type == PDEBoundaryType::Adjacented)
             {
-                field2& u_buffer = *u_buffer_map[domain][loc];
-                field2& v_buffer = *v_buffer_map[domain][loc];
-                field2& w_buffer = *w_buffer_map[domain][loc];
+                field2& u_buffer = *u_xpos2_buffer_map[domain];
+                field2& v_buffer = *v_ypos2_buffer_map[domain];
+                field2& w_buffer = *w_zpos2_buffer_map[domain];
 
+                // TODO:
                 Domain3DUniform* adj_domain = adjacency[domain][loc];
                 field3&          adj_u      = *u_field_map[adj_domain];
                 field3&          adj_v      = *v_field_map[adj_domain];

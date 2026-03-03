@@ -160,13 +160,13 @@ void ScalarSolver3D::conv_cd2nd_diff_cd2nd_outer()
         field3& s_temp = *s_temp_field_map[domain];
 
         field2& u_xpos_buffer = *u_buffer_map[domain][LocationType::XPositive];
-        field2& v_back_buffer = *v_buffer_map[domain][LocationType::YPositive];
+        field2& v_ypos_buffer = *v_buffer_map[domain][LocationType::YPositive];
         field2& w_zpos_buffer = *w_buffer_map[domain][LocationType::ZPositive];
 
         field2& s_xneg_buffer = *s_buffer_map[domain][LocationType::XNegative];
         field2& s_xpos_buffer = *s_buffer_map[domain][LocationType::XPositive];
         field2& s_yneg_buffer = *s_buffer_map[domain][LocationType::YNegative];
-        field2& s_back_buffer = *s_buffer_map[domain][LocationType::YPositive];
+        field2& s_ypos_buffer = *s_buffer_map[domain][LocationType::YPositive];
         field2& s_zneg_buffer = *s_buffer_map[domain][LocationType::ZNegative];
         field2& s_zpos_buffer = *s_buffer_map[domain][LocationType::ZPositive];
 
@@ -182,14 +182,14 @@ void ScalarSolver3D::conv_cd2nd_diff_cd2nd_outer()
             double v_ijk = v(i, j, k);
             double w_ijk = w(i, j, k);
             double u_ip1 = i == nx - 1 ? u_xpos_buffer(j, k) : u(i + 1, j, k);
-            double v_jp1 = j == ny - 1 ? v_back_buffer(i, k) : v(i, j + 1, k);
+            double v_jp1 = j == ny - 1 ? v_ypos_buffer(i, k) : v(i, j + 1, k);
             double w_kp1 = k == nz - 1 ? w_zpos_buffer(i, j) : w(i, j, k + 1);
 
             double s_ijk = s(i, j, k);
             double s_im1 = i == 0 ? s_xneg_buffer(j, k) : s(i - 1, j, k);
             double s_ip1 = i == nx - 1 ? s_xpos_buffer(j, k) : s(i + 1, j, k);
             double s_jm1 = j == 0 ? s_yneg_buffer(i, k) : s(i, j - 1, k);
-            double s_jp1 = j == ny - 1 ? s_back_buffer(i, k) : s(i, j + 1, k);
+            double s_jp1 = j == ny - 1 ? s_ypos_buffer(i, k) : s(i, j + 1, k);
             double s_km1 = k == 0 ? s_zneg_buffer(i, j) : s(i, j, k - 1);
             double s_kp1 = k == nz - 1 ? s_zpos_buffer(i, j) : s(i, j, k + 1);
 
@@ -324,13 +324,13 @@ void ScalarSolver3D::conv_uw1st_diff_cd2nd_outer()
         field3& s_temp = *s_temp_field_map[domain];
 
         field2& u_xpos_buffer = *u_buffer_map[domain][LocationType::XPositive];
-        field2& v_back_buffer = *v_buffer_map[domain][LocationType::YPositive];
+        field2& v_ypos_buffer = *v_buffer_map[domain][LocationType::YPositive];
         field2& w_zpos_buffer = *w_buffer_map[domain][LocationType::ZPositive];
 
         field2& s_xneg_buffer = *s_buffer_map[domain][LocationType::XNegative];
         field2& s_xpos_buffer = *s_buffer_map[domain][LocationType::XPositive];
         field2& s_yneg_buffer = *s_buffer_map[domain][LocationType::YNegative];
-        field2& s_back_buffer = *s_buffer_map[domain][LocationType::YPositive];
+        field2& s_ypos_buffer = *s_buffer_map[domain][LocationType::YPositive];
         field2& s_zneg_buffer = *s_buffer_map[domain][LocationType::ZNegative];
         field2& s_zpos_buffer = *s_buffer_map[domain][LocationType::ZPositive];
 
@@ -346,14 +346,14 @@ void ScalarSolver3D::conv_uw1st_diff_cd2nd_outer()
             double v_ijk = v(i, j, k);
             double w_ijk = w(i, j, k);
             double u_ip1 = i == nx - 1 ? u_xpos_buffer(j, k) : u(i + 1, j, k);
-            double v_jp1 = j == ny - 1 ? v_back_buffer(i, k) : v(i, j + 1, k);
+            double v_jp1 = j == ny - 1 ? v_ypos_buffer(i, k) : v(i, j + 1, k);
             double w_kp1 = k == nz - 1 ? w_zpos_buffer(i, j) : w(i, j, k + 1);
 
             double s_ijk = s(i, j, k);
             double s_im1 = i == 0 ? s_xneg_buffer(j, k) : s(i - 1, j, k);
             double s_ip1 = i == nx - 1 ? s_xpos_buffer(j, k) : s(i + 1, j, k);
             double s_jm1 = j == 0 ? s_yneg_buffer(i, k) : s(i, j - 1, k);
-            double s_jp1 = j == ny - 1 ? s_back_buffer(i, k) : s(i, j + 1, k);
+            double s_jp1 = j == ny - 1 ? s_ypos_buffer(i, k) : s(i, j + 1, k);
             double s_km1 = k == 0 ? s_zneg_buffer(i, j) : s(i, j, k - 1);
             double s_kp1 = k == nz - 1 ? s_zpos_buffer(i, j) : s(i, j, k + 1);
 
@@ -516,13 +516,13 @@ void ScalarSolver3D::conv_QUICK_diff_cd2nd_outer()
         field3& s_temp = *s_temp_field_map[domain];
 
         field2& u_xpos_buffer = *u_buffer_map[domain][LocationType::XPositive];
-        field2& v_back_buffer = *v_buffer_map[domain][LocationType::YPositive];
+        field2& v_ypos_buffer = *v_buffer_map[domain][LocationType::YPositive];
         field2& w_zpos_buffer = *w_buffer_map[domain][LocationType::ZPositive];
 
         field2& s_xneg_buffer = *s_buffer_map[domain][LocationType::XNegative];
         field2& s_xpos_buffer = *s_buffer_map[domain][LocationType::XPositive];
         field2& s_yneg_buffer = *s_buffer_map[domain][LocationType::YNegative];
-        field2& s_back_buffer = *s_buffer_map[domain][LocationType::YPositive];
+        field2& s_ypos_buffer = *s_buffer_map[domain][LocationType::YPositive];
         field2& s_zneg_buffer = *s_buffer_map[domain][LocationType::ZNegative];
         field2& s_zpos_buffer = *s_buffer_map[domain][LocationType::ZPositive];
 
@@ -538,14 +538,14 @@ void ScalarSolver3D::conv_QUICK_diff_cd2nd_outer()
             double v_ijk = v(i, j, k);
             double w_ijk = w(i, j, k);
             double u_ip1 = i == nx - 1 ? u_xpos_buffer(j, k) : u(i + 1, j, k);
-            double v_jp1 = j == ny - 1 ? v_back_buffer(i, k) : v(i, j + 1, k);
+            double v_jp1 = j == ny - 1 ? v_ypos_buffer(i, k) : v(i, j + 1, k);
             double w_kp1 = k == nz - 1 ? w_zpos_buffer(i, j) : w(i, j, k + 1);
 
             double s_ijk = s(i, j, k);
             double s_im1 = i == 0 ? s_xneg_buffer(j, k) : s(i - 1, j, k);
             double s_ip1 = i == nx - 1 ? s_xpos_buffer(j, k) : s(i + 1, j, k);
             double s_jm1 = j == 0 ? s_yneg_buffer(i, k) : s(i, j - 1, k);
-            double s_jp1 = j == ny - 1 ? s_back_buffer(i, k) : s(i, j + 1, k);
+            double s_jp1 = j == ny - 1 ? s_ypos_buffer(i, k) : s(i, j + 1, k);
             double s_km1 = k == 0 ? s_zneg_buffer(i, j) : s(i, j, k - 1);
             double s_kp1 = k == nz - 1 ? s_zpos_buffer(i, j) : s(i, j, k + 1);
 

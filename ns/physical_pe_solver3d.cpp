@@ -20,201 +20,116 @@ PhysicalPESolver3D::PhysicalPESolver3D(Variable3D*            in_u_var,
         auto v_field = v_var->field_map[domain];
         auto w_field = w_var->field_map[domain];
 
-        c_u_map[domain] = new field3(u_field->get_nx(), u_field->get_ny(), u_field->get_nz(), "C_u_" + domain->name);
-        c_v_map[domain] = new field3(v_field->get_nx(), v_field->get_ny(), v_field->get_nz(), "C_v_" + domain->name);
-        c_w_map[domain] = new field3(w_field->get_nx(), w_field->get_ny(), w_field->get_nz(), "C_w_" + domain->name);
+        u_xpos2_buffer_map[domain] = new field2(u_field->get_ny(), u_field->get_nz(), "u_xpos2_buffer_" + domain->name);
+        v_ypos2_buffer_map[domain] = new field2(v_field->get_nx(), v_field->get_nz(), "v_ypos2_buffer_" + domain->name);
+        w_zpos2_buffer_map[domain] = new field2(w_field->get_nx(), w_field->get_ny(), "w_zpos2_buffer_" + domain->name);
+
+        u_xpos_ypos_corner_map[domain] = new double[u_field->get_nz()];
+        u_xpos_zpos_corner_map[domain] = new double[u_field->get_ny()];
+        v_xpos_ypos_corner_map[domain] = new double[v_field->get_nz()];
+        v_ypos_zpos_corner_map[domain] = new double[v_field->get_nx()];
+        w_xpos_zpos_corner_map[domain] = new double[w_field->get_ny()];
+        w_ypos_zpos_corner_map[domain] = new double[w_field->get_nx()];
 
         // debug
 
-        conv_u_x_map[domain] =
-            new field3(u_field->get_nx(), u_field->get_ny(), u_field->get_nz(), "C_u_" + domain->name);
-        conv_u_y_map[domain] =
-            new field3(v_field->get_nx(), v_field->get_ny(), v_field->get_nz(), "C_v_" + domain->name);
-        conv_u_z_map[domain] =
-            new field3(w_field->get_nx(), w_field->get_ny(), w_field->get_nz(), "C_w_" + domain->name);
+        dudx_map[domain] = new field3(u_field->get_nx(), u_field->get_ny(), u_field->get_nz(), "C_u_" + domain->name);
+        dudy_map[domain] = new field3(v_field->get_nx(), v_field->get_ny(), v_field->get_nz(), "C_v_" + domain->name);
+        dudz_map[domain] = new field3(w_field->get_nx(), w_field->get_ny(), w_field->get_nz(), "C_w_" + domain->name);
 
-        conv_v_x_map[domain] =
-            new field3(u_field->get_nx(), u_field->get_ny(), u_field->get_nz(), "C_u_" + domain->name);
-        conv_v_y_map[domain] =
-            new field3(v_field->get_nx(), v_field->get_ny(), v_field->get_nz(), "C_v_" + domain->name);
-        conv_v_z_map[domain] =
-            new field3(w_field->get_nx(), w_field->get_ny(), w_field->get_nz(), "C_w_" + domain->name);
+        dvdx_map[domain] = new field3(u_field->get_nx(), u_field->get_ny(), u_field->get_nz(), "C_u_" + domain->name);
+        dvdy_map[domain] = new field3(v_field->get_nx(), v_field->get_ny(), v_field->get_nz(), "C_v_" + domain->name);
+        dvdz_map[domain] = new field3(w_field->get_nx(), w_field->get_ny(), w_field->get_nz(), "C_w_" + domain->name);
 
-        conv_w_x_map[domain] =
-            new field3(u_field->get_nx(), u_field->get_ny(), u_field->get_nz(), "C_u_" + domain->name);
-        conv_w_y_map[domain] =
-            new field3(v_field->get_nx(), v_field->get_ny(), v_field->get_nz(), "C_v_" + domain->name);
-        conv_w_z_map[domain] =
-            new field3(w_field->get_nx(), w_field->get_ny(), w_field->get_nz(), "C_w_" + domain->name);
-
-        for (auto kv : u_var->buffer_map[domain])
-            c_u_buffer_map[domain][kv.first] = new field2(kv.second->get_nx(), kv.second->get_ny());
-        for (auto kv : v_var->buffer_map[domain])
-            c_v_buffer_map[domain][kv.first] = new field2(kv.second->get_nx(), kv.second->get_ny());
-        for (auto kv : w_var->buffer_map[domain])
-            c_w_buffer_map[domain][kv.first] = new field2(kv.second->get_nx(), kv.second->get_ny());
+        dwdx_map[domain] = new field3(u_field->get_nx(), u_field->get_ny(), u_field->get_nz(), "C_u_" + domain->name);
+        dwdy_map[domain] = new field3(v_field->get_nx(), v_field->get_ny(), v_field->get_nz(), "C_v_" + domain->name);
+        dwdz_map[domain] = new field3(w_field->get_nx(), w_field->get_ny(), w_field->get_nz(), "C_w_" + domain->name);
     }
 }
 
 PhysicalPESolver3D::~PhysicalPESolver3D()
 {
-    for (auto& [domain, field] : c_u_map)
+    for (auto& [domain, field] : u_xpos2_buffer_map)
         delete field;
-    for (auto& [domain, field] : c_v_map)
+    for (auto& [domain, field] : v_ypos2_buffer_map)
         delete field;
-    for (auto& [domain, field] : c_w_map)
+    for (auto& [domain, field] : w_zpos2_buffer_map)
         delete field;
-    for (auto& [domain, buffer_map] : c_u_buffer_map)
-        for (auto kv : buffer_map)
-            delete kv.second;
-    for (auto& [domain, buffer_map] : c_v_buffer_map)
-        for (auto kv : buffer_map)
-            delete kv.second;
-    for (auto& [domain, buffer_map] : c_w_buffer_map)
-        for (auto kv : buffer_map)
-            delete kv.second;
+
+    for (auto& [domain, buffer] : u_xpos_ypos_corner_map)
+        delete[] buffer;
+    for (auto& [domain, buffer] : u_xpos_zpos_corner_map)
+        delete[] buffer;
+    for (auto& [domain, buffer] : v_xpos_ypos_corner_map)
+        delete[] buffer;
+    for (auto& [domain, buffer] : v_ypos_zpos_corner_map)
+        delete[] buffer;
+    for (auto& [domain, buffer] : w_xpos_zpos_corner_map)
+        delete[] buffer;
+    for (auto& [domain, buffer] : w_ypos_zpos_corner_map)
+        delete[] buffer;
 
     // debug
-    for (auto& [domain, field] : conv_u_x_map)
+    for (auto& [domain, field] : dudx_map)
         delete field;
-    for (auto& [domain, field] : conv_u_y_map)
+    for (auto& [domain, field] : dudy_map)
         delete field;
-    for (auto& [domain, field] : conv_u_z_map)
-        delete field;
-
-    for (auto& [domain, field] : conv_v_x_map)
-        delete field;
-    for (auto& [domain, field] : conv_v_y_map)
-        delete field;
-    for (auto& [domain, field] : conv_v_z_map)
+    for (auto& [domain, field] : dudz_map)
         delete field;
 
-    for (auto& [domain, field] : conv_w_x_map)
+    for (auto& [domain, field] : dvdx_map)
         delete field;
-    for (auto& [domain, field] : conv_w_y_map)
+    for (auto& [domain, field] : dvdy_map)
         delete field;
-    for (auto& [domain, field] : conv_w_z_map)
+    for (auto& [domain, field] : dvdz_map)
+        delete field;
+
+    for (auto& [domain, field] : dwdx_map)
+        delete field;
+    for (auto& [domain, field] : dwdy_map)
+        delete field;
+    for (auto& [domain, field] : dwdz_map)
         delete field;
 }
 
 void PhysicalPESolver3D::solve()
 {
-    calc_conv_inner();
-    calc_conv_outer();
+    phys_boundary_update();
     nondiag_shared_boundary_update();
+    diag_shared_boundary_update();
     calc_rhs();
     p_solver->solve();
 }
 
-void PhysicalPESolver3D::calc_conv_inner()
+void PhysicalPESolver3D::calc_rhs()
 {
     auto& domains = u_var->geometry->domains;
     for (auto& domain : domains)
     {
+        // redirect in convenience of using ns code
         field3& u = *u_var->field_map[domain];
         field3& v = *v_var->field_map[domain];
         field3& w = *w_var->field_map[domain];
-
-        field3& c_u = *c_u_map[domain];
-        field3& c_v = *c_v_map[domain];
-        field3& c_w = *c_w_map[domain];
-
-        int    nx = u.get_nx();
-        int    ny = u.get_ny();
-        int    nz = u.get_nz();
-        double hx = domain->hx;
-        double hy = domain->hy;
-        double hz = domain->hz;
-
-        OPENMP_PARALLEL_FOR()
-        for (int i = 1; i < nx - 1; i++)
-        {
-            for (int j = 1; j < ny - 1; j++)
-            {
-                for (int k = 1; k < nz - 1; k++)
-                {
-                    double conv_u_x = 0.25 / hx *
-                                      (u(i + 1, j, k) * (u(i + 1, j, k) + 2.0 * u(i, j, k)) -
-                                       u(i - 1, j, k) * (u(i - 1, j, k) + 2.0 * u(i, j, k)));
-                    double conv_u_y = 0.25 / hy *
-                                      ((u(i, j, k) + u(i, j + 1, k)) * (v(i - 1, j + 1, k) + v(i, j + 1, k)) -
-                                       (u(i, j - 1, k) + u(i, j, k)) * (v(i - 1, j, k) + v(i, j, k)));
-                    double conv_u_z = 0.25 / hz *
-                                      ((u(i, j, k) + u(i, j, k + 1)) * (w(i - 1, j, k + 1) + w(i, j, k + 1)) -
-                                       (u(i, j, k - 1) + u(i, j, k)) * (w(i - 1, j, k) + w(i, j, k)));
-                    c_u(i, j, k) = conv_u_x + conv_u_y + conv_u_z;
-
-                    double conv_v_x = 0.25 / hx *
-                                      ((v(i, j, k) + v(i + 1, j, k)) * (u(i + 1, j - 1, k) + u(i + 1, j, k)) -
-                                       (v(i - 1, j, k) + v(i, j, k)) * (u(i, j - 1, k) + u(i, j, k)));
-                    double conv_v_y = 0.25 / hy *
-                                      (v(i, j + 1, k) * (v(i, j + 1, k) + 2.0 * v(i, j, k)) -
-                                       v(i, j - 1, k) * (v(i, j - 1, k) + 2.0 * v(i, j, k)));
-                    double conv_v_z = 0.25 / hz *
-                                      ((v(i, j, k) + v(i, j, k + 1)) * (w(i, j - 1, k + 1) + w(i, j, k + 1)) -
-                                       (v(i, j, k - 1) + v(i, j, k)) * (w(i, j - 1, k) + w(i, j, k)));
-                    c_v(i, j, k) = conv_v_x + conv_v_y + conv_v_z;
-
-                    double conv_w_x = 0.25 / hx *
-                                      ((w(i, j, k) + w(i + 1, j, k)) * (u(i + 1, j, k - 1) + u(i + 1, j, k)) -
-                                       (w(i - 1, j, k) + w(i, j, k)) * (u(i, j, k - 1) + u(i, j, k)));
-                    double conv_w_y = 0.25 / hy *
-                                      ((w(i, j, k) + w(i, j + 1, k)) * (v(i, j + 1, k - 1) + v(i, j + 1, k)) -
-                                       (w(i, j - 1, k) + w(i, j, k)) * (v(i, j, k - 1) + v(i, j, k)));
-                    double conv_w_z = 0.25 / hz *
-                                      (w(i, j, k + 1) * (w(i, j, k + 1) + 2.0 * w(i, j, k)) -
-                                       w(i, j, k - 1) * (w(i, j, k - 1) + 2.0 * w(i, j, k)));
-                    c_w(i, j, k) = conv_w_x + conv_w_y + conv_w_z;
-
-                    // debug
-                    (*conv_u_x_map[domain])(i, j, k) = conv_u_x;
-                    (*conv_u_y_map[domain])(i, j, k) = conv_u_y;
-                    (*conv_u_z_map[domain])(i, j, k) = conv_u_z;
-
-                    (*conv_v_x_map[domain])(i, j, k) = conv_v_x;
-                    (*conv_v_y_map[domain])(i, j, k) = conv_v_y;
-                    (*conv_v_z_map[domain])(i, j, k) = conv_v_z;
-
-                    (*conv_w_x_map[domain])(i, j, k) = conv_w_x;
-                    (*conv_w_y_map[domain])(i, j, k) = conv_w_y;
-                    (*conv_w_z_map[domain])(i, j, k) = conv_w_z;
-                }
-            }
-        }
-    }
-}
-
-void PhysicalPESolver3D::calc_conv_outer()
-{
-    auto& domains = u_var->geometry->domains;
-    for (auto& domain : domains)
-    {
-        field3& u = *u_var->field_map[domain];
-        field3& v = *v_var->field_map[domain];
-        field3& w = *w_var->field_map[domain];
-
-        field3& c_u = *c_u_map[domain];
-        field3& c_v = *c_v_map[domain];
-        field3& c_w = *c_w_map[domain];
+        field3& p = *p_var->field_map[domain];
 
         field2& u_xneg_buffer = *u_var->buffer_map[domain][LocationType::XNegative];
         field2& u_xpos_buffer = *u_var->buffer_map[domain][LocationType::XPositive];
         field2& u_yneg_buffer = *u_var->buffer_map[domain][LocationType::YNegative];
-        field2& u_back_buffer = *u_var->buffer_map[domain][LocationType::YPositive];
+        field2& u_ypos_buffer = *u_var->buffer_map[domain][LocationType::YPositive];
         field2& u_zneg_buffer = *u_var->buffer_map[domain][LocationType::ZNegative];
         field2& u_zpos_buffer = *u_var->buffer_map[domain][LocationType::ZPositive];
 
         field2& v_xneg_buffer = *v_var->buffer_map[domain][LocationType::XNegative];
         field2& v_xpos_buffer = *v_var->buffer_map[domain][LocationType::XPositive];
         field2& v_yneg_buffer = *v_var->buffer_map[domain][LocationType::YNegative];
-        field2& v_back_buffer = *v_var->buffer_map[domain][LocationType::YPositive];
+        field2& v_ypos_buffer = *v_var->buffer_map[domain][LocationType::YPositive];
         field2& v_zneg_buffer = *v_var->buffer_map[domain][LocationType::ZNegative];
         field2& v_zpos_buffer = *v_var->buffer_map[domain][LocationType::ZPositive];
 
         field2& w_xneg_buffer = *w_var->buffer_map[domain][LocationType::XNegative];
         field2& w_xpos_buffer = *w_var->buffer_map[domain][LocationType::XPositive];
         field2& w_yneg_buffer = *w_var->buffer_map[domain][LocationType::YNegative];
-        field2& w_back_buffer = *w_var->buffer_map[domain][LocationType::YPositive];
+        field2& w_ypos_buffer = *w_var->buffer_map[domain][LocationType::YPositive];
         field2& w_zneg_buffer = *w_var->buffer_map[domain][LocationType::ZNegative];
         field2& w_zpos_buffer = *w_var->buffer_map[domain][LocationType::ZPositive];
 
@@ -232,195 +147,49 @@ void PhysicalPESolver3D::calc_conv_outer()
         double hy = domain->hy;
         double hz = domain->hz;
 
-        auto bound_cal = [&](int i, int j, int k) {
-            double u_ijk = u(i, j, k);
-            double u_im1 = i == 0 ? u_xneg_buffer(j, k) : u(i - 1, j, k);
-            double u_ip1 = i == nx - 1 ? u_xpos_buffer(j, k) : u(i + 1, j, k);
-            double u_jm1 = j == 0 ? u_yneg_buffer(i, k) : u(i, j - 1, k);
-            double u_jp1 = j == ny - 1 ? u_back_buffer(i, k) : u(i, j + 1, k);
-            double u_km1 = k == 0 ? u_zneg_buffer(i, j) : u(i, j, k - 1);
-            double u_kp1 = k == nz - 1 ? u_zpos_buffer(i, j) : u(i, j, k + 1);
-
-            double u_ip1_jm1 = i == nx - 1 ? (j == 0 ? u_corner_along_z[k] : u_xpos_buffer(j - 1, k)) :
-                                             (j == 0 ? u_yneg_buffer(i + 1, k) : u(i + 1, j - 1, k));
-            double u_ip1_km1 = i == nx - 1 ? (k == 0 ? u_corner_along_y[j] : u_xpos_buffer(j, k - 1)) :
-                                             (k == 0 ? u_zneg_buffer(i + 1, j) : u(i + 1, j, k - 1));
-
-            double v_ijk = v(i, j, k);
-            double v_im1 = i == 0 ? v_xneg_buffer(j, k) : v(i - 1, j, k);
-            double v_ip1 = i == nx - 1 ? v_xpos_buffer(j, k) : v(i + 1, j, k);
-            double v_jm1 = j == 0 ? v_yneg_buffer(i, k) : v(i, j - 1, k);
-            double v_jp1 = j == ny - 1 ? v_back_buffer(i, k) : v(i, j + 1, k);
-            double v_km1 = k == 0 ? v_zneg_buffer(i, j) : v(i, j, k - 1);
-            double v_kp1 = k == nz - 1 ? v_zpos_buffer(i, j) : v(i, j, k + 1);
-
-            double v_im1_jp1 = i == 0 ? (j == ny - 1 ? v_corner_along_z[k] : v_xneg_buffer(j + 1, k)) :
-                                        (j == ny - 1 ? v_back_buffer(i - 1, k) : v(i - 1, j + 1, k));
-            double v_jp1_km1 = j == ny - 1 ? (k == 0 ? v_corner_along_x[i] : v_back_buffer(i, k - 1)) :
-                                             (k == 0 ? v_zneg_buffer(i, j + 1) : v(i, j + 1, k - 1));
-
-            double w_ijk = w(i, j, k);
-            double w_im1 = i == 0 ? w_xneg_buffer(j, k) : w(i - 1, j, k);
-            double w_ip1 = i == nx - 1 ? w_xpos_buffer(j, k) : w(i + 1, j, k);
-            double w_jm1 = j == 0 ? w_yneg_buffer(i, k) : w(i, j - 1, k);
-            double w_jp1 = j == ny - 1 ? w_back_buffer(i, k) : w(i, j + 1, k);
-            double w_km1 = k == 0 ? w_zneg_buffer(i, j) : w(i, j, k - 1);
-            double w_kp1 = k == nz - 1 ? w_zpos_buffer(i, j) : w(i, j, k + 1);
-
-            double w_im1_kp1 = i == 0 ? (k == nz - 1 ? w_corner_along_y[j] : w_xneg_buffer(j, k + 1)) :
-                                        (k == nz - 1 ? w_zpos_buffer(i - 1, j) : w(i - 1, j, k + 1));
-            double w_jm1_kp1 = j == 0 ? (k == nz - 1 ? w_corner_along_x[i] : w_yneg_buffer(i, k + 1)) :
-                                        (k == nz - 1 ? w_zpos_buffer(i, j - 1) : w(i, j - 1, k + 1));
-            double conv_u_x  = 0.25 / hx * (u_ip1 * (u_ip1 + 2.0 * u_ijk) - u_im1 * (u_im1 + 2.0 * u_ijk));
-            double conv_u_y =
-                0.25 / hy * ((u_ijk + u_jp1) * (v_im1_jp1 + v_jp1) - (u_jm1 + u_ijk) * (v_im1 + v(i, j, k)));
-
-            if (i == 0 && j == 0 && k == 0)
-            {
-                std::cout << "u_ijk = " << u_ijk << std::endl;
-                std::cout << "u_jp1 = " << u_jp1 << std::endl;
-                std::cout << "v_im1_jp1 = " << v_im1_jp1 << std::endl;
-                std::cout << "v_jp1 = " << v_jp1 << std::endl;
-                std::cout << "u_jm1 = " << u_jm1 << std::endl;
-                std::cout << "v_im1 = " << v_im1 << std::endl;
-                std::cout << "v(i, j, k) = " << v(i, j, k) << std::endl;
-                std::cout << "hy = " << hy << std::endl;
-                std::cout << "conv_u_y = " << conv_u_y << std::endl;
-
-                std::cout << "v_xneg_buffer(0, 0) = " << v_xneg_buffer(0, 0) << std::endl;
-            }
-            double conv_u_z =
-                0.25 / hz * ((u_ijk + u_kp1) * (w_im1_kp1 + w_kp1) - (u_km1 + u_ijk) * (w_im1 + w(i, j, k)));
-            c_u(i, j, k) = conv_u_x + conv_u_y + conv_u_z;
-
-            double conv_v_x =
-                0.25 / hx * ((v_ijk + v_ip1) * (u_ip1_jm1 + u_ip1) - (v_im1 + v_ijk) * (u_jm1 + u(i, j, k)));
-            double conv_v_y = 0.25 / hy * (v_jp1 * (v_jp1 + 2.0 * v_ijk) - v_jm1 * (v_jm1 + 2.0 * v_ijk));
-            double conv_v_z =
-                0.25 / hz * ((v_ijk + v_kp1) * (w_jm1_kp1 + w_kp1) - (v_km1 + v_ijk) * (w_jm1 + w(i, j, k)));
-            c_v(i, j, k) = conv_v_x + conv_v_y + conv_v_z;
-
-            double conv_w_x =
-                0.25 / hx * ((w_ijk + w_ip1) * (u_ip1_km1 + u_ip1) - (w_im1 + w_ijk) * (u_km1 + u(i, j, k)));
-            double conv_w_y =
-                0.25 / hy * ((w_ijk + w_jp1) * (v_jp1_km1 + v_jp1) - (w_jm1 + w_ijk) * (v_km1 + v(i, j, k)));
-            double conv_w_z = 0.25 / hz * (w_kp1 * (w_kp1 + 2.0 * w_ijk) - w_km1 * (w_km1 + 2.0 * w_ijk));
-            c_w(i, j, k)    = conv_w_x + conv_w_y + conv_w_z;
-
-            // debug
-            (*conv_u_x_map[domain])(i, j, k) = conv_u_x;
-            (*conv_u_y_map[domain])(i, j, k) = conv_u_y;
-            (*conv_u_z_map[domain])(i, j, k) = conv_u_z;
-
-            (*conv_v_x_map[domain])(i, j, k) = conv_v_x;
-            (*conv_v_y_map[domain])(i, j, k) = conv_v_y;
-            (*conv_v_z_map[domain])(i, j, k) = conv_v_z;
-
-            (*conv_w_x_map[domain])(i, j, k) = conv_w_x;
-            (*conv_w_y_map[domain])(i, j, k) = conv_w_y;
-            (*conv_w_z_map[domain])(i, j, k) = conv_w_z;
-        };
-
-        OPENMP_PARALLEL_FOR()
-        for (int j = 0; j < ny; j++)
-        {
-            for (int k = 0; k < nz; k++)
-            {
-                bound_cal(0, j, k);
-                bound_cal(nx - 1, j, k);
-            }
-        }
-
-        OPENMP_PARALLEL_FOR()
-        for (int i = 0; i < nx; i++)
-        {
-            for (int k = 0; k < nz; k++)
-            {
-                bound_cal(i, 0, k);
-                bound_cal(i, ny - 1, k);
-            }
-        }
-
         OPENMP_PARALLEL_FOR()
         for (int i = 0; i < nx; i++)
         {
             for (int j = 0; j < ny; j++)
             {
-                bound_cal(i, j, 0);
-                bound_cal(i, j, nz - 1);
+                for (int k = 0; k < nz; k++)
+                {
+                    std::array<std::array<double, 3>, 3> L;
+
+                    double u_ijk = u(i, j, k);
+                    double u_im1 = i == 0 ? u_xneg_buffer(j, k) : u(i - 1, j, k);
+                    double u_ip1 = i == nx - 1 ? u_xpos_buffer(j, k) : u(i + 1, j, k);
+                    double u_jm1 = j == 0 ? u_yneg_buffer(i, k) : u(i, j - 1, k);
+                    double u_jp1 = j == ny - 1 ? u_ypos_buffer(i, k) : u(i, j + 1, k);
+                    double u_km1 = k == 0 ? u_zneg_buffer(i, j) : u(i, j, k - 1);
+                    double u_kp1 = k == nz - 1 ? u_zpos_buffer(i, j) : u(i, j, k + 1);
+
+                    // double u_ip1_jp1 = i == nx - 1 ? (j == ny - 1 ?) : ();
+
+                    double v_ijk = v(i, j, k);
+                    double v_im1 = i == 0 ? v_xneg_buffer(j, k) : v(i - 1, j, k);
+                    double v_ip1 = i == nx - 1 ? v_xpos_buffer(j, k) : v(i + 1, j, k);
+                    double v_jm1 = j == 0 ? v_yneg_buffer(i, k) : v(i, j - 1, k);
+                    double v_jp1 = j == ny - 1 ? v_ypos_buffer(i, k) : v(i, j + 1, k);
+                    double v_km1 = k == 0 ? v_zneg_buffer(i, j) : v(i, j, k - 1);
+                    double v_kp1 = k == nz - 1 ? v_zpos_buffer(i, j) : v(i, j, k + 1);
+
+                    double w_ijk = w(i, j, k);
+                    double w_im1 = i == 0 ? w_xneg_buffer(j, k) : w(i - 1, j, k);
+                    double w_ip1 = i == nx - 1 ? w_xpos_buffer(j, k) : w(i + 1, j, k);
+                    double w_jm1 = j == 0 ? w_yneg_buffer(i, k) : w(i, j - 1, k);
+                    double w_jp1 = j == ny - 1 ? w_ypos_buffer(i, k) : w(i, j + 1, k);
+                    double w_km1 = k == 0 ? w_zneg_buffer(i, j) : w(i, j, k - 1);
+                    double w_kp1 = k == nz - 1 ? w_zpos_buffer(i, j) : w(i, j, k + 1);
+
+                    double dudx = (u_ip1 - u_ijk) / hx;
+                    // double dudy
+                    // TODO:
+                    for (int i = 0; i < 3; i++)
+                        for (int j = 0; j < 3; j++)
+                            p(i, j, k) += L[i][j] * L[j][i];
+                }
             }
         }
-    }
-}
-
-void PhysicalPESolver3D::calc_rhs()
-{
-    auto& domains = u_var->geometry->domains;
-    for (auto& domain : domains)
-    {
-        // redirect in convenience of using ns code
-        field3& u = *c_u_map[domain];
-        field3& v = *c_v_map[domain];
-        field3& w = *c_w_map[domain];
-        field3& p = *p_var->field_map[domain];
-
-        // redirect in convenience of using ns code
-        field2& u_buffer_xpos = *c_u_buffer_map[domain][LocationType::XPositive];
-        field2& v_buffer_ypos = *c_v_buffer_map[domain][LocationType::YPositive];
-        field2& w_buffer_zpos = *c_w_buffer_map[domain][LocationType::ZPositive];
-
-        int    nx = u.get_nx();
-        int    ny = u.get_ny();
-        int    nz = u.get_nz();
-        double hx = domain->hx;
-        double hy = domain->hy;
-        double hz = domain->hz;
-
-        OPENMP_PARALLEL_FOR()
-        for (int i = 0; i < nx - 1; i++)
-            for (int j = 0; j < ny - 1; j++)
-                for (int k = 0; k < nz - 1; k++)
-                    p(i, j, k) = -rho * ((u(i + 1, j, k) - u(i, j, k)) / hx + (v(i, j + 1, k) - v(i, j, k)) / hy +
-                                         (w(i, j, k + 1) - w(i, j, k)) / hz);
-
-        OPENMP_PARALLEL_FOR()
-        for (int i = 0; i < nx - 1; i++)
-            for (int j = 0; j < ny - 1; j++)
-                p(i, j, nz - 1) = -rho * ((u(i + 1, j, nz - 1) - u(i, j, nz - 1)) / hx +
-                                          (v(i, j + 1, nz - 1) - v(i, j, nz - 1)) / hy +
-                                          (w_buffer_zpos(i, j) - w(i, j, nz - 1)) / hz);
-
-        OPENMP_PARALLEL_FOR()
-        for (int i = 0; i < nx - 1; i++)
-            for (int k = 0; k < nz - 1; k++)
-                p(i, ny - 1, k) = -rho * ((u(i + 1, ny - 1, k) - u(i, ny - 1, k)) / hx +
-                                          (v_buffer_ypos(i, k) - v(i, ny - 1, k)) / hy +
-                                          (w(i, ny - 1, k + 1) - w(i, ny - 1, k)) / hz);
-
-        OPENMP_PARALLEL_FOR()
-        for (int j = 0; j < ny - 1; j++)
-            for (int k = 0; k < nz - 1; k++)
-                p(nx - 1, j, k) = -rho * ((u_buffer_xpos(j, k) - u(nx - 1, j, k)) / hx +
-                                          (v(nx - 1, j + 1, k) - v(nx - 1, j, k)) / hy +
-                                          (w(nx - 1, j, k + 1) - w(nx - 1, j, k)) / hz);
-
-        for (int i = 0; i < nx - 1; i++)
-            p(i, ny - 1, nz - 1) = -rho * ((u(i + 1, ny - 1, nz - 1) - u(i, ny - 1, nz - 1)) / hx +
-                                           (v_buffer_ypos(i, nz - 1) - v(i, ny - 1, nz - 1)) / hy +
-                                           (w_buffer_zpos(i, ny - 1) - w(i, ny - 1, nz - 1)) / hz);
-
-        for (int j = 0; j < ny - 1; j++)
-            p(nx - 1, j, nz - 1) = -rho * ((u_buffer_xpos(j, nz - 1) - u(nx - 1, j, nz - 1)) / hx +
-                                           (v(nx - 1, j + 1, nz - 1) - v(nx - 1, j, nz - 1)) / hy +
-                                           (w_buffer_zpos(nx - 1, j) - w(nx - 1, j, nz - 1)) / hz);
-
-        for (int k = 0; k < nz - 1; k++)
-            p(nx - 1, ny - 1, k) = -rho * ((u_buffer_xpos(ny - 1, k) - u(nx - 1, ny - 1, k)) / hx +
-                                           (v_buffer_ypos(nx - 1, k) - v(nx - 1, ny - 1, k)) / hy +
-                                           (w(nx - 1, ny - 1, k + 1) - w(nx - 1, ny - 1, k)) / hz);
-
-        p(nx - 1, ny - 1, nz - 1) = -rho * ((u_buffer_xpos(ny - 1, nz - 1) - u(nx - 1, ny - 1, nz - 1)) / hx +
-                                            (v_buffer_ypos(nx - 1, nz - 1) - v(nx - 1, ny - 1, nz - 1)) / hy +
-                                            (w_buffer_zpos(nx - 1, ny - 1) - w(nx - 1, ny - 1, nz - 1)) / hz);
     }
 }

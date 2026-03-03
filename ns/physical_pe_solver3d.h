@@ -20,21 +20,22 @@ public:
 
     void solve();
 
-    void calc_conv_inner();
-    void calc_conv_outer();
+    void phys_boundary_update() {}
     void nondiag_shared_boundary_update();
+    void diag_shared_boundary_update() {}
     void calc_rhs();
 
-    Variable3D *                                  u_var = nullptr, *v_var = nullptr, *w_var = nullptr, *p_var = nullptr;
-    ConcatPoissonSolver3D*                        p_solver = nullptr;
-    std::unordered_map<Domain3DUniform*, field3*> c_u_map, c_v_map, c_w_map;
-    std::unordered_map<Domain3DUniform*, std::unordered_map<LocationType, field2*>> c_u_buffer_map, c_v_buffer_map,
-        c_w_buffer_map;
+    Variable3D *           u_var = nullptr, *v_var = nullptr, *w_var = nullptr, *p_var = nullptr;
+    ConcatPoissonSolver3D* p_solver = nullptr;
+
+    std::unordered_map<Domain3DUniform*, field2*> u_xpos2_buffer_map, v_ypos2_buffer_map, w_zpos2_buffer_map;
+    std::unordered_map<Domain3DUniform*, double*> u_xpos_ypos_corner_map, u_xpos_zpos_corner_map,
+        v_xpos_ypos_corner_map, v_ypos_zpos_corner_map, w_xpos_zpos_corner_map, w_ypos_zpos_corner_map;
 
     // debug
-    std::unordered_map<Domain3DUniform*, field3*> conv_u_x_map, conv_u_y_map, conv_u_z_map;
-    std::unordered_map<Domain3DUniform*, field3*> conv_v_x_map, conv_v_y_map, conv_v_z_map;
-    std::unordered_map<Domain3DUniform*, field3*> conv_w_x_map, conv_w_y_map, conv_w_z_map;
+    std::unordered_map<Domain3DUniform*, field3*> dudx_map, dudy_map, dudz_map;
+    std::unordered_map<Domain3DUniform*, field3*> dvdx_map, dvdy_map, dvdz_map;
+    std::unordered_map<Domain3DUniform*, field3*> dwdx_map, dwdy_map, dwdz_map;
 
     double rho;
 };
