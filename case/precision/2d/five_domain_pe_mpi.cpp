@@ -80,7 +80,7 @@ int main(int argc, char* argv[])
         geo.axis(&T1, LocationType::Down);
 
         p.fill_boundary_type(PDEBoundaryType::Dirichlet);
-        p.fill_boundary_value_from_func_global(p_analy);
+        p.fill_buffer_value_from_func_global(p_analy);
 
         ConcatPoissonSolver2DSlabX solver(&p);
 

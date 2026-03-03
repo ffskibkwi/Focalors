@@ -95,7 +95,17 @@ void ConcatNSSolver3D::phys_boundary_update()
                 if (loc == LocationType::Left)
                 {
                     if (type == PDEBoundaryType::Dirichlet)
+                    {
+                        std::cout << "-------------------before------------------------" << std::endl;
+                        std::cout << "v_left_buffer(0, 0) = " << (*v_buffer_map[domain][LocationType::Left])(0, 0)
+                                  << std::endl;
+                        std::cout << "bound_val(0, 0) = " << (*bound_val)(0, 0) << std::endl;
+                        std::cout << "v(0, 0, 0) = " << v(0, 0, 0) << std::endl;
                         mirror_x_to_buffer(*buffer_map[loc], v, 0, bound_val, 0.0);
+                        std::cout << "-------------------before------------------------" << std::endl;
+                        std::cout << "v_left_buffer(0, 0) = " << (*v_buffer_map[domain][LocationType::Left])(0, 0)
+                                  << std::endl;
+                    }
                     else if (type == PDEBoundaryType::Neumann)
                         copy_x_to_buffer(*buffer_map[loc], v, 0);
                     else if (type == PDEBoundaryType::Periodic)

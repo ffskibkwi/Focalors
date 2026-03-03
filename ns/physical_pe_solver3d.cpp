@@ -271,10 +271,24 @@ void PhysicalPESolver3D::calc_conv_outer()
                                         (k == nz - 1 ? w_up_buffer(i - 1, j) : w(i - 1, j, k + 1));
             double w_jm1_kp1 = j == 0 ? (k == nz - 1 ? w_corner_along_x[i] : w_front_buffer(i, k + 1)) :
                                         (k == nz - 1 ? w_up_buffer(i, j - 1) : w(i, j - 1, k + 1));
-
-            double conv_u_x = 0.25 / hx * (u_ip1 * (u_ip1 + 2.0 * u_ijk) - u_im1 * (u_im1 + 2.0 * u_ijk));
+            double conv_u_x  = 0.25 / hx * (u_ip1 * (u_ip1 + 2.0 * u_ijk) - u_im1 * (u_im1 + 2.0 * u_ijk));
             double conv_u_y =
                 0.25 / hy * ((u_ijk + u_jp1) * (v_im1_jp1 + v_jp1) - (u_jm1 + u_ijk) * (v_im1 + v(i, j, k)));
+
+            if (i == 0 && j == 0 && k == 0)
+            {
+                std::cout << "u_ijk = " << u_ijk << std::endl;
+                std::cout << "u_jp1 = " << u_jp1 << std::endl;
+                std::cout << "v_im1_jp1 = " << v_im1_jp1 << std::endl;
+                std::cout << "v_jp1 = " << v_jp1 << std::endl;
+                std::cout << "u_jm1 = " << u_jm1 << std::endl;
+                std::cout << "v_im1 = " << v_im1 << std::endl;
+                std::cout << "v(i, j, k) = " << v(i, j, k) << std::endl;
+                std::cout << "hy = " << hy << std::endl;
+                std::cout << "conv_u_y = " << conv_u_y << std::endl;
+
+                std::cout << "v_left_buffer(0, 0) = " << v_left_buffer(0, 0) << std::endl;
+            }
             double conv_u_z =
                 0.25 / hz * ((u_ijk + u_kp1) * (w_im1_kp1 + w_kp1) - (u_km1 + u_ijk) * (w_im1 + w(i, j, k)));
             c_u(i, j, k) = conv_u_x + conv_u_y + conv_u_z;
