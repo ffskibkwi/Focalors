@@ -76,7 +76,7 @@ int main(int argc, char* argv[])
         geo.axis(&T1, LocationType::Front);
 
         p.fill_boundary_type(PDEBoundaryType::Dirichlet);
-        p.fill_boundary_value_from_func_global(p_analy);
+        p.fill_buffer_value_from_func_global(p_analy);
 
         p.set_value_from_func_global(f_rhs);
 

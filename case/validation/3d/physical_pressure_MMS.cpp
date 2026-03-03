@@ -306,6 +306,10 @@ int main(int argc, char* argv[])
     v.fill_corner_value_from_func_global(calc_v);
     v.fill_buffer_value_from_func_global(calc_v);
 
+    std::cout << "calc_v(-0.5 * hx, 0.0, 0.5 * hz) = " << calc_v(-0.5 * hx, 0.0, 0.5 * hz) << std::endl;
+    std::cout << "calc_v(0.0, 0.0, 0.5 * hz) = " << calc_v(0.0, 0.0, 0.5 * hz) << std::endl;
+    std::cout << "v_left_buffer(0, 0) = " << (*v.buffer_map[&A1][LocationType::Left])(0, 0) << std::endl;
+
     w.fill_boundary_type(PDEBoundaryType::Dirichlet);
     w.fill_boundary_value_from_func_global(calc_w);
     w.set_value_from_func_global(calc_w);
