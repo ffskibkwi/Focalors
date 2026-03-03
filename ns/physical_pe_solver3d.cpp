@@ -133,12 +133,12 @@ void PhysicalPESolver3D::calc_rhs()
         field2& w_zneg_buffer = *w_var->buffer_map[domain][LocationType::ZNegative];
         field2& w_zpos_buffer = *w_var->buffer_map[domain][LocationType::ZPositive];
 
-        double* u_corner_along_y = u_var->corner_value_map_y[domain];
-        double* u_corner_along_z = u_var->corner_value_map_z[domain];
-        double* v_corner_along_x = v_var->corner_value_map_x[domain];
-        double* v_corner_along_z = v_var->corner_value_map_z[domain];
-        double* w_corner_along_x = w_var->corner_value_map_x[domain];
-        double* w_corner_along_y = w_var->corner_value_map_y[domain];
+        double* u_corner_along_y = u_var->corner_y_map[domain];
+        double* u_corner_along_z = u_var->corner_z_map[domain];
+        double* v_corner_along_x = v_var->corner_x_map[domain];
+        double* v_corner_along_z = v_var->corner_z_map[domain];
+        double* w_corner_along_x = w_var->corner_x_map[domain];
+        double* w_corner_along_y = w_var->corner_y_map[domain];
 
         int    nx = u.get_nx();
         int    ny = u.get_ny();

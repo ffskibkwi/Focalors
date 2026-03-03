@@ -11,12 +11,12 @@ ConcatNSSolver3D::ConcatNSSolver3D(Variable3D*            in_u_var,
     , w_var(in_w_var)
     , p_var(in_p_var)
     , p_solver(in_p_solver)
-    , u_corner_value_map_y(u_var->corner_value_map_y)
-    , u_corner_value_map_z(u_var->corner_value_map_z)
-    , v_corner_value_map_x(v_var->corner_value_map_x)
-    , v_corner_value_map_z(v_var->corner_value_map_z)
-    , w_corner_value_map_x(w_var->corner_value_map_x)
-    , w_corner_value_map_y(w_var->corner_value_map_y)
+    , u_corner_y_map(u_var->corner_y_map)
+    , u_corner_z_map(u_var->corner_z_map)
+    , v_corner_x_map(v_var->corner_x_map)
+    , v_corner_z_map(v_var->corner_z_map)
+    , w_corner_x_map(w_var->corner_x_map)
+    , w_corner_y_map(w_var->corner_y_map)
 {
     TimeAdvancingConfig& time_cfg    = TimeAdvancingConfig::Get();
     PhysicsConfig&       physics_cfg = PhysicsConfig::Get();
@@ -248,12 +248,12 @@ void ConcatNSSolver3D::euler_conv_diff_outer()
         field2& w_zneg_buffer = *w_buffer_map[domain][LocationType::ZNegative];
         field2& w_zpos_buffer = *w_buffer_map[domain][LocationType::ZPositive];
 
-        double* u_corner_along_y = u_corner_value_map_y[domain];
-        double* u_corner_along_z = u_corner_value_map_z[domain];
-        double* v_corner_along_x = v_corner_value_map_x[domain];
-        double* v_corner_along_z = v_corner_value_map_z[domain];
-        double* w_corner_along_x = w_corner_value_map_x[domain];
-        double* w_corner_along_y = w_corner_value_map_y[domain];
+        double* u_corner_along_y = u_corner_y_map[domain];
+        double* u_corner_along_z = u_corner_z_map[domain];
+        double* v_corner_along_x = v_corner_x_map[domain];
+        double* v_corner_along_z = v_corner_z_map[domain];
+        double* w_corner_along_x = w_corner_x_map[domain];
+        double* w_corner_along_y = w_corner_y_map[domain];
 
         int    nx = u.get_nx();
         int    ny = u.get_ny();

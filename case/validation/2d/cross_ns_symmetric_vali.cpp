@@ -379,11 +379,11 @@ int main(int argc, char* argv[])
     // 输出的u为结束时刻的u 输出buffer只能得到前一dt的值，无法和field做比较
     std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, double*>> u_buffer_map, v_buffer_map,
         p_buffer_map;
-    std::unordered_map<Domain2DUniform*, double>& xneg_ypos_corner_value_map = v.xneg_ypos_corner_value_map;
-    std::unordered_map<Domain2DUniform*, double>& xpos_yneg_corner_value_map = u.xpos_yneg_corner_value_map;
-    u_buffer_map                                                             = u.buffer_map;
-    v_buffer_map                                                             = v.buffer_map;
-    p_buffer_map                                                             = p.buffer_map;
+    std::unordered_map<Domain2DUniform*, double>& xneg_ypos_corner_map = v.xneg_ypos_corner_map;
+    std::unordered_map<Domain2DUniform*, double>& xpos_yneg_corner_map = u.xpos_yneg_corner_map;
+    u_buffer_map                                                       = u.buffer_map;
+    v_buffer_map                                                       = v.buffer_map;
+    p_buffer_map                                                       = p.buffer_map;
     double* v1_xneg_buffer = get_buffer_ptr(v_buffer_map, &A1, LocationType::XNegative);
     double* u1_xneg_buffer = get_buffer_ptr(u_buffer_map, &A1, LocationType::XNegative);
     double* v1_xpos_buffer = get_buffer_ptr(v_buffer_map, &A1, LocationType::XPositive);
@@ -502,50 +502,50 @@ int main(int argc, char* argv[])
                       << std::endl;
             std::cout << std::endl;
         }
-        std::cout << "xpos_yneg_corner_value_map[&A1]"
-                  << " : " << xpos_yneg_corner_value_map[&A1] << std::endl;
+        std::cout << "xpos_yneg_corner_map[&A1]"
+                  << " : " << xpos_yneg_corner_map[&A1] << std::endl;
         std::cout << "u_A4(0, ny - 1) : " << u_A4(0, ny - 1) << std::endl;
-        std::cout << "xpos_yneg_corner_value_map[&A1] - u_A4(0, ny - 1) : "
-                  << xpos_yneg_corner_value_map[&A1] - u_A4(0, ny - 1) << std::endl;
+        std::cout << "xpos_yneg_corner_map[&A1] - u_A4(0, ny - 1) : " << xpos_yneg_corner_map[&A1] - u_A4(0, ny - 1)
+                  << std::endl;
         std::cout << std::endl;
 
-        std::cout << "xneg_ypos_corner_value_map[&A2]"
-                  << " : " << xneg_ypos_corner_value_map[&A2] << std::endl;
+        std::cout << "xneg_ypos_corner_map[&A2]"
+                  << " : " << xneg_ypos_corner_map[&A2] << std::endl;
         std::cout << "v1_ypos_buffer[nx - 1]: " << v1_ypos_buffer[nx - 1] << std::endl;
-        std::cout << "xneg_ypos_corner_value_map[&A2] - v1_ypos_buffer[nx - 1]: "
-                  << xneg_ypos_corner_value_map[&A2] - v1_ypos_buffer[nx - 1] << std::endl;
+        std::cout << "xneg_ypos_corner_map[&A2] - v1_ypos_buffer[nx - 1]: "
+                  << xneg_ypos_corner_map[&A2] - v1_ypos_buffer[nx - 1] << std::endl;
         std::cout << std::endl;
 
-        std::cout << "xpos_yneg_corner_value_map[&A2]"
-                  << " : " << xpos_yneg_corner_value_map[&A2] << std::endl;
+        std::cout << "xpos_yneg_corner_map[&A2]"
+                  << " : " << xpos_yneg_corner_map[&A2] << std::endl;
         std::cout << "u4_xpos_buffer[ny - 1]"
                   << " : " << u4_xpos_buffer[ny - 1] << std::endl;
-        std::cout << "xpos_yneg_corner_value_map[&A2] - u4_xpos_buffer[ny - 1]: "
-                  << xpos_yneg_corner_value_map[&A2] - u4_xpos_buffer[ny - 1] << std::endl;
+        std::cout << "xpos_yneg_corner_map[&A2] - u4_xpos_buffer[ny - 1]: "
+                  << xpos_yneg_corner_map[&A2] - u4_xpos_buffer[ny - 1] << std::endl;
         std::cout << std::endl;
 
-        std::cout << "xneg_ypos_corner_value_map[&A3]"
-                  << " : " << xneg_ypos_corner_value_map[&A3] << std::endl;
+        std::cout << "xneg_ypos_corner_map[&A3]"
+                  << " : " << xneg_ypos_corner_map[&A3] << std::endl;
         std::cout << "v2_ypos_buffer[nx - 1]"
                   << " : " << v2_ypos_buffer[nx - 1] << std::endl;
-        std::cout << "xneg_ypos_corner_value_map[&A3] - v2_ypos_buffer[nx - 1]: "
-                  << xneg_ypos_corner_value_map[&A3] - v2_ypos_buffer[nx - 1] << std::endl;
+        std::cout << "xneg_ypos_corner_map[&A3] - v2_ypos_buffer[nx - 1]: "
+                  << xneg_ypos_corner_map[&A3] - v2_ypos_buffer[nx - 1] << std::endl;
         std::cout << std::endl;
 
-        std::cout << "xneg_ypos_corner_value_map[&A4]"
-                  << " : " << xneg_ypos_corner_value_map[&A4] << std::endl;
+        std::cout << "xneg_ypos_corner_map[&A4]"
+                  << " : " << xneg_ypos_corner_map[&A4] << std::endl;
         std::cout << "v_A1(nx - 1, 0)"
                   << " : " << v_A1(nx - 1, 0) << std::endl;
-        std::cout << "xneg_ypos_corner_value_map[&A4] - v3_ypos_buffer[ny - 1]: "
-                  << xneg_ypos_corner_value_map[&A4] - v3_ypos_buffer[ny - 1] << std::endl;
+        std::cout << "xneg_ypos_corner_map[&A4] - v3_ypos_buffer[ny - 1]: "
+                  << xneg_ypos_corner_map[&A4] - v3_ypos_buffer[ny - 1] << std::endl;
         std::cout << std::endl;
 
-        std::cout << "xpos_yneg_corner_value_map[&A5]"
-                  << " : " << xpos_yneg_corner_value_map[&A5] << std::endl;
+        std::cout << "xpos_yneg_corner_map[&A5]"
+                  << " : " << xpos_yneg_corner_map[&A5] << std::endl;
         std::cout << "u2_xpos_buffer[ny - 1]"
                   << " : " << u2_xpos_buffer[ny - 1] << std::endl;
-        std::cout << "xpos_yneg_corner_value_map[&A5] - u2_xpos_buffer[ny - 1]: "
-                  << xpos_yneg_corner_value_map[&A5] - u2_xpos_buffer[ny - 1] << std::endl;
+        std::cout << "xpos_yneg_corner_map[&A5] - u2_xpos_buffer[ny - 1]: "
+                  << xpos_yneg_corner_map[&A5] - u2_xpos_buffer[ny - 1] << std::endl;
         std::cout << std::endl;
     };
     auto print_all_field = [&]() {

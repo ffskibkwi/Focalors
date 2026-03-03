@@ -186,26 +186,26 @@ void MHDModule2D::solveElectricPotential()
         const double hx = domain->hx;
         const double hy = domain->hy;
 
-        double* v_xneg_buffer          = m_vVar->buffer_map[domain][LocationType::XNegative];
-        double* v_xpos_buffer          = m_vVar->buffer_map[domain][LocationType::XPositive];
-        double* v_yneg_buffer          = m_vVar->buffer_map[domain][LocationType::YNegative];
-        double* v_ypos_buffer          = m_vVar->buffer_map[domain][LocationType::YPositive];
-        double* u_xneg_buffer          = m_uVar->buffer_map[domain][LocationType::XNegative];
-        double* u_xpos_buffer          = m_uVar->buffer_map[domain][LocationType::XPositive];
-        double* u_yneg_buffer          = m_uVar->buffer_map[domain][LocationType::YNegative];
-        double* u_ypos_buffer          = m_uVar->buffer_map[domain][LocationType::YPositive];
-        double  xpos_yneg_corner_value = m_vVar->xpos_yneg_corner_value_map[domain];
-        double  xneg_ypos_corner_value = m_uVar->xneg_ypos_corner_value_map[domain];
+        double* v_xneg_buffer    = m_vVar->buffer_map[domain][LocationType::XNegative];
+        double* v_xpos_buffer    = m_vVar->buffer_map[domain][LocationType::XPositive];
+        double* v_yneg_buffer    = m_vVar->buffer_map[domain][LocationType::YNegative];
+        double* v_ypos_buffer    = m_vVar->buffer_map[domain][LocationType::YPositive];
+        double* u_xneg_buffer    = m_uVar->buffer_map[domain][LocationType::XNegative];
+        double* u_xpos_buffer    = m_uVar->buffer_map[domain][LocationType::XPositive];
+        double* u_yneg_buffer    = m_uVar->buffer_map[domain][LocationType::YNegative];
+        double* u_ypos_buffer    = m_uVar->buffer_map[domain][LocationType::YPositive];
+        double  xpos_yneg_corner = m_vVar->xpos_yneg_corner_map[domain];
+        double  xneg_ypos_corner = m_uVar->xneg_ypos_corner_map[domain];
 
         // Helper to get u at (i, j) handling boundaries
         auto get_u = [&](int i, int j) -> double {
             return get_u_with_boundary(
-                i, j, nx, ny, u, u_xneg_buffer, u_xpos_buffer, u_yneg_buffer, u_ypos_buffer, xpos_yneg_corner_value);
+                i, j, nx, ny, u, u_xneg_buffer, u_xpos_buffer, u_yneg_buffer, u_ypos_buffer, xpos_yneg_corner);
         };
         // Helper to get v at (i, j) handling boundaries
         auto get_v = [&](int i, int j) -> double {
             return get_v_with_boundary(
-                i, j, nx, ny, v, v_xneg_buffer, v_xpos_buffer, v_yneg_buffer, v_ypos_buffer, xneg_ypos_corner_value);
+                i, j, nx, ny, v, v_xneg_buffer, v_xpos_buffer, v_yneg_buffer, v_ypos_buffer, xneg_ypos_corner);
         };
         // // Helper lambda for du/dx at (i, j_row) where u is defined
         // auto calc_du_dx_row = [&](int i_idx, int j_idx) -> double {
@@ -282,40 +282,24 @@ void MHDModule2D::updateCurrentDensity()
         double* phi_xneg_buffer = m_phiVar->buffer_map[domain][LocationType::XNegative];
         double* phi_yneg_buffer = m_phiVar->buffer_map[domain][LocationType::YNegative];
 
-        double* u_xneg_buffer          = m_uVar->buffer_map[domain][LocationType::XNegative];
-        double* u_xpos_buffer          = m_uVar->buffer_map[domain][LocationType::XPositive];
-        double* u_yneg_buffer          = m_uVar->buffer_map[domain][LocationType::YNegative];
-        double* u_ypos_buffer          = m_uVar->buffer_map[domain][LocationType::YPositive];
-        double* v_xneg_buffer          = m_vVar->buffer_map[domain][LocationType::XNegative];
-        double* v_xpos_buffer          = m_vVar->buffer_map[domain][LocationType::XPositive];
-        double* v_yneg_buffer          = m_vVar->buffer_map[domain][LocationType::YNegative];
-        double* v_ypos_buffer          = m_vVar->buffer_map[domain][LocationType::YPositive];
-        double  xpos_yneg_corner_value = m_vVar->xpos_yneg_corner_value_map[domain];
-        double  xneg_ypos_corner_value = m_uVar->xneg_ypos_corner_value_map[domain];
+        double* u_xneg_buffer    = m_uVar->buffer_map[domain][LocationType::XNegative];
+        double* u_xpos_buffer    = m_uVar->buffer_map[domain][LocationType::XPositive];
+        double* u_yneg_buffer    = m_uVar->buffer_map[domain][LocationType::YNegative];
+        double* u_ypos_buffer    = m_uVar->buffer_map[domain][LocationType::YPositive];
+        double* v_xneg_buffer    = m_vVar->buffer_map[domain][LocationType::XNegative];
+        double* v_xpos_buffer    = m_vVar->buffer_map[domain][LocationType::XPositive];
+        double* v_yneg_buffer    = m_vVar->buffer_map[domain][LocationType::YNegative];
+        double* v_ypos_buffer    = m_vVar->buffer_map[domain][LocationType::YPositive];
+        double  xpos_yneg_corner = m_vVar->xpos_yneg_corner_map[domain];
+        double  xneg_ypos_corner = m_uVar->xneg_ypos_corner_map[domain];
 
         auto get_u = [&](int i_idx, int j_idx) -> double {
-            return get_u_with_boundary(i_idx,
-                                       j_idx,
-                                       nx,
-                                       ny,
-                                       u,
-                                       u_xneg_buffer,
-                                       u_xpos_buffer,
-                                       u_yneg_buffer,
-                                       u_ypos_buffer,
-                                       xpos_yneg_corner_value);
+            return get_u_with_boundary(
+                i_idx, j_idx, nx, ny, u, u_xneg_buffer, u_xpos_buffer, u_yneg_buffer, u_ypos_buffer, xpos_yneg_corner);
         };
         auto get_v = [&](int i_idx, int j_idx) -> double {
-            return get_v_with_boundary(i_idx,
-                                       j_idx,
-                                       nx,
-                                       ny,
-                                       v,
-                                       v_xneg_buffer,
-                                       v_xpos_buffer,
-                                       v_yneg_buffer,
-                                       v_ypos_buffer,
-                                       xneg_ypos_corner_value);
+            return get_v_with_boundary(
+                i_idx, j_idx, nx, ny, v, v_xneg_buffer, v_xpos_buffer, v_yneg_buffer, v_ypos_buffer, xneg_ypos_corner);
         };
 
         OPENMP_PARALLEL_FOR()
@@ -382,8 +366,8 @@ void MHDModule2D::applyLorentzForce()
         double* jz_xneg_buffer = m_jzVar->buffer_map[domain][LocationType::XNegative];
         double* jz_yneg_buffer = m_jzVar->buffer_map[domain][LocationType::YNegative];
 
-        const double jx_xpos_yneg_corner = m_jxVar->xpos_yneg_corner_value_map[domain];
-        const double jy_xneg_ypos_corner = m_jyVar->xneg_ypos_corner_value_map[domain];
+        const double jx_xpos_yneg_corner = m_jxVar->xpos_yneg_corner_map[domain];
+        const double jy_xneg_ypos_corner = m_jyVar->xneg_ypos_corner_map[domain];
 
         auto get_jx = [&](int i_idx, int j_idx) -> double {
             return get_u_with_boundary(i_idx,
@@ -476,16 +460,16 @@ void MHDModule2D::buffer_update_j()
         double* phi_xneg_buffer = m_phiVar->buffer_map[domain][LocationType::XNegative];
         double* phi_yneg_buffer = m_phiVar->buffer_map[domain][LocationType::YNegative];
 
-        double* u_xneg_buffer          = m_uVar->buffer_map[domain][LocationType::XNegative];
-        double* u_xpos_buffer          = m_uVar->buffer_map[domain][LocationType::XPositive];
-        double* u_yneg_buffer          = m_uVar->buffer_map[domain][LocationType::YNegative];
-        double* u_ypos_buffer          = m_uVar->buffer_map[domain][LocationType::YPositive];
-        double* v_xneg_buffer          = m_vVar->buffer_map[domain][LocationType::XNegative];
-        double* v_xpos_buffer          = m_vVar->buffer_map[domain][LocationType::XPositive];
-        double* v_yneg_buffer          = m_vVar->buffer_map[domain][LocationType::YNegative];
-        double* v_ypos_buffer          = m_vVar->buffer_map[domain][LocationType::YPositive];
-        double  xpos_yneg_corner_value = m_vVar->xpos_yneg_corner_value_map[domain];
-        double  xneg_ypos_corner_value = m_uVar->xneg_ypos_corner_value_map[domain];
+        double* u_xneg_buffer    = m_uVar->buffer_map[domain][LocationType::XNegative];
+        double* u_xpos_buffer    = m_uVar->buffer_map[domain][LocationType::XPositive];
+        double* u_yneg_buffer    = m_uVar->buffer_map[domain][LocationType::YNegative];
+        double* u_ypos_buffer    = m_uVar->buffer_map[domain][LocationType::YPositive];
+        double* v_xneg_buffer    = m_vVar->buffer_map[domain][LocationType::XNegative];
+        double* v_xpos_buffer    = m_vVar->buffer_map[domain][LocationType::XPositive];
+        double* v_yneg_buffer    = m_vVar->buffer_map[domain][LocationType::YNegative];
+        double* v_ypos_buffer    = m_vVar->buffer_map[domain][LocationType::YPositive];
+        double  xpos_yneg_corner = m_vVar->xpos_yneg_corner_map[domain];
+        double  xneg_ypos_corner = m_uVar->xneg_ypos_corner_map[domain];
 
         auto& u_type_map = m_uVar->boundary_type_map[domain];
         auto& v_type_map = m_vVar->boundary_type_map[domain];
@@ -514,28 +498,12 @@ void MHDModule2D::buffer_update_j()
         double* phi_ypos_buffer = m_phiVar->buffer_map[domain][LocationType::YPositive];
 
         auto get_u = [&](int i_idx, int j_idx) -> double {
-            return get_u_with_boundary(i_idx,
-                                       j_idx,
-                                       nx,
-                                       ny,
-                                       u,
-                                       u_xneg_buffer,
-                                       u_xpos_buffer,
-                                       u_yneg_buffer,
-                                       u_ypos_buffer,
-                                       xpos_yneg_corner_value);
+            return get_u_with_boundary(
+                i_idx, j_idx, nx, ny, u, u_xneg_buffer, u_xpos_buffer, u_yneg_buffer, u_ypos_buffer, xpos_yneg_corner);
         };
         auto get_v = [&](int i_idx, int j_idx) -> double {
-            return get_v_with_boundary(i_idx,
-                                       j_idx,
-                                       nx,
-                                       ny,
-                                       v,
-                                       v_xneg_buffer,
-                                       v_xpos_buffer,
-                                       v_yneg_buffer,
-                                       v_ypos_buffer,
-                                       xneg_ypos_corner_value);
+            return get_v_with_boundary(
+                i_idx, j_idx, nx, ny, v, v_xneg_buffer, v_xpos_buffer, v_yneg_buffer, v_ypos_buffer, xneg_ypos_corner);
         };
         auto get_phi = [&](int i_idx, int j_idx) -> double {
             if (i_idx >= 0 && i_idx < nx && j_idx >= 0 && j_idx < ny)
@@ -786,10 +754,10 @@ void MHDModule2D::buffer_update_j()
                 auto             adj_buf_it = m_jxVar->buffer_map.find(adj_domain);
                 if (adj_buf_it != m_jxVar->buffer_map.end() && adj_buf_it->second.count(LocationType::XPositive))
                 {
-                    double* adj_xpos                            = adj_buf_it->second[LocationType::XPositive];
-                    int     adj_ny                              = adj_domain->get_ny();
-                    m_jxVar->xpos_yneg_corner_value_map[domain] = adj_xpos[adj_ny - 1];
-                    jx_corner_set                               = true;
+                    double* adj_xpos                      = adj_buf_it->second[LocationType::XPositive];
+                    int     adj_ny                        = adj_domain->get_ny();
+                    m_jxVar->xpos_yneg_corner_map[domain] = adj_xpos[adj_ny - 1];
+                    jx_corner_set                         = true;
                 }
             }
             if (u_type_map[LocationType::XPositive] == PDEBoundaryType::Adjacented &&
@@ -800,10 +768,10 @@ void MHDModule2D::buffer_update_j()
                 if (adj_types[LocationType::YNegative] == PDEBoundaryType::Adjacented &&
                     m_adjacency.count(adj_domain) && m_adjacency.at(adj_domain).count(LocationType::YNegative))
                 {
-                    Domain2DUniform* diag_domain = m_adjacency.at(adj_domain).at(LocationType::YNegative);
-                    field2&          diag_jx     = *m_jxFieldMap[diag_domain];
-                    m_jxVar->xpos_yneg_corner_value_map[domain] = diag_jx(0, diag_domain->get_ny() - 1);
-                    jx_corner_set                               = true;
+                    Domain2DUniform* diag_domain          = m_adjacency.at(adj_domain).at(LocationType::YNegative);
+                    field2&          diag_jx              = *m_jxFieldMap[diag_domain];
+                    m_jxVar->xpos_yneg_corner_map[domain] = diag_jx(0, diag_domain->get_ny() - 1);
+                    jx_corner_set                         = true;
                 }
             }
 
@@ -814,10 +782,10 @@ void MHDModule2D::buffer_update_j()
                 auto             adj_buf_it = m_jyVar->buffer_map.find(adj_domain);
                 if (adj_buf_it != m_jyVar->buffer_map.end() && adj_buf_it->second.count(LocationType::YPositive))
                 {
-                    double* adj_ypos                            = adj_buf_it->second[LocationType::YPositive];
-                    int     adj_nx                              = adj_domain->get_nx();
-                    m_jyVar->xneg_ypos_corner_value_map[domain] = adj_ypos[adj_nx - 1];
-                    jy_corner_set                               = true;
+                    double* adj_ypos                      = adj_buf_it->second[LocationType::YPositive];
+                    int     adj_nx                        = adj_domain->get_nx();
+                    m_jyVar->xneg_ypos_corner_map[domain] = adj_ypos[adj_nx - 1];
+                    jy_corner_set                         = true;
                 }
             }
             if (v_type_map[LocationType::YPositive] == PDEBoundaryType::Adjacented &&
@@ -828,10 +796,10 @@ void MHDModule2D::buffer_update_j()
                 if (adj_types[LocationType::XNegative] == PDEBoundaryType::Adjacented &&
                     m_adjacency.count(adj_domain) && m_adjacency.at(adj_domain).count(LocationType::XNegative))
                 {
-                    Domain2DUniform* diag_domain = m_adjacency.at(adj_domain).at(LocationType::XNegative);
-                    field2&          diag_jy     = *m_jyFieldMap[diag_domain];
-                    m_jyVar->xneg_ypos_corner_value_map[domain] = diag_jy(diag_domain->get_nx() - 1, 0);
-                    jy_corner_set                               = true;
+                    Domain2DUniform* diag_domain          = m_adjacency.at(adj_domain).at(LocationType::XNegative);
+                    field2&          diag_jy              = *m_jyFieldMap[diag_domain];
+                    m_jyVar->xneg_ypos_corner_map[domain] = diag_jy(diag_domain->get_nx() - 1, 0);
+                    jy_corner_set                         = true;
                 }
             }
         }
@@ -844,7 +812,7 @@ void MHDModule2D::buffer_update_j()
             {
                 if (is_zero_neumann(LocationType::XPositive, ny) || is_zero_neumann(LocationType::YNegative, nx))
                 {
-                    m_jxVar->xpos_yneg_corner_value_map[domain] = 0.0;
+                    m_jxVar->xpos_yneg_corner_map[domain] = 0.0;
                 }
                 else
                 {
@@ -858,10 +826,10 @@ void MHDModule2D::buffer_update_j()
                         dphi_dx = (phi(nx - 1, 0) - phi(nx - 2, 0)) / hx;
                     }
 
-                    const double v_yneg                         = (nx > 0) ? v_yneg_buffer[nx - 1] : 0.0;
-                    const double v_xpos                         = (ny > 0) ? v_xpos_buffer[0] : 0.0;
-                    const double v_on_u                         = 0.5 * (v_yneg + v_xpos);
-                    m_jxVar->xpos_yneg_corner_value_map[domain] = -dphi_dx + v_on_u * m_Bz;
+                    const double v_yneg                   = (nx > 0) ? v_yneg_buffer[nx - 1] : 0.0;
+                    const double v_xpos                   = (ny > 0) ? v_xpos_buffer[0] : 0.0;
+                    const double v_on_u                   = 0.5 * (v_yneg + v_xpos);
+                    m_jxVar->xpos_yneg_corner_map[domain] = -dphi_dx + v_on_u * m_Bz;
                 }
             }
         }
@@ -874,7 +842,7 @@ void MHDModule2D::buffer_update_j()
             {
                 if (is_zero_neumann(LocationType::XNegative, ny) || is_zero_neumann(LocationType::YPositive, nx))
                 {
-                    m_jyVar->xneg_ypos_corner_value_map[domain] = 0.0;
+                    m_jyVar->xneg_ypos_corner_map[domain] = 0.0;
                 }
                 else
                 {
@@ -888,10 +856,10 @@ void MHDModule2D::buffer_update_j()
                         dphi_dy = (phi(0, ny - 1) - phi(0, ny - 2)) / hy;
                     }
 
-                    const double u_xneg                         = (ny > 0) ? u_xneg_buffer[ny - 1] : 0.0;
-                    const double u_ypos                         = (nx > 0) ? u_ypos_buffer[0] : 0.0;
-                    const double u_on_v                         = 0.5 * (u_xneg + u_ypos);
-                    m_jyVar->xneg_ypos_corner_value_map[domain] = -dphi_dy - u_on_v * m_Bz;
+                    const double u_xneg                   = (ny > 0) ? u_xneg_buffer[ny - 1] : 0.0;
+                    const double u_ypos                   = (nx > 0) ? u_ypos_buffer[0] : 0.0;
+                    const double u_on_v                   = 0.5 * (u_xneg + u_ypos);
+                    m_jyVar->xneg_ypos_corner_map[domain] = -dphi_dy - u_on_v * m_Bz;
                 }
             }
         }

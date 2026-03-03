@@ -165,7 +165,7 @@ void ConcatNSSolver2D::viscosity_update()
                                        u_xpos_buffer,
                                        u_yneg_buffer,
                                        u_ypos_buffer,
-                                       xpos_yneg_corner_value_map[domain]);
+                                       xpos_yneg_corner_map[domain]);
         };
 
         // Helper to get v at (i, j) handling boundaries
@@ -180,7 +180,7 @@ void ConcatNSSolver2D::viscosity_update()
                                        v_xpos_buffer,
                                        v_yneg_buffer,
                                        v_ypos_buffer,
-                                       xneg_ypos_corner_value_map[domain]);
+                                       xneg_ypos_corner_map[domain]);
         };
 
         // Helper lambda for du/dx at (i, j_row) where u is defined
@@ -284,7 +284,7 @@ void ConcatNSSolver2D::stress_buffer_update()
                                        u_buffer_map[domain][LocationType::XPositive],
                                        u_yneg_buffer,
                                        u_buffer_map[domain][LocationType::YPositive],
-                                       xpos_yneg_corner_value_map[domain]);
+                                       xpos_yneg_corner_map[domain]);
         };
 
         // Helper to get v at (i, j) handling boundaries
@@ -298,7 +298,7 @@ void ConcatNSSolver2D::stress_buffer_update()
                                        v_buffer_map[domain][LocationType::XPositive],
                                        v_yneg_buffer,
                                        v_buffer_map[domain][LocationType::YPositive],
-                                       xneg_ypos_corner_value_map[domain]);
+                                       xneg_ypos_corner_map[domain]);
         };
 
         // 1. YPositivedate tau_xx xneg buffer (at ghost cell -1, j)
@@ -485,7 +485,7 @@ void ConcatNSSolver2D::stress_update()
                                        u_xpos_buffer,
                                        u_yneg_buffer,
                                        u_ypos_buffer,
-                                       xpos_yneg_corner_value_map[domain]);
+                                       xpos_yneg_corner_map[domain]);
         };
 
         // Helper to get v at (i, j) handling boundaries for tau_xy calculation
@@ -499,7 +499,7 @@ void ConcatNSSolver2D::stress_update()
                                        v_xpos_buffer,
                                        v_yneg_buffer,
                                        v_ypos_buffer,
-                                       xneg_ypos_corner_value_map[domain]);
+                                       xneg_ypos_corner_map[domain]);
         };
 
         // 1. Calculate Normal Stresses (tau_xx, tau_yy) at Centers
@@ -671,7 +671,7 @@ void ConcatNSSolver2D::euler_conv_diff_outer_nonnewton()
             double v_xneg = i == 0 ? v_xneg_buffer[j] : v(i - 1, j);
             double v_ypos = j == ny - 1 ? v_ypos_buffer[i] : v(i, j + 1);
 
-            double v_xneg_ypos = i == 0 ? (j == ny - 1 ? xneg_ypos_corner_value_map[domain] : v_xneg_buffer[j + 1]) :
+            double v_xneg_ypos = i == 0 ? (j == ny - 1 ? xneg_ypos_corner_map[domain] : v_xneg_buffer[j + 1]) :
                                           (j == ny - 1 ? v_ypos_buffer[i - 1] : v(i - 1, j + 1));
 
             double u_conv_x = u_xpos * (u_xpos + 2.0 * u(i, j)) - u_xneg * (u_xneg + 2.0 * u(i, j));
@@ -705,7 +705,7 @@ void ConcatNSSolver2D::euler_conv_diff_outer_nonnewton()
             double u_xpos = i == nx - 1 ? u_xpos_buffer[j] : u(i + 1, j);
             double u_yneg = j == 0 ? u_yneg_buffer[i] : u(i, j - 1);
 
-            double u_xpos_yneg = j == 0 ? (i == nx - 1 ? xpos_yneg_corner_value_map[domain] : u_yneg_buffer[i + 1]) :
+            double u_xpos_yneg = j == 0 ? (i == nx - 1 ? xpos_yneg_corner_map[domain] : u_yneg_buffer[i + 1]) :
                                           (i == nx - 1 ? u_xpos_buffer[j - 1] : u(i + 1, j - 1));
 
             double v_conv_x = (v(i, j) + v_xpos) * (u_xpos_yneg + u_xpos) - (v_xneg + v(i, j)) * (u_yneg + u(i, j));

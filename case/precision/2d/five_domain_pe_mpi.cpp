@@ -79,14 +79,14 @@ int main(int argc, char* argv[])
         geo.axis(&T1, LocationType::XNegative);
         geo.axis(&T1, LocationType::YNegative);
 
-        p.fill_boundary_type(PDEBoundaryType::Dirichlet);
-        p.fill_buffer_value_from_func_global(p_analy);
+        p.set_boundary_type(PDEBoundaryType::Dirichlet);
+        p.set_buffer(p_analy);
 
         ConcatPoissonSolver2DSlabX solver(&p);
 
         for (int i = 0; i < 2; i++)
         {
-            p.set_value_from_func_global(f_rhs);
+            p.set_value(f_rhs);
             solver.solve();
 
             if (mpi_rank == 0)

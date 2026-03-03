@@ -123,9 +123,9 @@ private:
         w_buffer_map, p_buffer_map;
     std::unordered_map<Domain3DUniform*, field3*> u_temp_field_map, v_temp_field_map, w_temp_field_map;
 
-    std::unordered_map<Domain3DUniform*, double*>&u_corner_value_map_y, u_corner_value_map_z;
-    std::unordered_map<Domain3DUniform*, double*>&v_corner_value_map_x, v_corner_value_map_z;
-    std::unordered_map<Domain3DUniform*, double*>&w_corner_value_map_x, w_corner_value_map_y;
+    std::unordered_map<Domain3DUniform*, double*>&u_corner_y_map, u_corner_z_map;
+    std::unordered_map<Domain3DUniform*, double*>&v_corner_x_map, v_corner_z_map;
+    std::unordered_map<Domain3DUniform*, double*>&w_corner_x_map, w_corner_y_map;
 
     double dt;
     int    num_it;

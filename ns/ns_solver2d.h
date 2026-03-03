@@ -146,8 +146,8 @@ private:
     std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, double*>> tau_xx_buffer_map,
         tau_yy_buffer_map;
 
-    std::unordered_map<Domain2DUniform*, double>& xneg_ypos_corner_value_map;
-    std::unordered_map<Domain2DUniform*, double>& xpos_yneg_corner_value_map;
+    std::unordered_map<Domain2DUniform*, double>& xneg_ypos_corner_map;
+    std::unordered_map<Domain2DUniform*, double>& xpos_yneg_corner_map;
 
     std::unique_ptr<MHDModule2D> mhd_module;
 

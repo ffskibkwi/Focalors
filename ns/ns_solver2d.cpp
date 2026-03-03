@@ -10,8 +10,8 @@ ConcatNSSolver2D::ConcatNSSolver2D(Variable2D*            in_u_var,
     , v_var(in_v_var)
     , p_var(in_p_var)
     , p_solver(in_p_solver)
-    , xneg_ypos_corner_value_map(v_var->xneg_ypos_corner_value_map)
-    , xpos_yneg_corner_value_map(u_var->xpos_yneg_corner_value_map)
+    , xneg_ypos_corner_map(v_var->xneg_ypos_corner_map)
+    , xpos_yneg_corner_map(u_var->xpos_yneg_corner_map)
 {
     TimeAdvancingConfig& time_cfg    = TimeAdvancingConfig::Get();
     PhysicsConfig&       physics_cfg = PhysicsConfig::Get();
@@ -208,7 +208,7 @@ void ConcatNSSolver2D::euler_conv_diff_outer()
             double v_xneg = i == 0 ? v_xneg_buffer[j] : v(i - 1, j);
             double v_ypos = j == ny - 1 ? v_ypos_buffer[i] : v(i, j + 1);
 
-            double v_xneg_ypos = i == 0 ? (j == ny - 1 ? xneg_ypos_corner_value_map[domain] : v_xneg_buffer[j + 1]) :
+            double v_xneg_ypos = i == 0 ? (j == ny - 1 ? xneg_ypos_corner_map[domain] : v_xneg_buffer[j + 1]) :
                                           (j == ny - 1 ? v_ypos_buffer[i - 1] : v(i - 1, j + 1));
 
             double u_conv_x = u_xpos * (u_xpos + 2.0 * u(i, j)) - u_xneg * (u_xneg + 2.0 * u(i, j));
@@ -227,7 +227,7 @@ void ConcatNSSolver2D::euler_conv_diff_outer()
             double u_xpos = i == nx - 1 ? u_xpos_buffer[j] : u(i + 1, j);
             double u_yneg = j == 0 ? u_yneg_buffer[i] : u(i, j - 1);
 
-            double u_xpos_yneg = j == 0 ? (i == nx - 1 ? xpos_yneg_corner_value_map[domain] : u_yneg_buffer[i + 1]) :
+            double u_xpos_yneg = j == 0 ? (i == nx - 1 ? xpos_yneg_corner_map[domain] : u_yneg_buffer[i + 1]) :
                                           (i == nx - 1 ? u_xpos_buffer[j - 1] : u(i + 1, j - 1));
 
             double v_conv_x = (v(i, j) + v_xpos) * (u_xpos_yneg + u_xpos) - (v_xneg + v(i, j)) * (u_yneg + u(i, j));

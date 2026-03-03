@@ -141,8 +141,7 @@ void ConcatNSSolver2D::nondiag_shared_boundary_update()
                     case LocationType::XNegative:
                         copy_x_to_buffer(u_buffer, adj_u, adj_nx - 1);
                         copy_x_to_buffer(v_buffer, adj_v, adj_nx - 1);
-                        xneg_ypos_corner_value_map[domain] =
-                            v_buffer_map[adj_domain][LocationType::YPositive][adj_nx - 1];
+                        xneg_ypos_corner_map[domain] = v_buffer_map[adj_domain][LocationType::YPositive][adj_nx - 1];
                         break;
                     case LocationType::XPositive:
                         copy_x_to_buffer(u_buffer, adj_u, 0);
@@ -151,8 +150,7 @@ void ConcatNSSolver2D::nondiag_shared_boundary_update()
                     case LocationType::YNegative:
                         copy_y_to_buffer(u_buffer, adj_u, adj_ny - 1);
                         copy_y_to_buffer(v_buffer, adj_v, adj_ny - 1);
-                        xpos_yneg_corner_value_map[domain] =
-                            u_buffer_map[adj_domain][LocationType::XPositive][adj_ny - 1];
+                        xpos_yneg_corner_map[domain] = u_buffer_map[adj_domain][LocationType::XPositive][adj_ny - 1];
                         break;
                     case LocationType::YPositive:
                         copy_y_to_buffer(u_buffer, adj_u, 0);
@@ -209,7 +207,7 @@ void ConcatNSSolver2D::diag_shared_boundary_update()
                         Domain2DUniform* diag_domain = adjacency[adj_domain][LocationType::YNegative];
                         auto&            diag_u      = *u_field_map[diag_domain];
 
-                        xpos_yneg_corner_value_map[domain] = diag_u(0, diag_domain->get_ny() - 1);
+                        xpos_yneg_corner_map[domain] = diag_u(0, diag_domain->get_ny() - 1);
                     }
                 }
                 else if (loc == LocationType::YNegative)
@@ -238,7 +236,7 @@ void ConcatNSSolver2D::diag_shared_boundary_update()
                         Domain2DUniform* diag_domain = adjacency[adj_domain][LocationType::XNegative];
                         auto&            diag_v      = *v_field_map[diag_domain];
 
-                        xneg_ypos_corner_value_map[domain] = diag_v(diag_domain->get_nx() - 1, 0);
+                        xneg_ypos_corner_map[domain] = diag_v(diag_domain->get_nx() - 1, 0);
                     }
                 }
             }

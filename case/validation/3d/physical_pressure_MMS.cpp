@@ -220,36 +220,36 @@ int main(int argc, char* argv[])
         return numerator / (Lx4 * Ly4 * Lz2);
     };
 
-    u.fill_boundary_type(PDEBoundaryType::Dirichlet);
-    u.fill_boundary_value_from_func_global(calc_u);
-    u.set_value_from_func_global(calc_u);
-    u.fill_corner_value_from_func_global(calc_u);
-    u.fill_buffer_value_from_func_global(calc_u);
+    u.set_boundary_type(PDEBoundaryType::Dirichlet);
+    u.set_boundary(calc_u);
+    u.set_value(calc_u);
+    u.set_corner(calc_u);
+    u.set_buffer(calc_u);
 
-    v.fill_boundary_type(PDEBoundaryType::Dirichlet);
-    v.fill_boundary_value_from_func_global(calc_v);
-    v.set_value_from_func_global(calc_v);
-    v.fill_corner_value_from_func_global(calc_v);
-    v.fill_buffer_value_from_func_global(calc_v);
+    v.set_boundary_type(PDEBoundaryType::Dirichlet);
+    v.set_boundary(calc_v);
+    v.set_value(calc_v);
+    v.set_corner(calc_v);
+    v.set_buffer(calc_v);
 
     std::cout << "calc_v(-0.5 * hx, 0.0, 0.5 * hz) = " << calc_v(-0.5 * hx, 0.0, 0.5 * hz) << std::endl;
     std::cout << "calc_v(0.0, 0.0, 0.5 * hz) = " << calc_v(0.0, 0.0, 0.5 * hz) << std::endl;
     std::cout << "v_xneg_buffer(0, 0) = " << (*v.buffer_map[&A1][LocationType::XNegative])(0, 0) << std::endl;
 
-    w.fill_boundary_type(PDEBoundaryType::Dirichlet);
-    w.fill_boundary_value_from_func_global(calc_w);
-    w.set_value_from_func_global(calc_w);
-    w.fill_corner_value_from_func_global(calc_w);
-    w.fill_buffer_value_from_func_global(calc_w);
+    w.set_boundary_type(PDEBoundaryType::Dirichlet);
+    w.set_boundary(calc_w);
+    w.set_value(calc_w);
+    w.set_corner(calc_w);
+    w.set_buffer(calc_w);
 
-    p.fill_boundary_type(PDEBoundaryType::Neumann);
+    p.set_boundary_type(PDEBoundaryType::Neumann);
 
     ConcatPoissonSolver3D p_solver(&p);
     PhysicalPESolver3D    ppe_solver(&u, &v, &w, &p, &p_solver, rho);
 
     // The following pe solve validates that pe solver is correct.
 
-    p.set_value_from_func_global(calc_laplacian_p);
+    p.set_value(calc_laplacian_p);
 
     p_solver.solve();
 

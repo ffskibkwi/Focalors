@@ -268,25 +268,25 @@ int main(int argc, char* argv[])
     const double center_y = a2.get_offset_y() + 0.5 * a2.get_ly();
     const double center_z = a2.get_offset_z() + 0.5 * a2.get_lz();
 
-    u.set_value_from_func_global([=](double x, double y, double z) {
+    u.set_value([=](double x, double y, double z) {
         double xr = x - center_x;
         double yr = y - center_y;
         double zr = z - center_z;
         return xr * (1.0 + 0.20 * yr * yr + 0.10 * zr * zr);
     });
-    v.set_value_from_func_global([=](double x, double y, double z) {
+    v.set_value([=](double x, double y, double z) {
         double xr = x - center_x;
         double yr = y - center_y;
         double zr = z - center_z;
         return -yr * (1.0 + 0.15 * xr * xr + 0.05 * zr * zr);
     });
-    w.set_value_from_func_global([=](double x, double y, double z) {
+    w.set_value([=](double x, double y, double z) {
         double xr = x - center_x;
         double yr = y - center_y;
         double zr = z - center_z;
         return 0.25 + 0.10 * xr * xr + 0.08 * yr * yr + 0.03 * zr * zr;
     });
-    p.set_value_from_func_global([=](double x, double y, double z) {
+    p.set_value([=](double x, double y, double z) {
         double xr = x - center_x;
         double yr = y - center_y;
         double zr = z - center_z;

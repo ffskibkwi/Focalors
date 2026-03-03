@@ -62,7 +62,7 @@ double get_u_with_boundary(int           i,
                            double*       u_xpos_buffer,
                            double*       u_yneg_buffer,
                            double*       u_ypos_buffer,
-                           double        xpos_yneg_corner_value);
+                           double        xpos_yneg_corner);
 
 double get_v_with_boundary(int           i,
                            int           j,
@@ -73,7 +73,7 @@ double get_v_with_boundary(int           i,
                            double*       v_xpos_buffer,
                            double*       v_yneg_buffer,
                            double*       v_ypos_buffer,
-                           double        xneg_ypos_corner_value);
+                           double        xneg_ypos_corner);
 
 double get_scalar_with_boundary(int             i,
                                 int             j,

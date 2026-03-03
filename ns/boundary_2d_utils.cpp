@@ -333,12 +333,12 @@ double get_u_with_boundary(int           i,
                            double*       u_xpos_buffer,
                            double*       u_yneg_buffer,
                            double*       u_ypos_buffer,
-                           double        xpos_yneg_corner_value)
+                           double        xpos_yneg_corner)
 {
     if (i >= 0 && i < nx && j >= 0 && j < ny)
         return u(i, j);
     if (j < 0)
-        return (i >= nx) ? xpos_yneg_corner_value : u_yneg_buffer[i];
+        return (i >= nx) ? xpos_yneg_corner : u_yneg_buffer[i];
     if (j >= ny)
         return u_ypos_buffer[i];
     if (i >= nx)
@@ -356,12 +356,12 @@ double get_v_with_boundary(int           i,
                            double*       v_xpos_buffer,
                            double*       v_yneg_buffer,
                            double*       v_ypos_buffer,
-                           double        xneg_ypos_corner_value)
+                           double        xneg_ypos_corner)
 {
     if (i >= 0 && i < nx && j >= 0 && j < ny)
         return v(i, j);
     if (i < 0)
-        return (j >= ny) ? xneg_ypos_corner_value : v_xneg_buffer[j];
+        return (j >= ny) ? xneg_ypos_corner : v_xneg_buffer[j];
     if (i >= nx)
         return v_xpos_buffer[j];
     if (j >= ny)

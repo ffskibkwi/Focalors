@@ -75,10 +75,10 @@ int main(int argc, char* argv[])
         geo.axis(&T1, LocationType::ZNegative);
         geo.axis(&T1, LocationType::YNegative);
 
-        p.fill_boundary_type(PDEBoundaryType::Dirichlet);
-        p.fill_buffer_value_from_func_global(p_analy);
+        p.set_boundary_type(PDEBoundaryType::Dirichlet);
+        p.set_buffer(p_analy);
 
-        p.set_value_from_func_global(f_rhs);
+        p.set_value(f_rhs);
 
         ConcatPoissonSolver3D solver(&p);
         solver.solve();

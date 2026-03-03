@@ -254,12 +254,10 @@ void ConcatNSSolver3D::nondiag_shared_boundary_update()
                         copy_x_to_buffer(v_buffer, adj_v, adj_nx - 1);
                         copy_x_to_buffer(w_buffer, adj_w, adj_nx - 1);
 
-                        copy_x_to_buffer(v_corner_value_map_z[domain],
-                                         *v_buffer_map[adj_domain][LocationType::YPositive],
-                                         adj_nx - 1);
-                        copy_x_to_buffer(w_corner_value_map_y[domain],
-                                         *w_buffer_map[adj_domain][LocationType::ZPositive],
-                                         adj_nx - 1);
+                        copy_x_to_buffer(
+                            v_corner_z_map[domain], *v_buffer_map[adj_domain][LocationType::YPositive], adj_nx - 1);
+                        copy_x_to_buffer(
+                            w_corner_y_map[domain], *w_buffer_map[adj_domain][LocationType::ZPositive], adj_nx - 1);
                         break;
                     case LocationType::XPositive:
                         copy_x_to_buffer(u_buffer, adj_u, 0);
@@ -271,12 +269,10 @@ void ConcatNSSolver3D::nondiag_shared_boundary_update()
                         copy_y_to_buffer(v_buffer, adj_v, adj_ny - 1);
                         copy_y_to_buffer(w_buffer, adj_w, adj_ny - 1);
 
-                        copy_x_to_buffer(u_corner_value_map_z[domain],
-                                         *u_buffer_map[adj_domain][LocationType::XPositive],
-                                         adj_ny - 1);
-                        copy_y_to_buffer(w_corner_value_map_x[domain],
-                                         *w_buffer_map[adj_domain][LocationType::ZPositive],
-                                         adj_ny - 1);
+                        copy_x_to_buffer(
+                            u_corner_z_map[domain], *u_buffer_map[adj_domain][LocationType::XPositive], adj_ny - 1);
+                        copy_y_to_buffer(
+                            w_corner_x_map[domain], *w_buffer_map[adj_domain][LocationType::ZPositive], adj_ny - 1);
                         break;
                     case LocationType::YPositive:
                         copy_y_to_buffer(u_buffer, adj_u, 0);
@@ -288,12 +284,10 @@ void ConcatNSSolver3D::nondiag_shared_boundary_update()
                         copy_z_to_buffer(v_buffer, adj_v, adj_nz - 1);
                         copy_z_to_buffer(w_buffer, adj_w, adj_nz - 1);
 
-                        copy_y_to_buffer(u_corner_value_map_y[domain],
-                                         *u_buffer_map[adj_domain][LocationType::XPositive],
-                                         adj_nz - 1);
-                        copy_y_to_buffer(v_corner_value_map_x[domain],
-                                         *v_buffer_map[adj_domain][LocationType::YPositive],
-                                         adj_nz - 1);
+                        copy_y_to_buffer(
+                            u_corner_y_map[domain], *u_buffer_map[adj_domain][LocationType::XPositive], adj_nz - 1);
+                        copy_y_to_buffer(
+                            v_corner_x_map[domain], *v_buffer_map[adj_domain][LocationType::YPositive], adj_nz - 1);
                         break;
                     case LocationType::ZPositive:
                         copy_z_to_buffer(u_buffer, adj_u, 0);
@@ -354,7 +348,7 @@ void ConcatNSSolver3D::diag_shared_boundary_update()
                         Domain3DUniform* diag_domain = adjacency[adj_domain][LocationType::YNegative];
                         auto&            diag_u      = *u_field_map[diag_domain];
 
-                        copy_z_to_buffer(u_corner_value_map_z[domain], diag_u, 0, diag_domain->get_ny() - 1);
+                        copy_z_to_buffer(u_corner_z_map[domain], diag_u, 0, diag_domain->get_ny() - 1);
                     }
                 }
                 else if (loc == LocationType::YNegative)
@@ -383,7 +377,7 @@ void ConcatNSSolver3D::diag_shared_boundary_update()
                         Domain3DUniform* diag_domain = adjacency[adj_domain][LocationType::XNegative];
                         auto&            diag_v      = *v_field_map[diag_domain];
 
-                        copy_z_to_buffer(v_corner_value_map_z[domain], diag_v, diag_domain->get_nx() - 1, 0);
+                        copy_z_to_buffer(v_corner_z_map[domain], diag_v, diag_domain->get_nx() - 1, 0);
                     }
                 }
 
@@ -415,7 +409,7 @@ void ConcatNSSolver3D::diag_shared_boundary_update()
                         Domain3DUniform* diag_domain = adjacency[adj_domain][LocationType::ZNegative];
                         auto&            diag_u      = *u_field_map[diag_domain];
 
-                        copy_y_to_buffer(u_corner_value_map_y[domain], diag_u, 0, diag_domain->get_nz() - 1);
+                        copy_y_to_buffer(u_corner_y_map[domain], diag_u, 0, diag_domain->get_nz() - 1);
                     }
                 }
                 else if (loc == LocationType::ZNegative)
@@ -444,7 +438,7 @@ void ConcatNSSolver3D::diag_shared_boundary_update()
                         Domain3DUniform* diag_domain = adjacency[adj_domain][LocationType::XNegative];
                         auto&            diag_w      = *w_field_map[diag_domain];
 
-                        copy_y_to_buffer(w_corner_value_map_y[domain], diag_w, diag_domain->get_nx() - 1, 0);
+                        copy_y_to_buffer(w_corner_y_map[domain], diag_w, diag_domain->get_nx() - 1, 0);
                     }
                 }
 
@@ -476,7 +470,7 @@ void ConcatNSSolver3D::diag_shared_boundary_update()
                         Domain3DUniform* diag_domain = adjacency[adj_domain][LocationType::ZNegative];
                         auto&            diag_v      = *v_field_map[diag_domain];
 
-                        copy_x_to_buffer(v_corner_value_map_x[domain], diag_v, 0, diag_domain->get_nz() - 1);
+                        copy_x_to_buffer(v_corner_x_map[domain], diag_v, 0, diag_domain->get_nz() - 1);
                     }
                 }
                 else if (loc == LocationType::ZNegative)
@@ -505,7 +499,7 @@ void ConcatNSSolver3D::diag_shared_boundary_update()
                         Domain3DUniform* diag_domain = adjacency[adj_domain][LocationType::YNegative];
                         auto&            diag_w      = *w_field_map[diag_domain];
 
-                        copy_x_to_buffer(w_corner_value_map_x[domain], diag_w, 0, diag_domain->get_nz() - 1);
+                        copy_x_to_buffer(w_corner_x_map[domain], diag_w, 0, diag_domain->get_nz() - 1);
                     }
                 }
             }
