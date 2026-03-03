@@ -118,6 +118,26 @@ int main(int argc, char* argv[])
         std::cout << "  a:      " << case_param.a << std::endl;
         std::cout << "  n:      " << case_param.n_index << std::endl;
     }
+    else if (case_param.model_type == 3) // Casson
+    {
+        physics_cfg.set_casson_dimensionless(case_param.casson_mu,
+                                             case_param.casson_tau0,
+                                             case_param.Re,
+                                             case_param.mu_ref,
+                                             case_param.use_dimensionless_viscosity,
+                                             case_param.mu_min_pl,
+                                             case_param.mu_max_pl);
+        std::cout << "Configuring Casson Model (Dimensionless):" << std::endl;
+        std::cout << "  casson_mu:      " << case_param.casson_mu << std::endl;
+        std::cout << "  casson_tau0:    " << case_param.casson_tau0 << std::endl;
+        std::cout << "  Re:             " << case_param.Re << std::endl;
+        std::cout << "  mu_ref:         " << case_param.mu_ref << std::endl;
+        std::cout << "  use_dimensionless_viscosity: " << case_param.use_dimensionless_viscosity << std::endl;
+    }
+    else
+    {
+        std::cout << "Configuring Newtonian Model." << std::endl;
+    }
 
     // 计算循环输出步数间隔 pv_output_step（如果未指定则使用 num_iterations/10）
     int pv_output_step = case_param.pv_output_step > 0 ? case_param.pv_output_step : time_cfg.num_iterations / 10;
@@ -322,23 +342,22 @@ int main(int argc, char* argv[])
         phi.has_boundary_value_map[&A5][LocationType::Up] = true;
     }
 
-    // Inlet profiles for symmetry validation (Poiseuille)
-    const double U0 = case_param.U0;
+    // Inlet profiles for symmetry validation (Poiseuille, nondimensional amplitude = 1.0)
 
     u.set_boundary_type(&A1, LocationType::Left, PDEBoundaryType::Dirichlet);
     u.set_boundary_value(&A1, LocationType::Left, 0.0); // ← 添加这行来分配内存
     u.has_boundary_value_map[&A1][LocationType::Left] = true;
     set_dirichlet_zero(v, &A1, LocationType::Left);
-    // A1 Left: u(y_norm) = +6*U0*y_norm*(1-y_norm)
+    // A1 Left: u(y_norm) = +6*y_norm*(1-y_norm)
     for (int j = 0; j < u_A1.get_ny(); ++j)
     {
         double y_norm                                    = (j + 0.5) / static_cast<double>(u_A1.get_ny());
-        double u_val                                     = 6.0 * U0 * y_norm * (1.0 - y_norm);
+        double u_val                                     = 6.0 * y_norm * (1.0 - y_norm);
         u.boundary_value_map[&A1][LocationType::Left][j] = u_val;
     }
     set_dirichlet_zero(v, &A1, LocationType::Left);
 
-    // A3 Right: u(y_norm) = -6*U0*y_norm*(1-y_norm)
+    // A3 Right: u(y_norm) = -6*y_norm*(1-y_norm)
     u.set_boundary_type(&A3, LocationType::Right, PDEBoundaryType::Dirichlet);
     u.has_boundary_value_map[&A3][LocationType::Right] = true;
     u.set_boundary_value(&A3, LocationType::Right, 0.0); // ← 添加这行来分配内存
@@ -346,7 +365,7 @@ int main(int argc, char* argv[])
     for (int j = 0; j < u_A3.get_ny(); ++j)
     {
         double y_norm                                     = (j + 0.5) / static_cast<double>(u_A3.get_ny());
-        double u_val                                      = -6.0 * U0 * y_norm * (1.0 - y_norm);
+        double u_val                                      = -6.0 * y_norm * (1.0 - y_norm);
         u.boundary_value_map[&A3][LocationType::Right][j] = u_val;
     }
 
@@ -401,7 +420,8 @@ int main(int argc, char* argv[])
             IO::write_csv(v, nowtime_dir + "/v/v_" + std::to_string(step));
             IO::write_csv(p, nowtime_dir + "/p/p_" + std::to_string(step));
             IO::write_csv(mu, nowtime_dir + "/mu/mu_" + std::to_string(step));
-            IO::write_csv(phi, nowtime_dir + "/phi/phi_" + std::to_string(step));
+            if (enable_mhd)
+                IO::write_csv(phi, nowtime_dir + "/phi/phi_" + std::to_string(step));
         }
         if (std::isnan(u_A1(1, 1)))
         {
@@ -415,6 +435,7 @@ int main(int argc, char* argv[])
     IO::write_csv(v, nowtime_dir + "/final/v_" + std::to_string(final_step_to_save));
     IO::write_csv(p, nowtime_dir + "/final/p_" + std::to_string(final_step_to_save));
     IO::write_csv(mu, nowtime_dir + "/final/mu_" + std::to_string(final_step_to_save));
-    IO::write_csv(phi, nowtime_dir + "/final/phi_" + std::to_string(final_step_to_save));
+    if (enable_mhd)
+        IO::write_csv(phi, nowtime_dir + "/final/phi_" + std::to_string(final_step_to_save));
     return 0;
 }
