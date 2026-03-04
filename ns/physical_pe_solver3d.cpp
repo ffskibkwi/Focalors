@@ -180,9 +180,12 @@ void PhysicalPESolver3D::calc_rhs()
                     double u_ip1_kp1 = i == nx - 1 ? (k == nz - 1 ? u_xpos_zpos_corner[j] : u_xpos_buffer(j, k + 1)) :
                                                      (k == nz - 1 ? u_zpos_buffer(i + 1, k) : u(i + 1, j, k + 1));
 
+                    // dudy $(u_{i, j+1, k} + u_{i+1, j+1, k}) - (u_{i, j-1, k} + u_{i+1, j-1, k})$
+                    // dudz $(u_{i, j, k+1} + u_{i+1, j, k+1}) - (u_{i, j, k-1} + u_{i+1, j, k-1})$
+
                     L[0][0] = (u_ip1 - u_ijk) / hx;
-                    L[0][1] = (u_ip1 + u_ip1_jp1 - u_jm1 - u_ip1_jm1) / 4.0 / hy;
-                    L[0][2] = (u_ip1 + u_ip1_kp1 - u_km1 - u_ip1_km1) / 4.0 / hz;
+                    L[0][1] = (u_jp1 + u_ip1_jp1 - u_jm1 - u_ip1_jm1) / 4.0 / hy;
+                    L[0][2] = (u_kp1 + u_ip1_kp1 - u_km1 - u_ip1_km1) / 4.0 / hz;
 
                     // debug
                     dudx(i, j, k) = L[0][0];
@@ -206,9 +209,12 @@ void PhysicalPESolver3D::calc_rhs()
                     double v_jp1_kp1 = j == ny - 1 ? (k == nz - 1 ? v_ypos_zpos_corner[i] : v_ypos_buffer(i, k + 1)) :
                                                      (k == nz - 1 ? v_zpos_buffer(i, j + 1) : v(i, j + 1, k + 1));
 
+                    // dvdx $(v_{i+1, j, k} + v_{i+1, j+1, k}) - (v_{i-1, j, k} + v_{i-1, j+1, k})$
+                    // dvdz $(v_{i, j, k+1} + v_{i, j+1, k+1}) - (v_{i, j, k-1} + v_{i, j+1, k-1})$
+
                     L[1][0] = (v_ip1 + v_ip1_jp1 - v_im1 - v_im1_jp1) / 4.0 / hx;
                     L[1][1] = (v_jp1 - v_ijk) / hy;
-                    L[1][2] = (v_jp1 + v_jp1_kp1 - v_jm1 - v_jp1_km1) / 4.0 / hz;
+                    L[1][2] = (v_kp1 + v_jp1_kp1 - v_km1 - v_jp1_km1) / 4.0 / hz;
 
                     // debug
                     dvdx(i, j, k) = L[1][0];
@@ -232,6 +238,9 @@ void PhysicalPESolver3D::calc_rhs()
                     double w_jp1_kp1 = j == ny - 1 ? (k == nz - 1 ? w_ypos_zpos_corner[i] : w_ypos_buffer(i, k + 1)) :
                                                      (k == nz - 1 ? w_zpos_buffer(i, j + 1) : w(i, j + 1, k + 1));
 
+                    // dzdx $(w_{i+1, j, k} + w_{i+1, j, k+1}) - (w_{i-1, j, k} + w_{i-1, j, k+1})$
+                    // dzdy $(w_{i, j+1, k} + w_{i, j+1, k+1}) - (w_{i, j-1, k} + w_{i, j-1, k+1})$
+
                     L[2][0] = (w_ip1 + w_ip1_kp1 - w_im1 - w_im1_kp1) / 4.0 / hx;
                     L[2][1] = (w_jp1 + w_jp1_kp1 - w_jm1 - w_jm1_kp1) / 4.0 / hy;
                     L[2][2] = (w_kp1 - w_ijk) / hz;
@@ -241,11 +250,11 @@ void PhysicalPESolver3D::calc_rhs()
                     dwdy(i, j, k) = L[2][1];
                     dwdz(i, j, k) = L[2][2];
 
-                    // double dudy
-                    // TODO:
+                    p(i, j, k) = 0.0;
                     for (int m = 0; m < 3; m++)
                         for (int n = 0; n < 3; n++)
                             p(i, j, k) += L[m][n] * L[n][m];
+                    p(i, j, k) *= -rho;
                 }
             }
         }
