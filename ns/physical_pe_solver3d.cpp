@@ -178,7 +178,7 @@ void PhysicalPESolver3D::calc_rhs()
                     double u_ip1_km1 = i == nx - 1 ? (k == 0 ? u_corner_along_y[j] : u_xpos_buffer(j, k - 1)) :
                                                      (k == 0 ? u_zneg_buffer(i + 1, j) : u(i + 1, j, k - 1));
                     double u_ip1_kp1 = i == nx - 1 ? (k == nz - 1 ? u_xpos_zpos_corner[j] : u_xpos_buffer(j, k + 1)) :
-                                                     (k == nz - 1 ? u_zpos_buffer(i + 1, k) : u(i + 1, j, k + 1));
+                                                     (k == nz - 1 ? u_zpos_buffer(i + 1, j) : u(i + 1, j, k + 1));
 
                     // dudy $(u_{i, j+1, k} + u_{i+1, j+1, k}) - (u_{i, j-1, k} + u_{i+1, j-1, k})$
                     // dudz $(u_{i, j, k+1} + u_{i+1, j, k+1}) - (u_{i, j, k-1} + u_{i+1, j, k-1})$
