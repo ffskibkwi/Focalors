@@ -20,6 +20,9 @@ public:
 
     void solve();
 
+    // corner at physical boundary should be updated
+    // TODO: support bound val
+    void phys_boundary_update();
     void diag_shared_boundary_update();
     void calc_rhs();
 

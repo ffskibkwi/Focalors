@@ -3,6 +3,92 @@
 #include "boundary_2d_utils.h"
 #include "boundary_3d_utils.h"
 
+void PhysicalPESolver3D::phys_boundary_update()
+{
+    for (auto& domain : u_var->geometry->domains)
+    {
+        auto& bound_type_map = u_var->boundary_type_map[domain];
+
+        for (auto& [loc, type] : bound_type_map)
+        {
+            if (type != PDEBoundaryType::Adjacented)
+            {
+                // Project to xy
+                if (loc == LocationType::XPositive)
+                {
+                    field2& u_ypos_buffer = *u_var->buffer_map[domain][LocationType::YPositive];
+
+                    if (type == PDEBoundaryType::Dirichlet)
+                        assign_val_to_buffer(u_xpos_ypos_corner_map[domain], domain->get_nz(), nullptr, 0.0);
+                    else if (type == PDEBoundaryType::Neumann)
+                        copy_x_to_buffer(u_xpos_ypos_corner_map[domain], u_ypos_buffer, domain->get_nx() - 1);
+                    else if (type == PDEBoundaryType::Periodic)
+                        copy_x_to_buffer(u_xpos_ypos_corner_map[domain], u_ypos_buffer, 1);
+                }
+                if (loc == LocationType::YPositive)
+                {
+                    field2& v_xpos_buffer = *v_var->buffer_map[domain][LocationType::XPositive];
+
+                    if (type == PDEBoundaryType::Dirichlet)
+                        assign_val_to_buffer(v_xpos_ypos_corner_map[domain], domain->get_nz(), nullptr, 0.0);
+                    else if (type == PDEBoundaryType::Neumann)
+                        copy_x_to_buffer(v_xpos_ypos_corner_map[domain], v_xpos_buffer, domain->get_ny() - 1);
+                    else if (type == PDEBoundaryType::Periodic)
+                        copy_x_to_buffer(v_xpos_ypos_corner_map[domain], v_xpos_buffer, 1);
+                }
+
+                // Project to yz
+                if (loc == LocationType::YPositive)
+                {
+                    field2& v_zpos_buffer = *v_var->buffer_map[domain][LocationType::ZPositive];
+
+                    if (type == PDEBoundaryType::Dirichlet)
+                        assign_val_to_buffer(v_ypos_zpos_corner_map[domain], domain->get_nx(), nullptr, 0.0);
+                    else if (type == PDEBoundaryType::Neumann)
+                        copy_y_to_buffer(v_ypos_zpos_corner_map[domain], v_zpos_buffer, domain->get_ny() - 1);
+                    else if (type == PDEBoundaryType::Periodic)
+                        copy_y_to_buffer(v_ypos_zpos_corner_map[domain], v_zpos_buffer, 1);
+                }
+                if (loc == LocationType::ZPositive)
+                {
+                    field2& w_ypos_buffer = *w_var->buffer_map[domain][LocationType::YPositive];
+
+                    if (type == PDEBoundaryType::Dirichlet)
+                        assign_val_to_buffer(w_ypos_zpos_corner_map[domain], domain->get_nx(), nullptr, 0.0);
+                    else if (type == PDEBoundaryType::Neumann)
+                        copy_y_to_buffer(w_ypos_zpos_corner_map[domain], w_ypos_buffer, domain->get_nz() - 1);
+                    else if (type == PDEBoundaryType::Periodic)
+                        copy_y_to_buffer(w_ypos_zpos_corner_map[domain], w_ypos_buffer, 1);
+                }
+
+                // Project to xz
+                if (loc == LocationType::XPositive)
+                {
+                    field2& u_zpos_buffer = *u_var->buffer_map[domain][LocationType::ZPositive];
+
+                    if (type == PDEBoundaryType::Dirichlet)
+                        assign_val_to_buffer(u_xpos_zpos_corner_map[domain], domain->get_ny(), nullptr, 0.0);
+                    else if (type == PDEBoundaryType::Neumann)
+                        copy_x_to_buffer(u_xpos_zpos_corner_map[domain], u_zpos_buffer, domain->get_nx() - 1);
+                    else if (type == PDEBoundaryType::Periodic)
+                        copy_x_to_buffer(u_xpos_zpos_corner_map[domain], u_zpos_buffer, 1);
+                }
+                if (loc == LocationType::ZPositive)
+                {
+                    field2& w_xpos_buffer = *w_var->buffer_map[domain][LocationType::XPositive];
+
+                    if (type == PDEBoundaryType::Dirichlet)
+                        assign_val_to_buffer(w_ypos_zpos_corner_map[domain], domain->get_nx(), nullptr, 0.0);
+                    else if (type == PDEBoundaryType::Neumann)
+                        copy_y_to_buffer(w_ypos_zpos_corner_map[domain], w_xpos_buffer, domain->get_nz() - 1);
+                    else if (type == PDEBoundaryType::Periodic)
+                        copy_y_to_buffer(w_ypos_zpos_corner_map[domain], w_xpos_buffer, 1);
+                }
+            }
+        }
+    }
+}
+
 void PhysicalPESolver3D::diag_shared_boundary_update()
 {
     for (auto& domain : u_var->geometry->domains)
