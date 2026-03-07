@@ -451,6 +451,7 @@ void MHDModule2D::buffer_update_j()
 
         field2& jx = *m_jxFieldMap[domain];
         field2& jy = *m_jyFieldMap[domain];
+        field2& jz = *m_jzFieldMap[domain];
 
         const int    nx = domain->get_nx();
         const int    ny = domain->get_ny();
@@ -860,6 +861,51 @@ void MHDModule2D::buffer_update_j()
                     const double u_ypos                   = (nx > 0) ? u_ypos_buffer[0] : 0.0;
                     const double u_on_v                   = 0.5 * (u_xneg + u_ypos);
                     m_jyVar->xneg_ypos_corner_map[domain] = -dphi_dy - u_on_v * m_Bz;
+                }
+            }
+        }
+
+        // ---- jz (center) ghost buffers ----
+        // applyLorentzForce() queries jz at i<0 (XNegative) / j<0 (YNegative) when interpolating to faces.
+        // These buffers must be populated; otherwise uninitialized reads can produce NaNs.
+        if (m_jzVar && m_jzVar->buffer_map.count(domain))
+        {
+            auto& jz_buf_map = m_jzVar->buffer_map[domain];
+            auto  adj_it     = m_adjacency.find(domain);
+
+            // XNegative buffer: jz(-1, j)
+            if (jz_buf_map.count(LocationType::XNegative))
+            {
+                double* buf = jz_buf_map[LocationType::XNegative];
+                if (adj_it != m_adjacency.end() && adj_it->second.count(LocationType::XNegative))
+                {
+                    Domain2DUniform* adj_domain = adj_it->second.at(LocationType::XNegative);
+                    field2&          adj_jz     = *m_jzFieldMap[adj_domain];
+                    const int        adj_nx     = adj_jz.get_nx();
+                    copy_x_to_buffer(buf, adj_jz, adj_nx - 1);
+                }
+                else
+                {
+                    // Physical boundary fallback: zero-gradient
+                    copy_x_to_buffer(buf, jz, 0);
+                }
+            }
+
+            // YNegative buffer: jz(i, -1)
+            if (jz_buf_map.count(LocationType::YNegative))
+            {
+                double* buf = jz_buf_map[LocationType::YNegative];
+                if (adj_it != m_adjacency.end() && adj_it->second.count(LocationType::YNegative))
+                {
+                    Domain2DUniform* adj_domain = adj_it->second.at(LocationType::YNegative);
+                    field2&          adj_jz     = *m_jzFieldMap[adj_domain];
+                    const int        adj_ny     = adj_jz.get_ny();
+                    copy_y_to_buffer(buf, adj_jz, adj_ny - 1);
+                }
+                else
+                {
+                    // Physical boundary fallback: zero-gradient
+                    copy_y_to_buffer(buf, jz, 0);
                 }
             }
         }
