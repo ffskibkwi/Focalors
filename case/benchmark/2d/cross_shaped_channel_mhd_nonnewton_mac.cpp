@@ -15,7 +15,42 @@
 #include <cmath>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <string>
+
+namespace
+{
+    // Keep the explicit non-Newtonian diffusion update inside a conservative
+    // 2D FTCS-like stability range: dt <= C * h^2 / mu_max, with C < 0.25.
+    constexpr double EXPLICIT_DIFFUSION_DT_FACTOR = 0.20;
+
+    struct TimeStepSelection
+    {
+        double convective_dt         = 0.0;
+        double diffusion_dt_limit    = std::numeric_limits<double>::infinity();
+        double selected_dt           = 0.0;
+        double viscosity_upper_bound = 0.0;
+        bool   diffusion_limited     = false;
+    };
+
+    TimeStepSelection select_time_step(double h, double dt_factor, const PhysicsConfig& physics_cfg)
+    {
+        TimeStepSelection selection;
+
+        selection.convective_dt         = dt_factor * h;
+        selection.viscosity_upper_bound = physics_cfg.model_type == 0 ? physics_cfg.nu : physics_cfg.mu_max;
+
+        if (selection.viscosity_upper_bound > 0.0)
+        {
+            selection.diffusion_dt_limit = EXPLICIT_DIFFUSION_DT_FACTOR * h * h / selection.viscosity_upper_bound;
+        }
+
+        selection.selected_dt       = std::min(selection.convective_dt, selection.diffusion_dt_limit);
+        selection.diffusion_limited = selection.diffusion_dt_limit < selection.convective_dt;
+
+        return selection;
+    }
+} // namespace
 /**
  *
  * y
@@ -43,7 +78,8 @@ int main(int argc, char* argv[])
     // 参数读取与物理配置
     CrossShapedChannel2DCase case_param(argc, argv);
     case_param.read_paras();
-    if (case_param.record_paras())
+    const bool should_record_paras = case_param.record_paras();
+    if (should_record_paras)
     {
         case_param.paras_record.record("mhd_grid", std::string("mac"));
     }
@@ -51,14 +87,11 @@ int main(int argc, char* argv[])
     Geometry2D geo;
     double     h = case_param.h;
 
-    EnvironmentConfig& env_cfg    = EnvironmentConfig::Get();
-    env_cfg.showGmresRes          = false;
-    env_cfg.showCurrentStep       = false;
-    TimeAdvancingConfig& time_cfg = TimeAdvancingConfig::Get();
-    time_cfg.dt                   = case_param.dt_factor * h; // CFL condition
-    time_cfg.set_t_max(case_param.T_total);
-    // time_cfg.num_iterations   = 10;
-    PhysicsConfig& physics_cfg = PhysicsConfig::Get();
+    EnvironmentConfig& env_cfg       = EnvironmentConfig::Get();
+    env_cfg.showGmresRes             = false;
+    env_cfg.showCurrentStep          = false;
+    TimeAdvancingConfig& time_cfg    = TimeAdvancingConfig::Get();
+    PhysicsConfig&       physics_cfg = PhysicsConfig::Get();
     physics_cfg.set_Re(case_param.Re);
 
     const bool enable_mhd = (std::abs(case_param.Ha) > 0.0);
@@ -135,6 +168,28 @@ int main(int argc, char* argv[])
     else
     {
         std::cout << "Configuring Newtonian Model." << std::endl;
+    }
+
+    const TimeStepSelection time_step_selection = select_time_step(h, case_param.dt_factor, physics_cfg);
+    time_cfg.dt                                 = time_step_selection.selected_dt;
+    time_cfg.set_t_max(case_param.T_total);
+    // time_cfg.num_iterations   = 10;
+
+    std::cout << "Time Step Selection:" << std::endl;
+    std::cout << "  convective_dt: " << time_step_selection.convective_dt << std::endl;
+    std::cout << "  diffusion_dt_limit: " << time_step_selection.diffusion_dt_limit << std::endl;
+    std::cout << "  viscosity_upper_bound: " << time_step_selection.viscosity_upper_bound << std::endl;
+    std::cout << "  selected_dt: " << time_cfg.dt << std::endl;
+    std::cout << "  diffusion_limited: " << std::boolalpha << time_step_selection.diffusion_limited << std::noboolalpha
+              << std::endl;
+
+    if (should_record_paras)
+    {
+        case_param.paras_record.record("dt", time_cfg.dt)
+            .record("dt_convective", time_step_selection.convective_dt)
+            .record("dt_diffusion_limit", time_step_selection.diffusion_dt_limit)
+            .record("viscosity_upper_bound", time_step_selection.viscosity_upper_bound)
+            .record("dt_diffusion_limited", time_step_selection.diffusion_limited ? 1 : 0);
     }
 
     // 计算循环输出步数间隔 pv_output_step（如果未指定则使用 num_iterations/10）
