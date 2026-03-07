@@ -2,7 +2,7 @@
 
 #include "common.h"
 
-#include "non_copyable.h"
+#include "base/non_copyable.h"
 
 #include <fstream>
 
