@@ -25,9 +25,9 @@ public:
                      ConcatPoissonSolver3D* in_p_solver);
 
     // void init();
-    void variable_check();
-    void solve();
-    void normalize_pressure();
+    void         variable_check();
+    virtual void solve();
+    void         normalize_pressure();
 
     /**
      * Physics boundary update.
@@ -98,7 +98,7 @@ public:
      *
      * It is independent of the buffer/corner.
      */
-    void euler_conv_diff_inner();
+    virtual void euler_conv_diff_inner();
 
     /**
      * Euler convection and diffusion term outer calculation.
@@ -107,7 +107,7 @@ public:
      *
      * It is dependent of the buffer/corner.
      */
-    void euler_conv_diff_outer();
+    virtual void euler_conv_diff_outer();
 
     void velocity_div_inner();
     void velocity_div_outer();
