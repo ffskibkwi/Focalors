@@ -38,6 +38,8 @@ public:
                         Variable2D* in_phi_var = nullptr);
     void solve_nonnewton();
     void viscosity_update();
+    void mu_shared_boundary_field_update();
+    void tau_xy_shared_boundary_field_update();
     void stress_update();
     void stress_buffer_update();
     void euler_conv_diff_inner_nonnewton();

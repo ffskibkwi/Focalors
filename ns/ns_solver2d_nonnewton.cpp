@@ -2,11 +2,106 @@
 #include "mhd_module_2d_mac.h"
 #include "ns_solver2d.h"
 
+#include <cmath>
+#include <vector>
+
 /** @brief Minimum shear rate threshold to prevent singularity in power-law model */
 constexpr double GAMMA_DOT_MIN = 1.0e-4;
+/** @brief Under-relaxation factor for viscosity update (0, 1], smaller means stronger damping */
+constexpr double VISCOSITY_RELAX_ALPHA = 0.7;
+/** @brief Spatial smoothing weights for viscosity field */
+constexpr double VISCOSITY_SMOOTH_CENTER_WEIGHT   = 0.8;
+constexpr double VISCOSITY_SMOOTH_NEIGHBOR_WEIGHT = 0.05;
+/** @brief Enable spatial smoothing of viscosity (can be turned off for debugging) */
+constexpr bool VISCOSITY_ENABLE_SPATIAL_SMOOTHING = true;
 
 namespace
 {
+    using SharedNodeKey  = std::pair<long long, long long>;
+    using CornerFieldMap = std::unordered_map<Domain2DUniform*, field2*>;
+
+    struct SharedNodeKeyHash
+    {
+        std::size_t operator()(const SharedNodeKey& key) const
+        {
+            const std::size_t x_hash = std::hash<long long> {}(key.first);
+            const std::size_t y_hash = std::hash<long long> {}(key.second);
+            return x_hash ^ (y_hash << 1);
+        }
+    };
+
+    void shared_corner_field_average_update(
+        const std::vector<Domain2DUniform*>& domains,
+        const CornerFieldMap&                corner_field_map,
+        const std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, PDEBoundaryType>>&
+            boundary_type_map)
+    {
+        std::unordered_map<SharedNodeKey, std::vector<double*>, SharedNodeKeyHash> shared_node_map;
+
+        for (auto& domain : domains)
+        {
+            field2& field = *corner_field_map.at(domain);
+
+            int nx = domain->get_nx();
+            int ny = domain->get_ny();
+
+            const long long offset_x_idx =
+                static_cast<long long>(std::llround(domain->get_offset_x() / domain->get_hx()));
+            const long long offset_y_idx =
+                static_cast<long long>(std::llround(domain->get_offset_y() / domain->get_hy()));
+
+            std::vector<char> local_node_mark((nx + 1) * (ny + 1), 0);
+
+            const auto& bound_type_map = boundary_type_map.at(domain);
+
+            auto is_adjacented_boundary = [&](LocationType loc) {
+                const auto type_it = bound_type_map.find(loc);
+                return type_it != bound_type_map.end() && type_it->second == PDEBoundaryType::Adjacented;
+            };
+
+            auto add_shared_node = [&](int i, int j) {
+                const int flat_idx = i * (ny + 1) + j;
+                if (local_node_mark[flat_idx] != 0)
+                    return;
+
+                local_node_mark[flat_idx] = 1;
+                shared_node_map[{offset_x_idx + i, offset_y_idx + j}].push_back(field.get_ptr(i, j));
+            };
+
+            if (is_adjacented_boundary(LocationType::XNegative))
+                for (int j = 0; j <= ny; j++)
+                    add_shared_node(0, j);
+
+            if (is_adjacented_boundary(LocationType::XPositive))
+                for (int j = 0; j <= ny; j++)
+                    add_shared_node(nx, j);
+
+            if (is_adjacented_boundary(LocationType::YNegative))
+                for (int i = 0; i <= nx; i++)
+                    add_shared_node(i, 0);
+
+            if (is_adjacented_boundary(LocationType::YPositive))
+                for (int i = 0; i <= nx; i++)
+                    add_shared_node(i, ny);
+        }
+
+        for (auto& entry : shared_node_map)
+        {
+            auto& node_values = entry.second;
+            if (node_values.size() < 2)
+                continue;
+
+            double avg_val = 0.0;
+            for (double* val_ptr : node_values)
+                avg_val += *val_ptr;
+
+            avg_val /= static_cast<double>(node_values.size());
+
+            for (double* val_ptr : node_values)
+                *val_ptr = avg_val;
+        }
+    }
+
     double calc_viscosity_by_model(double gamma_dot, const PhysicsConfig& physics_cfg)
     {
         double mu_val = physics_cfg.nu;
@@ -81,8 +176,16 @@ void ConcatNSSolver2D::solve_nonnewton()
     // 2. Calculate Viscosity (mu) based on current velocity field
     viscosity_update();
 
+    // The corner-based viscosity field is duplicated on shared interfaces.
+    // Synchronize those duplicated nodes before reconstructing the stress tensor.
+    mu_shared_boundary_field_update();
+
     // 3. Calculate Stress Tensor (tau) based on velocity and viscosity
     stress_update();
+
+    // tau_xy is also stored as a duplicated corner field on shared interfaces.
+    // Synchronize those nodes before using tau in the momentum predictor.
+    tau_xy_shared_boundary_field_update();
 
     // 3.1 YPositivedate Stress Buffers (tau_xx, tau_yy)
     stress_buffer_update();
@@ -142,6 +245,17 @@ void ConcatNSSolver2D::viscosity_update()
         int    ny = u.get_ny();
         double hx = domain->hx;
         double hy = domain->hy;
+
+        // If mu field is still in its initialization state (typically all zeros),
+        // skip spatial smoothing for this step to avoid destabilizing strong inlet gradients.
+        const bool is_mu_initial_state      = (mu(0, 0) <= 0.0);
+        const bool enable_spatial_smoothing = VISCOSITY_ENABLE_SPATIAL_SMOOTHING && !is_mu_initial_state;
+
+        const int mu_ny  = ny + 1;
+        auto      mu_idx = [mu_ny](int i_idx, int j_idx) { return i_idx * mu_ny + j_idx; };
+
+        std::vector<double> mu_relaxed((nx + 1) * (ny + 1), 0.0);
+        std::vector<int>    mu_valid((nx + 1) * (ny + 1), 0);
 
         double* u_xneg_buffer = u_buffer_map[domain][LocationType::XNegative];
         double* u_xpos_buffer = u_buffer_map[domain][LocationType::XPositive];
@@ -207,8 +321,8 @@ void ConcatNSSolver2D::viscosity_update()
                        hy; // Backward difference at 2 order accuaracy
         };
 
-        // Calculate viscosity at Nodes (nx+1, ny+1)
-        // Exclude (nx, ny) point
+        // First pass: calculate viscosity at Nodes (nx+1, ny+1), exclude (nx, ny)
+        // Apply temporal under-relaxation and cache to temporary array.
         OPENMP_PARALLEL_FOR()
         for (int i = 0; i <= nx; i++)
         {
@@ -230,7 +344,7 @@ void ConcatNSSolver2D::viscosity_update()
                 double val_v_im1 = get_v(i - 1, j); // v(i-1, j)
                 double dv_dx     = (val_v_i - val_v_im1) / hx;
 
-                // TODO 可以在不改变buffer的情况下，主动根据边界类型及其值计算更精确的边界导数，暂时先不考虑
+                // // TODO 可以在不改变buffer的情况下，主动根据边界类型及其值计算更精确的边界导数，暂时先不考虑
                 // 2. Calculate du_dx and dv_dy at Node (i, j)
                 // Using central differencing for interior nodes
                 // Using one-sided differencing for boundary nodes
@@ -241,13 +355,73 @@ void ConcatNSSolver2D::viscosity_update()
                 // gamma_dot = sqrt( 2*(du_dx^2 + dv_dy^2) + (du_dy + dv_dx)^2 )
                 double gamma_dot = std::sqrt(2.0 * (du_dx * du_dx + dv_dy * dv_dy) + (du_dy + dv_dx) * (du_dy + dv_dx));
 
-                // 4. YPositivedate Viscosity
-                double mu_val = calc_viscosity_by_model(gamma_dot, physics_cfg);
+                // 4. Update Viscosity with under-relaxation to suppress oscillations
+                double mu_new = calc_viscosity_by_model(gamma_dot, physics_cfg);
 
-                mu(i, j) = mu_val;
+                // Skip relaxation for first initialization-like states to avoid delaying startup.
+                double mu_old         = mu(i, j);
+                double mu_relaxed_val = (mu_old <= 0.0) ?
+                                            mu_new :
+                                            (VISCOSITY_RELAX_ALPHA * mu_new + (1.0 - VISCOSITY_RELAX_ALPHA) * mu_old);
+
+                int idx         = mu_idx(i, j);
+                mu_relaxed[idx] = mu_relaxed_val;
+                mu_valid[idx]   = 1;
+            }
+        }
+
+        // Second pass: spatial smoothing (interior nodes only)
+        // mu_smooth = 0.8 * mu_center + 0.05 * (mu_left + mu_right + mu_down + mu_up)
+        OPENMP_PARALLEL_FOR()
+        for (int i = 0; i <= nx; i++)
+        {
+            int j_end = (i == nx) ? ny : ny + 1;
+            for (int j = 0; j < j_end; j++)
+            {
+                int    center_idx = mu_idx(i, j);
+                double mu_center  = mu_relaxed[center_idx];
+
+                if (!enable_spatial_smoothing || i == 0 || i == nx || j == 0 || j == ny)
+                {
+                    // Keep boundary nodes unsmoothed.
+                    mu(i, j) = mu_center;
+                    continue;
+                }
+
+                // Interior nodes: all 4 neighbors are within [0,nx]x[0,ny] and are valid.
+                const double mu_left  = mu_relaxed[mu_idx(i - 1, j)];
+                const double mu_right = mu_relaxed[mu_idx(i + 1, j)];
+                const double mu_down  = mu_relaxed[mu_idx(i, j - 1)];
+                const double mu_up    = mu_relaxed[mu_idx(i, j + 1)];
+
+                const double mu_smooth = VISCOSITY_SMOOTH_CENTER_WEIGHT * mu_center +
+                                         VISCOSITY_SMOOTH_NEIGHBOR_WEIGHT * (mu_left + mu_right + mu_down + mu_up);
+
+                mu(i, j) = mu_smooth;
             }
         }
     }
+}
+
+void ConcatNSSolver2D::mu_shared_boundary_field_update()
+{
+    if (mu_var == nullptr)
+        throw std::runtime_error("ConcatNSSolver2D::mu_shared_boundary_field_update: mu_var is null");
+    if (mu_var->position_type != VariablePositionType::Corner)
+        throw std::runtime_error("ConcatNSSolver2D::mu_shared_boundary_field_update: mu must be a corner field");
+
+    shared_corner_field_average_update(domains, mu_field_map, u_var->boundary_type_map);
+}
+
+void ConcatNSSolver2D::tau_xy_shared_boundary_field_update()
+{
+    if (tau_xy_var == nullptr)
+        throw std::runtime_error("ConcatNSSolver2D::tau_xy_shared_boundary_field_update: tau_xy_var is null");
+    if (tau_xy_var->position_type != VariablePositionType::Corner)
+        throw std::runtime_error(
+            "ConcatNSSolver2D::tau_xy_shared_boundary_field_update: tau_xy must be a corner field");
+
+    shared_corner_field_average_update(domains, tau_xy_field_map, u_var->boundary_type_map);
 }
 
 void ConcatNSSolver2D::stress_buffer_update()
@@ -301,149 +475,178 @@ void ConcatNSSolver2D::stress_buffer_update()
                                        xneg_ypos_corner_map[domain]);
         };
 
-        // 1. YPositivedate tau_xx xneg buffer (at ghost cell -1, j)
-        // XNegative Boundary (i=0 needs tau_xx(-1, j))
-        for (int j = 0; j < ny; j++)
+        // 1. Update tau_xx xneg buffer (at ghost cell -1, j)
+        // For a shared boundary, tau_xx(-1, j) coincides with the last cell center of the neighboring domain.
+        // For a physical boundary, reconstruct the ghost stress from the local velocity field and boundary buffers.
+        if (u_var->boundary_type_map[domain][LocationType::XNegative] == PDEBoundaryType::Adjacented)
         {
-            // Calculate tau_xx at ghost cell (-1, j)
-            // 1. du/dx at (-0.5, j+0.5)
-            // u(0, j) is at x=0, u_xneg_buffer[j] is at x=-1
-            double du_dx_ghost = (u(0, j) - u_xneg_buffer[j]) / hx;
+            Domain2DUniform* adj_domain = adjacency[domain][LocationType::XNegative];
+            field2&          adj_tau_xx = *tau_xx_field_map[adj_domain];
+            int              adj_nx     = adj_domain->get_nx();
 
-            // 2. dv/dy at (-0.5, j+0.5)
-            // v_xneg_buffer is at x=-0.5. Need dy.
-            // v_xneg_buffer[j] is at y=j, v_xneg_buffer[j+1] is at y=j+1
-            // Use get_v to handle corner cases safely
-            double v_xneg_j    = get_v(-1, j);
-            double v_xneg_jp1  = get_v(-1, j + 1);
-            double dv_dy_ghost = (v_xneg_jp1 - v_xneg_j) / hy;
+            copy_x_to_buffer(tau_xx_xneg_buffer, adj_tau_xx, adj_nx - 1);
+        }
+        else
+        {
+            for (int j = 0; j < ny; j++)
+            {
+                // Calculate tau_xx at ghost cell (-1, j)
+                // 1. du/dx at (-0.5, j+0.5)
+                // u(0, j) is at x=0, u_xneg_buffer[j] is at x=-1
+                double du_dx_ghost = (u(0, j) - u_xneg_buffer[j]) / hx;
 
-            // 3. du/dy at (-0.5, j+0.5)
-            // Average of du/dy at x=-1 (u_xneg_buffer) and x=0 (u(0, j))
-            auto get_du_dy_col = [&](int col_idx) {
-                if (j == 0)
-                {
-                    if (ny >= 3)
-                        return (-3.0 * get_u(col_idx, 0) + 4.0 * get_u(col_idx, 1) - get_u(col_idx, 2)) / (2.0 * hy);
+                // 2. dv/dy at (-0.5, j+0.5)
+                // v_xneg_buffer is at x=-0.5. Need dy.
+                // v_xneg_buffer[j] is at y=j, v_xneg_buffer[j+1] is at y=j+1
+                // Use get_v to handle corner cases safely
+                double v_xneg_j    = get_v(-1, j);
+                double v_xneg_jp1  = get_v(-1, j + 1);
+                double dv_dy_ghost = (v_xneg_jp1 - v_xneg_j) / hy;
+
+                // 3. du/dy at (-0.5, j+0.5)
+                // Average of du/dy at x=-1 (u_xneg_buffer) and x=0 (u(0, j))
+                auto get_du_dy_col = [&](int col_idx) {
+                    if (j == 0)
+                    {
+                        if (ny >= 3)
+                            return (-3.0 * get_u(col_idx, 0) + 4.0 * get_u(col_idx, 1) - get_u(col_idx, 2)) /
+                                   (2.0 * hy);
+                        else
+                            return (get_u(col_idx, 1) - get_u(col_idx, 0)) / hy;
+                    }
+                    else if (j == ny - 1)
+                    {
+                        if (ny >= 3)
+                            return (3.0 * get_u(col_idx, ny - 1) - 4.0 * get_u(col_idx, ny - 2) +
+                                    get_u(col_idx, ny - 3)) /
+                                   (2.0 * hy);
+                        else
+                            return (get_u(col_idx, ny - 1) - get_u(col_idx, ny - 2)) / hy;
+                    }
                     else
-                        return (get_u(col_idx, 1) - get_u(col_idx, 0)) / hy;
-                }
-                else if (j == ny - 1)
-                {
-                    if (ny >= 3)
-                        return (3.0 * get_u(col_idx, ny - 1) - 4.0 * get_u(col_idx, ny - 2) + get_u(col_idx, ny - 3)) /
-                               (2.0 * hy);
+                    {
+                        return (get_u(col_idx, j + 1) - get_u(col_idx, j - 1)) / (2.0 * hy);
+                    }
+                };
+
+                double du_dy_xneg  = get_du_dy_col(-1);
+                double du_dy_0     = get_du_dy_col(0);
+                double du_dy_ghost = 0.5 * (du_dy_xneg + du_dy_0);
+
+                // 4. dv/dx at (-0.5, j+0.5)
+                // Need dv/dx at x=-0.5.
+                // Points: x=-0.5 (v_xneg), x=0.5 (v0), x=1.5 (v1)
+                auto get_dv_dx_node = [&](int k) {
+                    double v_l = get_v(-1, k);
+                    double v_0 = get_v(0, k);
+                    if (nx >= 2)
+                    {
+                        double v_1 = get_v(1, k);
+                        return (-3.0 * v_l + 4.0 * v_0 - v_1) / (2.0 * hx);
+                    }
                     else
-                        return (get_u(col_idx, ny - 1) - get_u(col_idx, ny - 2)) / hy;
-                }
-                else
-                {
-                    return (get_u(col_idx, j + 1) - get_u(col_idx, j - 1)) / (2.0 * hy);
-                }
-            };
+                    {
+                        return (v_0 - v_l) / hx;
+                    }
+                };
+                double dv_dx_ghost = 0.5 * (get_dv_dx_node(j) + get_dv_dx_node(j + 1));
 
-            double du_dy_xneg  = get_du_dy_col(-1);
-            double du_dy_0     = get_du_dy_col(0);
-            double du_dy_ghost = 0.5 * (du_dy_xneg + du_dy_0);
+                // 5. Gamma Dot
+                double gamma_dot = std::sqrt(2.0 * (du_dx_ghost * du_dx_ghost + dv_dy_ghost * dv_dy_ghost) +
+                                             (du_dy_ghost + dv_dx_ghost) * (du_dy_ghost + dv_dx_ghost));
 
-            // 4. dv/dx at (-0.5, j+0.5)
-            // Need dv/dx at x=-0.5.
-            // Points: x=-0.5 (v_xneg), x=0.5 (v0), x=1.5 (v1)
-            auto get_dv_dx_node = [&](int k) {
-                double v_l = get_v(-1, k);
-                double v_0 = get_v(0, k);
-                if (nx >= 2)
-                {
-                    double v_1 = get_v(1, k);
-                    return (-3.0 * v_l + 4.0 * v_0 - v_1) / (2.0 * hx);
-                }
-                else
-                {
-                    return (v_0 - v_l) / hx;
-                }
-            };
-            double dv_dx_ghost = 0.5 * (get_dv_dx_node(j) + get_dv_dx_node(j + 1));
+                // 6. Viscosity
+                double mu_val = calc_viscosity_by_model(gamma_dot, physics_cfg);
 
-            // 5. Gamma Dot
-            double gamma_dot = std::sqrt(2.0 * (du_dx_ghost * du_dx_ghost + dv_dy_ghost * dv_dy_ghost) +
-                                         (du_dy_ghost + dv_dx_ghost) * (du_dy_ghost + dv_dx_ghost));
-
-            // 6. Viscosity
-            double mu_val = calc_viscosity_by_model(gamma_dot, physics_cfg);
-
-            tau_xx_xneg_buffer[j] = 2.0 * mu_val * du_dx_ghost;
+                tau_xx_xneg_buffer[j] = 2.0 * mu_val * du_dx_ghost;
+            }
         }
 
-        // YNegative Boundary (j=0 needs tau_yy(i, -1))
-        for (int i = 0; i < nx; i++)
+        // 2. Update tau_yy yneg buffer (at ghost cell i, -1)
+        // For a shared boundary, tau_yy(i, -1) coincides with the last cell center of the neighboring domain.
+        // For a physical boundary, reconstruct the ghost stress from the local velocity field and boundary buffers.
+        if (u_var->boundary_type_map[domain][LocationType::YNegative] == PDEBoundaryType::Adjacented)
         {
-            // Calculate tau_yy at ghost cell (i, -1)
-            // 1. dv/dy at (i+0.5, -0.5)
-            // v(i, 0) is at y=0, v_yneg_buffer[i] is at y=-1
-            double dv_dy_ghost = (v(i, 0) - v_yneg_buffer[i]) / hy;
+            Domain2DUniform* adj_domain = adjacency[domain][LocationType::YNegative];
+            field2&          adj_tau_yy = *tau_yy_field_map[adj_domain];
+            int              adj_ny     = adj_domain->get_ny();
 
-            // 2. du/dx at (i+0.5, -0.5)
-            // u_yneg_buffer is at y=-0.5. Need dx.
-            // u_yneg_buffer[i] is at x=i, u_yneg_buffer[i+1] is at x=i+1
-            // Use get_u to handle corner cases safely
-            double u_yneg_i    = get_u(i, -1);
-            double u_yneg_ip1  = get_u(i + 1, -1);
-            double du_dx_ghost = (u_yneg_ip1 - u_yneg_i) / hx;
+            copy_y_to_buffer(tau_yy_yneg_buffer, adj_tau_yy, adj_ny - 1);
+        }
+        else
+        {
+            for (int i = 0; i < nx; i++)
+            {
+                // Calculate tau_yy at ghost cell (i, -1)
+                // 1. dv/dy at (i+0.5, -0.5)
+                // v(i, 0) is at y=0, v_yneg_buffer[i] is at y=-1
+                double dv_dy_ghost = (v(i, 0) - v_yneg_buffer[i]) / hy;
 
-            // 3. dv/dx at (i+0.5, -0.5)
-            // Average of dv/dx at y=-1 (v_yneg_buffer) and y=0 (v(i, 0))
-            auto get_dv_dx_row = [&](int row_idx) {
-                if (i == 0)
-                {
-                    if (nx >= 3)
-                        return (-3.0 * get_v(0, row_idx) + 4.0 * get_v(1, row_idx) - get_v(2, row_idx)) / (2.0 * hx);
+                // 2. du/dx at (i+0.5, -0.5)
+                // u_yneg_buffer is at y=-0.5. Need dx.
+                // u_yneg_buffer[i] is at x=i, u_yneg_buffer[i+1] is at x=i+1
+                // Use get_u to handle corner cases safely
+                double u_yneg_i    = get_u(i, -1);
+                double u_yneg_ip1  = get_u(i + 1, -1);
+                double du_dx_ghost = (u_yneg_ip1 - u_yneg_i) / hx;
+
+                // 3. dv/dx at (i+0.5, -0.5)
+                // Average of dv/dx at y=-1 (v_yneg_buffer) and y=0 (v(i, 0))
+                auto get_dv_dx_row = [&](int row_idx) {
+                    if (i == 0)
+                    {
+                        if (nx >= 3)
+                            return (-3.0 * get_v(0, row_idx) + 4.0 * get_v(1, row_idx) - get_v(2, row_idx)) /
+                                   (2.0 * hx);
+                        else
+                            return (get_v(1, row_idx) - get_v(0, row_idx)) / hx;
+                    }
+                    else if (i == nx - 1)
+                    {
+                        if (nx >= 3)
+                            return (3.0 * get_v(nx - 1, row_idx) - 4.0 * get_v(nx - 2, row_idx) +
+                                    get_v(nx - 3, row_idx)) /
+                                   (2.0 * hx);
+                        else
+                            return (get_v(nx - 1, row_idx) - get_v(nx - 2, row_idx)) / hx;
+                    }
                     else
-                        return (get_v(1, row_idx) - get_v(0, row_idx)) / hx;
-                }
-                else if (i == nx - 1)
-                {
-                    if (nx >= 3)
-                        return (3.0 * get_v(nx - 1, row_idx) - 4.0 * get_v(nx - 2, row_idx) + get_v(nx - 3, row_idx)) /
-                               (2.0 * hx);
+                    {
+                        return (get_v(i + 1, row_idx) - get_v(i - 1, row_idx)) / (2.0 * hx);
+                    }
+                };
+
+                double dv_dx_yneg  = get_dv_dx_row(-1);
+                double dv_dx_0     = get_dv_dx_row(0);
+                double dv_dx_ghost = 0.5 * (dv_dx_yneg + dv_dx_0);
+
+                // 4. du/dy at (i+0.5, -0.5)
+                // Need du/dy at y=-0.5.
+                // Points: y=-0.5 (u_yneg), y=0.5 (u0), y=1.5 (u1)
+                auto get_du_dy_node = [&](int k) {
+                    double u_d = get_u(k, -1);
+                    double u_0 = get_u(k, 0);
+                    if (ny >= 2)
+                    {
+                        double u_1 = get_u(k, 1);
+                        return (-3.0 * u_d + 4.0 * u_0 - u_1) / (2.0 * hy);
+                    }
                     else
-                        return (get_v(nx - 1, row_idx) - get_v(nx - 2, row_idx)) / hx;
-                }
-                else
-                {
-                    return (get_v(i + 1, row_idx) - get_v(i - 1, row_idx)) / (2.0 * hx);
-                }
-            };
+                    {
+                        return (u_0 - u_d) / hy;
+                    }
+                };
+                double du_dy_ghost = 0.5 * (get_du_dy_node(i) + get_du_dy_node(i + 1));
 
-            double dv_dx_yneg  = get_dv_dx_row(-1);
-            double dv_dx_0     = get_dv_dx_row(0);
-            double dv_dx_ghost = 0.5 * (dv_dx_yneg + dv_dx_0);
+                // 5. Gamma Dot
+                double gamma_dot = std::sqrt(2.0 * (du_dx_ghost * du_dx_ghost + dv_dy_ghost * dv_dy_ghost) +
+                                             (du_dy_ghost + dv_dx_ghost) * (du_dy_ghost + dv_dx_ghost));
 
-            // 4. du/dy at (i+0.5, -0.5)
-            // Need du/dy at y=-0.5.
-            // Points: y=-0.5 (u_yneg), y=0.5 (u0), y=1.5 (u1)
-            auto get_du_dy_node = [&](int k) {
-                double u_d = get_u(k, -1);
-                double u_0 = get_u(k, 0);
-                if (ny >= 2)
-                {
-                    double u_1 = get_u(k, 1);
-                    return (-3.0 * u_d + 4.0 * u_0 - u_1) / (2.0 * hy);
-                }
-                else
-                {
-                    return (u_0 - u_d) / hy;
-                }
-            };
-            double du_dy_ghost = 0.5 * (get_du_dy_node(i) + get_du_dy_node(i + 1));
+                // 6. Viscosity
+                double mu_val = calc_viscosity_by_model(gamma_dot, physics_cfg);
 
-            // 5. Gamma Dot
-            double gamma_dot = std::sqrt(2.0 * (du_dx_ghost * du_dx_ghost + dv_dy_ghost * dv_dy_ghost) +
-                                         (du_dy_ghost + dv_dx_ghost) * (du_dy_ghost + dv_dx_ghost));
-
-            // 6. Viscosity
-            double mu_val = calc_viscosity_by_model(gamma_dot, physics_cfg);
-
-            tau_yy_yneg_buffer[i] = 2.0 * mu_val * dv_dy_ghost;
+                tau_yy_yneg_buffer[i] = 2.0 * mu_val * dv_dy_ghost;
+            }
         }
     }
 }
