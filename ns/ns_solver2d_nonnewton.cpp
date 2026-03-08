@@ -421,10 +421,10 @@ void ConcatNSSolver2D::viscosity_update()
                 return (get_u(i_idx + 1, j_idx) - get_u(i_idx - 1, j_idx)) / (2.0 * hx);
             else if (i_idx == 0)
                 return (-3 * get_u(0, j_idx) + 4 * get_u(1, j_idx) - get_u(2, j_idx)) /
-                       hx; // Forward difference at 2 order accuaracy
+                       (2.0 * hx); // Forward difference at 2 order accuaracy
             else           // i_idx == nx
                 return (3 * get_u(nx, j_idx) - 4 * get_u(nx - 1, j_idx) + get_u(nx - 2, j_idx)) /
-                       hx; // Backward difference at 2 order accuaracy
+                       (2.0 * hx); // Backward difference at 2 order accuaracy
         };
 
         // Helper lambda for dv/dy at (i_col, j) where v is defined
@@ -433,10 +433,10 @@ void ConcatNSSolver2D::viscosity_update()
                 return (get_v(i_idx, j_idx + 1) - get_v(i_idx, j_idx - 1)) / (2.0 * hy);
             else if (j_idx == 0)
                 return (-3 * get_v(i_idx, 0) + 4 * get_v(i_idx, 1) - get_v(i_idx, 2)) /
-                       hy; // Forward difference at 2 order accuaracy
+                       (2.0 * hy); // Forward difference at 2 order accuaracy
             else           // j_idx == ny
                 return (3 * get_v(i_idx, ny) - 4 * get_v(i_idx, ny - 1) + get_v(i_idx, ny - 2)) /
-                       hy; // Backward difference at 2 order accuaracy
+                       (2.0 * hy); // Backward difference at 2 order accuaracy
         };
 
         // First pass: calculate viscosity at Nodes (nx+1, ny+1), exclude (nx, ny)
