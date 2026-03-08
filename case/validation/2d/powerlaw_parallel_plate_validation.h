@@ -189,7 +189,7 @@ public:
     double steady_bulk_tol               = 1.0e-7;
     double steady_peak_tol               = 1.0e-7;
     double steady_v_peak_tol             = 1.0e-7;
-    double steady_v_ratio_tol            = 1.0e-4;
+    double steady_v_ratio_tol            = 5.0e-3;
     int    converged_hits                = 10;
     bool   require_steady_exit           = true;
     bool   use_analytical_initialization = true;

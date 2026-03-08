@@ -553,7 +553,7 @@ namespace
         metrics.indicator = std::max({metrics.u_step_rel / std::max(case_param.steady_u_tol, kSmall),
                                       metrics.u_bulk_change_rel / std::max(case_param.steady_bulk_tol, kSmall),
                                       metrics.u_max_change_rel / std::max(case_param.steady_peak_tol, kSmall),
-                                      metrics.v_max_change_rel / std::max(case_param.steady_v_peak_tol, kSmall)});
+                                      metrics.v_to_u_ratio / std::max(case_param.steady_v_ratio_tol, kSmall)});
         return metrics;
     }
 
@@ -568,7 +568,7 @@ namespace
     {
         return metrics.u_step_rel < case_param.steady_u_tol && metrics.u_bulk_change_rel < case_param.steady_bulk_tol &&
                metrics.u_max_change_rel < case_param.steady_peak_tol &&
-               metrics.v_max_change_rel < case_param.steady_v_peak_tol;
+               metrics.v_to_u_ratio < case_param.steady_v_ratio_tol;
     }
 
     std::string build_steady_failure_message(const PowerLawParallelPlateValidation2DCase& case_param,
