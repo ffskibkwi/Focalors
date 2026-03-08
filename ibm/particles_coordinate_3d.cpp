@@ -1,10 +1,40 @@
-#include "ib_particles_3d.h"
+#include "particles_coordinate_3d.h"
 
-void ImmersedBoundaryParticles3D::refresh_bounding_box(Domain3DUniform* domain,
-                                                       double           offset_x,
-                                                       double           offset_y,
-                                                       double           offset_z)
+void PCoord3D::translate(double x, double y, double z)
 {
+    EXPOSE_PCOORD3D(this)
+
+    OPENMP_PARALLEL_FOR()
+    for (int i = 0; i < cur_n; ++i)
+    {
+        X[i] = X[i] + x;
+        Y[i] = Y[i] + y;
+        Z[i] = Z[i] + z;
+    }
+}
+
+void PCoord3D::rotate_y(double cx, double cz, double angle)
+{
+    EXPOSE_PCOORD3D(this)
+
+    OPENMP_PARALLEL_FOR()
+    for (int i = 0; i < cur_n; ++i)
+    {
+        double x1 = X[i] - cx;
+        double z1 = Z[i] - cz;
+
+        double x2 = std::cos(angle) * x1 - std::sin(angle) * z1;
+        double z2 = std::sin(angle) * x1 + std::cos(angle) * z1;
+
+        X[i] = x2 + cx;
+        Z[i] = z2 + cz;
+    }
+}
+
+void PCoord3D::refresh_bounding_box(Domain3DUniform* domain, double offset_x, double offset_y, double offset_z)
+{
+    EXPOSE_PCOORD3D(this)
+
     double hx = domain->get_hx();
     double hy = domain->get_hy();
     double hz = domain->get_hz();
@@ -121,25 +151,12 @@ void ImmersedBoundaryParticles3D::refresh_bounding_box(Domain3DUniform* domain,
     max_iz_w = std::clamp(max_iz_w, 0, nz);
 }
 
-void ImmersedBoundaryParticles3D::clear_force_sum()
-{
-    for (int i = 0; i < cur_n; i++)
-    {
-        Fx_sum[i] = 0.0;
-        Fy_sum[i] = 0.0;
-        Fz_sum[i] = 0.0;
-    }
-}
-
-void swap(ImmersedBoundaryParticles3D& lhs, ImmersedBoundaryParticles3D& rhs)
+void swap(PCoord3D& lhs, PCoord3D& rhs)
 {
     using std::swap;
 
-    swap(static_cast<Particles3DBase&>(lhs), static_cast<Particles3DBase&>(rhs));
+    swap(static_cast<ParticlesBase&>(lhs), static_cast<ParticlesBase&>(rhs));
 
-    swap(lhs.Fx, rhs.Fx);
-    swap(lhs.Fy, rhs.Fy);
-    swap(lhs.Fz, rhs.Fz);
     swap(lhs.min_X, rhs.min_X);
     swap(lhs.max_X, rhs.max_X);
     swap(lhs.min_Y, rhs.min_Y);

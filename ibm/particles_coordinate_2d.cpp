@@ -1,7 +1,39 @@
-#include "ib_particles_2d.h"
+#include "particles_coordinate_2d.h"
 
-void ImmersedBoundaryParticles2D::refresh_bounding_box(Domain2DUniform* domain, double offset_x, double offset_y)
+void PCoord2D::translate(double x, double y)
 {
+    EXPOSE_PCOORD2D(this)
+
+    OPENMP_PARALLEL_FOR()
+    for (int i = 0; i < cur_n; ++i)
+    {
+        X[i] = X[i] + x;
+        Y[i] = Y[i] + y;
+    }
+}
+
+void PCoord2D::rotate(double cx, double cy, double angle)
+{
+    EXPOSE_PCOORD2D(this)
+
+    OPENMP_PARALLEL_FOR()
+    for (int i = 0; i < cur_n; ++i)
+    {
+        double x1 = X[i] - cx;
+        double y1 = Y[i] - cy;
+
+        double x2 = std::cos(angle) * x1 - std::sin(angle) * y1;
+        double y2 = std::sin(angle) * x1 + std::cos(angle) * y1;
+
+        X[i] = x2 + cx;
+        Y[i] = y2 + cy;
+    }
+}
+
+void PCoord2D::refresh_bounding_box(Domain2DUniform* domain, double offset_x, double offset_y)
+{
+    EXPOSE_PCOORD2D(this)
+
     double hx = domain->get_hx();
     double hy = domain->get_hy();
     double nx = domain->get_nx();
@@ -71,25 +103,12 @@ void ImmersedBoundaryParticles2D::refresh_bounding_box(Domain2DUniform* domain, 
     max_iy_v = std::clamp(max_iy_v, 0, ny);
 }
 
-void ImmersedBoundaryParticles2D::clear_force_sum()
-{
-    for (int i = 0; i < cur_n; i++)
-    {
-        Fx_sum[i] = 0.0;
-        Fy_sum[i] = 0.0;
-    }
-}
-
-void swap(ImmersedBoundaryParticles2D& lhs, ImmersedBoundaryParticles2D& rhs)
+void swap(PCoord2D& lhs, PCoord2D& rhs)
 {
     using std::swap;
 
-    swap(static_cast<Particles2DBase&>(lhs), static_cast<Particles2DBase&>(rhs));
+    swap(static_cast<ParticlesBase&>(lhs), static_cast<ParticlesBase&>(rhs));
 
-    swap(lhs.Fx, rhs.Fx);
-    swap(lhs.Fy, rhs.Fy);
-    swap(lhs.Fx_sum, rhs.Fx_sum);
-    swap(lhs.Fy_sum, rhs.Fy_sum);
     swap(lhs.min_X, rhs.min_X);
     swap(lhs.max_X, rhs.max_X);
     swap(lhs.min_Y, rhs.min_Y);

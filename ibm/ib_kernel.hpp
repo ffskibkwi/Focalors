@@ -31,24 +31,21 @@ inline double ib_phi(double r, double h)
     // return std::abs(r) <= 2 ? (1.0 / 4.0 * (1.0 + std::cos(pi * r / 2))) : 0.0;
 }
 
-inline double ib_delta(double x, double y, double hx, double hy)
-{
-    return 1.0 / hx / hy * ib_phi(x, hx) * ib_phi(y, hy);
-}
+inline double ib_delta(double x, double y, double h) { return 1.0 / h / h * ib_phi(x, h) * ib_phi(y, h); }
 
-inline double ib_delta(double x, double y, double z, double hx, double hy, double hz)
+inline double ib_delta(double x, double y, double z, double h)
 {
-    return 1.0 / hx / hy / hz * ib_phi(x, hx) * ib_phi(y, hy) * ib_phi(z, hz);
+    return 1.0 / h / h / h * ib_phi(x, h) * ib_phi(y, h) * ib_phi(z, h);
 }
 
 inline double ib_phi_short(double r) { return std::abs(r) <= 2 ? (1.0 / 4.0 * (1.0 + std::cos(pi * r / 2))) : 0.0; }
 
-inline double ib_delta_short(double x, double y, double hx, double hy)
+inline double ib_delta_short(double x, double y, double h)
 {
-    return 1.0 / hx / hy * ib_phi_short(x / hx) * ib_phi_short(y / hy);
+    return 1.0 / h / h * ib_phi_short(x / h) * ib_phi_short(y / h);
 }
 
-inline double ib_delta_short(double x, double y, double z, double hx, double hy, double hz)
+inline double ib_delta_short(double x, double y, double z, double h)
 {
-    return 1.0 / hx / hy / hz * ib_phi_short(x / hx) * ib_phi_short(y / hy) * ib_phi_short(z / hz);
+    return 1.0 / h / h / h * ib_phi_short(x / h) * ib_phi_short(y / h) * ib_phi_short(z / h);
 }

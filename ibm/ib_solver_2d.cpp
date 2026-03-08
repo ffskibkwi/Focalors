@@ -2,16 +2,26 @@
 
 #include <cmath>
 
-void ImmersedBoundarySolver2D::solve(FluidContext2D&              context,
-                                     field2&                      u_recv,
-                                     field2&                      v_recv,
-                                     ImmersedBoundaryParticles2D& ib_particles)
+ImmersedBoundarySolver2D::ImmersedBoundarySolver2D(Variable2D*                                      _u_var,
+                                                   Variable2D*                                      _v_var,
+                                                   std::unordered_map<Domain2DUniform*, PCoord2D*>& _coord_map)
+    : u_var(_u_var)
+    , v_var(_v_var)
+    , coord_map(_coord_map)
 {
-    u2F(context, ib_particles);
-    apply_ib_force(context, u_recv, v_recv, ib_particles, ib_particles.hx, ib_particles.hy);
+    for (auto* domain : u_var->geometry->domains)
+    {
+        ib_map[domain] = new PIB2D(coord_map[domain]->max_n);
+    }
 }
 
-void ImmersedBoundarySolver2D::u2F(FluidContext2D& context, ImmersedBoundaryParticles2D& particles)
+void ImmersedBoundarySolver2D::solve()
+{
+    u2F();
+    apply_ib_force();
+}
+
+void ImmersedBoundarySolver2D::u2F()
 {
     auto& u = *context.get_field("u");
     auto& v = *context.get_field("v");
@@ -27,8 +37,8 @@ void ImmersedBoundarySolver2D::u2F(FluidContext2D& context, ImmersedBoundaryPart
     {
         // double position -> context index
 
-        int ix = std::floor(particles.X[i] / hx);
-        int iy = std::floor(particles.Y[i] / hy);
+        int ix = std::floor(particles.X[i] / grid_h);
+        int iy = std::floor(particles.Y[i] / grid_h);
 
         int min_iix = std::clamp(ix - 1, 0, u.get_nx() - 1);
         int max_iix = std::clamp(ix + 2, 0, u.get_nx() - 1);
@@ -43,8 +53,8 @@ void ImmersedBoundarySolver2D::u2F(FluidContext2D& context, ImmersedBoundaryPart
             {
                 // velocity u index -> double position
 
-                double xi = iix * hx;
-                double yi = iiy * hy + 0.5 * hy;
+                double xi = iix * grid_h;
+                double yi = iiy * grid_h + 0.5 * grid_h;
 
                 double u_value = 0.0;
                 if (iiy == -1)
@@ -60,7 +70,8 @@ void ImmersedBoundarySolver2D::u2F(FluidContext2D& context, ImmersedBoundaryPart
                     u_value = u(iix, iiy);
                 }
 
-                particles.Uf[i] += u_value * ib_delta(particles.X[i] - xi, particles.Y[i] - yi, hx, hy) * hx * hy;
+                particles.Uf[i] +=
+                    u_value * ib_delta(particles.X[i] - xi, particles.Y[i] - yi, grid_h) * grid_h * grid_h;
             }
         }
         particles.Fx[i] = particles.Up[i] - particles.Uf[i];
@@ -79,8 +90,8 @@ void ImmersedBoundarySolver2D::u2F(FluidContext2D& context, ImmersedBoundaryPart
             {
                 // velocity v index -> double position
 
-                double xi = iix * hx + 0.5 * hx;
-                double yi = iiy * hy;
+                double xi = iix * grid_h + 0.5 * grid_h;
+                double yi = iiy * grid_h;
 
                 double v_value = 0.0;
                 if (iix == -1)
@@ -96,7 +107,8 @@ void ImmersedBoundarySolver2D::u2F(FluidContext2D& context, ImmersedBoundaryPart
                     v_value = v(iix, iiy);
                 }
 
-                particles.Vf[i] += v_value * ib_delta(particles.X[i] - xi, particles.Y[i] - yi, hx, hy) * hx * hy;
+                particles.Vf[i] +=
+                    v_value * ib_delta(particles.X[i] - xi, particles.Y[i] - yi, grid_h) * grid_h * grid_h;
             }
         }
         particles.Fy[i] = particles.Vp[i] - particles.Vf[i];
@@ -104,14 +116,9 @@ void ImmersedBoundarySolver2D::u2F(FluidContext2D& context, ImmersedBoundaryPart
     }
 }
 
-void ImmersedBoundarySolver2D::apply_ib_force(FluidContext2D&              context,
-                                              field2&                      u_recv,
-                                              field2&                      v_recv,
-                                              ImmersedBoundaryParticles2D& particles,
-                                              double                       ib_hx,
-                                              double                       ib_hy)
+void ImmersedBoundarySolver2D::apply_ib_force()
 {
-    EXPOSE_POINTS2D_BOUND(particles);
+    EXPOSE_PCOORD2D_BOUND(particles);
 
     // u
     OPENMP_PARALLEL_FOR()
@@ -121,13 +128,13 @@ void ImmersedBoundarySolver2D::apply_ib_force(FluidContext2D&              conte
         {
             // velocity u index -> double position
 
-            double xx = i * hx;
-            double yy = j * hy + 0.5 * hy;
+            double xx = i * grid_h;
+            double yy = j * grid_h + 0.5 * grid_h;
 
             for (int ib = 0; ib < particles.cur_n; ib++)
             {
                 double ib_force =
-                    particles.Fx[ib] * ib_delta(xx - particles.X[ib], yy - particles.Y[ib], hx, hy) * ib_hx * hy;
+                    particles.Fx[ib] * ib_delta(xx - particles.X[ib], yy - particles.Y[ib], grid_h) * ib_h * grid_h;
 
                 u_recv(i, j) += ib_force;
             }
@@ -142,13 +149,13 @@ void ImmersedBoundarySolver2D::apply_ib_force(FluidContext2D&              conte
         {
             // velocity v index -> double position
 
-            double xx = i * hx + 0.5 * hx;
-            double yy = j * hy;
+            double xx = i * grid_h + 0.5 * grid_h;
+            double yy = j * grid_h;
 
             for (int ib = 0; ib < particles.cur_n; ib++)
             {
                 double ib_force =
-                    particles.Fy[ib] * ib_delta(xx - particles.X[ib], yy - particles.Y[ib], hx, hy) * hx * ib_hy;
+                    particles.Fy[ib] * ib_delta(xx - particles.X[ib], yy - particles.Y[ib], grid_h) * ib_h * grid_h;
 
                 v_recv(i, j) += ib_force;
             }

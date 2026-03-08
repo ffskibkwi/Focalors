@@ -1,9 +1,19 @@
 #pragma once
 
-#define INITIALIZE_PROPERTY(collection, new_property, number) \
-    new_property = new double[number];                        \
-    for (int i = 0; i < number; ++i)                          \
-    {                                                         \
-        new_property[i] = 0.0;                                \
-    }                                                         \
-    collection.push_back(new_property)
+#define DECLARE_PROPERTY(pname)         \
+    int     pname##_idx = 0;            \
+    double* get_##pname()               \
+    {                                   \
+        return properties[pname##_idx]; \
+    }
+
+#define INITIALIZE_PROPERTY(pname)     \
+    double* pname = new double[max_n]; \
+    pname##_idx   = properties.size(); \
+    for (int i = 0; i < max_n; ++i)    \
+    {                                  \
+        pname[i] = 0.0;                \
+    }                                  \
+    properties.push_back(pname);
+
+#define EXPOSE_PROPERTY(p, pname) double* pname = p->get_##pname();
