@@ -42,9 +42,25 @@ public:
         IO::read_number(para_map, "gmres_tol", gmres_tol);
         IO::read_number(para_map, "gmres_max_iter", gmres_max_iter);
 
-        IO::read_number(para_map, "convergence_tol", convergence_tol);
+        double legacy_convergence_tol = steady_u_tol;
+        if (IO::read_number(para_map, "convergence_tol", legacy_convergence_tol))
+        {
+            steady_u_tol    = legacy_convergence_tol;
+            steady_bulk_tol = legacy_convergence_tol;
+            steady_peak_tol = legacy_convergence_tol;
+            steady_v_peak_tol = legacy_convergence_tol;
+        }
+
+        IO::read_number(para_map, "steady_u_tol", steady_u_tol);
+        IO::read_number(para_map, "steady_bulk_tol", steady_bulk_tol);
+        IO::read_number(para_map, "steady_peak_tol", steady_peak_tol);
+        IO::read_number(para_map, "steady_v_peak_tol", steady_v_peak_tol);
+        IO::read_number(para_map, "steady_v_ratio_tol", steady_v_ratio_tol);
         IO::read_number(para_map, "converged_hits", converged_hits);
+        IO::read_bool(para_map, "require_steady_exit", require_steady_exit);
         IO::read_bool(para_map, "use_analytical_initialization", use_analytical_initialization);
+        IO::read_bool(para_map, "use_accuracy_dt_limit", use_accuracy_dt_limit);
+        IO::read_number(para_map, "dt_accuracy_factor", dt_accuracy_factor);
     }
 
     bool record_paras() override
@@ -80,9 +96,17 @@ public:
             .record("gmres_m", gmres_m)
             .record("gmres_tol", gmres_tol)
             .record("gmres_max_iter", gmres_max_iter)
-            .record("convergence_tol", convergence_tol)
+            .record("convergence_tol", steady_u_tol)
+            .record("steady_u_tol", steady_u_tol)
+            .record("steady_bulk_tol", steady_bulk_tol)
+            .record("steady_peak_tol", steady_peak_tol)
+            .record("steady_v_peak_tol", steady_v_peak_tol)
+            .record("steady_v_ratio_tol", steady_v_ratio_tol)
             .record("converged_hits", converged_hits)
-            .record("use_analytical_initialization", use_analytical_initialization ? 1 : 0);
+            .record("require_steady_exit", require_steady_exit ? 1 : 0)
+            .record("use_analytical_initialization", use_analytical_initialization ? 1 : 0)
+            .record("use_accuracy_dt_limit", use_accuracy_dt_limit ? 1 : 0)
+            .record("dt_accuracy_factor", dt_accuracy_factor);
 
         return true;
     }
@@ -153,7 +177,7 @@ public:
     double mu_max  = -1.0;
 
     double dt_factor        = 0.25;
-    int    steady_max_steps = 4000;
+    int    steady_max_steps = 12000;
     int    corr_iter        = 2;
     int    pv_output_step   = 0;
 
@@ -161,7 +185,14 @@ public:
     double gmres_tol      = 1.0e-7;
     int    gmres_max_iter = 1000;
 
-    double convergence_tol               = 1.0e-10;
-    int    converged_hits                = 5;
+    double steady_u_tol                  = 1.0e-7;
+    double steady_bulk_tol               = 1.0e-7;
+    double steady_peak_tol               = 1.0e-7;
+    double steady_v_peak_tol             = 1.0e-7;
+    double steady_v_ratio_tol            = 1.0e-4;
+    int    converged_hits                = 10;
+    bool   require_steady_exit           = true;
     bool   use_analytical_initialization = true;
+    bool   use_accuracy_dt_limit         = true;
+    double dt_accuracy_factor            = 2.0;
 };

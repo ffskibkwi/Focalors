@@ -16,6 +16,7 @@
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -31,6 +32,7 @@ namespace
     {
         double convective_dt      = 0.0;
         double diffusion_dt_limit = std::numeric_limits<double>::infinity();
+        double accuracy_dt_limit  = std::numeric_limits<double>::infinity();
         double selected_dt        = 0.0;
         double viscosity_upper    = 0.0;
     };
@@ -153,10 +155,49 @@ namespace
 
     struct RunSummary
     {
-        int        final_step     = 0;
-        double     final_residual = std::numeric_limits<double>::infinity();
+        int        final_step              = 0;
+        double     final_residual          = std::numeric_limits<double>::infinity();
+        double     steady_u_step           = std::numeric_limits<double>::infinity();
+        double     steady_v_step           = std::numeric_limits<double>::infinity();
+        double     steady_bulk             = std::numeric_limits<double>::quiet_NaN();
+        double     steady_bulk_change_rel  = std::numeric_limits<double>::infinity();
+        double     steady_u_max_abs        = std::numeric_limits<double>::quiet_NaN();
+        double     steady_u_max_change_rel = std::numeric_limits<double>::infinity();
+        double     steady_v_max_abs        = std::numeric_limits<double>::quiet_NaN();
+        double     steady_v_max_change_rel = std::numeric_limits<double>::infinity();
+        double     steady_v_to_u_ratio     = std::numeric_limits<double>::infinity();
+        double     steady_indicator        = std::numeric_limits<double>::infinity();
+        bool       steady_reached          = false;
         ErrorNorms profile_norms;
         ErrorNorms field_norms;
+    };
+
+    struct VelocityAmplitudeStats
+    {
+        double u_bulk    = 0.0;
+        double u_max_abs = 0.0;
+        double v_max_abs = 0.0;
+    };
+
+    struct SteadyMetricHistory
+    {
+        double prev_u_bulk    = 0.0;
+        double prev_u_max_abs = 0.0;
+        double prev_v_max_abs = 0.0;
+    };
+
+    struct SteadyMetrics
+    {
+        double u_step_rel        = std::numeric_limits<double>::infinity();
+        double v_step_rel        = std::numeric_limits<double>::infinity();
+        double u_bulk            = std::numeric_limits<double>::quiet_NaN();
+        double u_bulk_change_rel = std::numeric_limits<double>::infinity();
+        double u_max_abs         = std::numeric_limits<double>::quiet_NaN();
+        double u_max_change_rel  = std::numeric_limits<double>::infinity();
+        double v_max_abs         = std::numeric_limits<double>::quiet_NaN();
+        double v_max_change_rel  = std::numeric_limits<double>::infinity();
+        double v_to_u_ratio      = std::numeric_limits<double>::infinity();
+        double indicator         = std::numeric_limits<double>::infinity();
     };
 
     /**
@@ -213,7 +254,11 @@ namespace
                 kDiffusionDtSafety * h_min * h_min / std::max(selection.viscosity_upper, kSmall);
         }
 
-        selection.selected_dt = std::min(selection.convective_dt, selection.diffusion_dt_limit);
+        if (case_param.use_accuracy_dt_limit && case_param.dt_accuracy_factor > 0.0)
+            selection.accuracy_dt_limit = case_param.dt_accuracy_factor * h_min * h_min;
+
+        selection.selected_dt =
+            std::min(selection.convective_dt, std::min(selection.diffusion_dt_limit, selection.accuracy_dt_limit));
         if (!std::isfinite(selection.selected_dt) || selection.selected_dt <= 0.0)
             selection.selected_dt = selection.convective_dt;
 
@@ -448,6 +493,97 @@ namespace
         }
     }
 
+    double relative_change(double current, double previous)
+    {
+        return std::abs(current - previous) / std::max(std::abs(current), kSmall);
+    }
+
+    VelocityAmplitudeStats measure_velocity_amplitudes(Variable2D& u_var, Variable2D& v_var)
+    {
+        VelocityAmplitudeStats stats;
+        double                 weighted_u_sum = 0.0;
+        double                 total_weight   = 0.0;
+
+        for (auto* domain : u_var.geometry->domains)
+        {
+            field2&      u_field = *u_var.field_map[domain];
+            field2&      v_field = *v_var.field_map[domain];
+            const double hx      = domain->get_hx();
+            const double hy      = domain->get_hy();
+            const double weight  = hx * hy;
+
+            for (int i = 0; i < u_field.get_nx(); ++i)
+            {
+                for (int j = 0; j < u_field.get_ny(); ++j)
+                {
+                    const double u_val = u_field(i, j);
+                    const double v_val = v_field(i, j);
+                    stats.u_max_abs    = std::max(stats.u_max_abs, std::abs(u_val));
+                    stats.v_max_abs    = std::max(stats.v_max_abs, std::abs(v_val));
+                    weighted_u_sum += u_val * weight;
+                    total_weight += weight;
+                }
+            }
+        }
+
+        stats.u_bulk = weighted_u_sum / std::max(total_weight, kSmall);
+        return stats;
+    }
+
+    SteadyMetrics evaluate_steady_metrics(const PowerLawParallelPlateValidation2DCase&  case_param,
+                                          Variable2D&                                   u_var,
+                                          Variable2D&                                   v_var,
+                                          std::unordered_map<Domain2DUniform*, field2>& prev_u_map,
+                                          std::unordered_map<Domain2DUniform*, field2>& prev_v_map,
+                                          const SteadyMetricHistory&                    history)
+    {
+        SteadyMetrics                metrics;
+        const VelocityAmplitudeStats amplitudes = measure_velocity_amplitudes(u_var, v_var);
+
+        metrics.u_step_rel        = compute_velocity_residual(u_var, prev_u_map);
+        metrics.v_step_rel        = compute_velocity_residual(v_var, prev_v_map);
+        metrics.u_bulk            = amplitudes.u_bulk;
+        metrics.u_bulk_change_rel = relative_change(amplitudes.u_bulk, history.prev_u_bulk);
+        metrics.u_max_abs         = amplitudes.u_max_abs;
+        metrics.u_max_change_rel  = relative_change(amplitudes.u_max_abs, history.prev_u_max_abs);
+        metrics.v_max_abs         = amplitudes.v_max_abs;
+        metrics.v_max_change_rel  = relative_change(amplitudes.v_max_abs, history.prev_v_max_abs);
+        metrics.v_to_u_ratio      = amplitudes.v_max_abs / std::max(amplitudes.u_max_abs, kSmall);
+
+        metrics.indicator = std::max({metrics.u_step_rel / std::max(case_param.steady_u_tol, kSmall),
+                                      metrics.u_bulk_change_rel / std::max(case_param.steady_bulk_tol, kSmall),
+                                      metrics.u_max_change_rel / std::max(case_param.steady_peak_tol, kSmall),
+                                      metrics.v_max_change_rel / std::max(case_param.steady_v_peak_tol, kSmall)});
+        return metrics;
+    }
+
+    void update_steady_history(const SteadyMetrics& metrics, SteadyMetricHistory& history)
+    {
+        history.prev_u_bulk    = metrics.u_bulk;
+        history.prev_u_max_abs = metrics.u_max_abs;
+        history.prev_v_max_abs = metrics.v_max_abs;
+    }
+
+    bool is_steady_converged(const PowerLawParallelPlateValidation2DCase& case_param, const SteadyMetrics& metrics)
+    {
+        return metrics.u_step_rel < case_param.steady_u_tol && metrics.u_bulk_change_rel < case_param.steady_bulk_tol &&
+               metrics.u_max_change_rel < case_param.steady_peak_tol &&
+               metrics.v_max_change_rel < case_param.steady_v_peak_tol;
+    }
+
+    std::string build_steady_failure_message(const PowerLawParallelPlateValidation2DCase& case_param,
+                                             int                                           final_step,
+                                             const SteadyMetrics&                          metrics)
+    {
+        std::ostringstream oss;
+        oss << "Power-law validation did not reach steady state within " << case_param.steady_max_steps
+            << " steps. final_step=" << final_step << ", steady_indicator=" << metrics.indicator
+            << ", u_step=" << metrics.u_step_rel << ", bulk_change=" << metrics.u_bulk_change_rel
+            << ", u_peak_change=" << metrics.u_max_change_rel << ", v_peak_change=" << metrics.v_max_change_rel
+            << ", v_to_u_ratio=" << metrics.v_to_u_ratio;
+        return oss.str();
+    }
+
     ProbeSelection select_probe_faces(const PowerLawParallelPlateValidation2DCase& case_param,
                                       const DomainBundle&                          bundle)
     {
@@ -608,10 +744,12 @@ namespace
         out << std::setprecision(16);
         out << "topology,split_domain,num_domains,nx_total,ny,nx_left,nx_right,hx,hy,h_min,Lx,Ly,half_height,"
                "length_over_h,n_index,k_pl,dp_dx,pressure_force,mu_min_for_config,mu_max_for_config,x_probe,"
-               "x_window_min,x_window_max,probe_sample_count,final_step,final_residual,dt,dt_convective,"
-               "dt_diffusion_limit,viscosity_upper_bound,u_center_numerical,u_center_analytical,u_bulk_numerical,"
-               "u_bulk_analytical,profile_l1_abs,profile_l1_rel,profile_l2_abs,profile_l2_rel,profile_linf_abs,"
-               "profile_linf_rel,field_l1_abs,field_l1_rel,field_l2_abs,field_l2_rel,field_linf_abs,field_linf_rel\n";
+               "x_window_min,x_window_max,probe_sample_count,final_step,final_residual,steady_u_step,steady_v_step,"
+               "steady_bulk,steady_bulk_change_rel,steady_u_max_abs,steady_u_max_change_rel,steady_v_max_abs,"
+               "steady_v_max_change_rel,steady_v_to_u_ratio,steady_indicator,steady_reached,dt,dt_convective,dt_diffusion_limit,dt_accuracy_limit,"
+               "viscosity_upper_bound,u_center_numerical,u_center_analytical,u_bulk_numerical,u_bulk_analytical,"
+               "profile_l1_abs,profile_l1_rel,profile_l2_abs,profile_l2_rel,profile_linf_abs,profile_linf_rel,"
+               "field_l1_abs,field_l1_rel,field_l2_abs,field_l2_rel,field_linf_abs,field_linf_rel\n";
 
         out << (case_param.split_domain ? "split" : "single") << "," << (case_param.split_domain ? 1 : 0) << ","
             << bundle.domains.size() << "," << case_param.nx << "," << case_param.ny << "," << bundle.nx_left << ","
@@ -621,8 +759,14 @@ namespace
             << case_param.dp_dx << "," << case_param.getPressureForce() << "," << case_param.getMuMinForConfig() << ","
             << case_param.getMuMaxForConfig() << "," << selection.x_probe << "," << selection.x_min << ","
             << selection.x_max << "," << selection.faces.size() << "," << summary.final_step << ","
-            << summary.final_residual << "," << TimeAdvancingConfig::Get().dt << "," << dt_selection.convective_dt
-            << "," << dt_selection.diffusion_dt_limit << "," << dt_selection.viscosity_upper << ","
+            << summary.final_residual << "," << summary.steady_u_step << "," << summary.steady_v_step << ","
+            << summary.steady_bulk << "," << summary.steady_bulk_change_rel << "," << summary.steady_u_max_abs << ","
+            << summary.steady_u_max_change_rel << "," << summary.steady_v_max_abs << ","
+            << summary.steady_v_max_change_rel << "," << summary.steady_v_to_u_ratio << ","
+            << summary.steady_indicator << "," << (summary.steady_reached ? 1 : 0) << ","
+            << TimeAdvancingConfig::Get().dt << ","
+            << dt_selection.convective_dt << "," << dt_selection.diffusion_dt_limit << ","
+            << dt_selection.accuracy_dt_limit << "," << dt_selection.viscosity_upper << ","
             << profile.u_center_numerical << "," << profile.u_center_analytical << "," << profile.u_bulk_numerical
             << "," << profile.u_bulk_analytical << "," << summary.profile_norms.l1_abs << ","
             << summary.profile_norms.l1_rel << "," << summary.profile_norms.l2_abs << ","
@@ -675,6 +819,7 @@ int main(int argc, char* argv[])
         case_param.paras_record.record("dt", time_cfg.dt)
             .record("dt_convective", dt_selection.convective_dt)
             .record("dt_diffusion_limit", dt_selection.diffusion_dt_limit)
+            .record("dt_accuracy_limit", dt_selection.accuracy_dt_limit)
             .record("viscosity_upper_bound", dt_selection.viscosity_upper)
             .record("pressure_drive_realization", std::string("uniform_body_force_from_dpdx"));
 
@@ -704,6 +849,14 @@ int main(int argc, char* argv[])
         update_prev_velocity(state.u_var, prev_u_map);
         update_prev_velocity(state.v_var, prev_v_map);
 
+        SteadyMetricHistory steady_history;
+        {
+            const VelocityAmplitudeStats initial_amplitudes = measure_velocity_amplitudes(state.u_var, state.v_var);
+            steady_history.prev_u_bulk                      = initial_amplitudes.u_bulk;
+            steady_history.prev_u_max_abs                   = initial_amplitudes.u_max_abs;
+            steady_history.prev_v_max_abs                   = initial_amplitudes.v_max_abs;
+        }
+
         std::cout << "Power-law parallel-plate validation case" << std::endl;
         std::cout << "  Topology: " << (case_param.split_domain ? "split" : "single") << std::endl;
         std::cout << "  Grid: nx=" << case_param.nx << ", ny=" << case_param.ny << std::endl;
@@ -715,10 +868,12 @@ int main(int argc, char* argv[])
         std::cout << "  Time step: dt=" << time_cfg.dt << ", iterations=" << time_cfg.num_iterations
                   << ", corr_iter=" << time_cfg.corr_iter << std::endl;
 
-        int       final_step     = time_cfg.num_iterations;
-        int       converged_hits = 0;
-        double    final_residual = std::numeric_limits<double>::infinity();
-        const int print_step     = std::max(1, time_cfg.num_iterations / 10);
+        int           final_step     = time_cfg.num_iterations;
+        int           converged_hits = 0;
+        double        final_residual = std::numeric_limits<double>::infinity();
+        SteadyMetrics final_metrics;
+        bool          steady_reached = false;
+        const int     print_step = std::max(1, time_cfg.num_iterations / 10);
 
         for (int step = 1; step <= time_cfg.num_iterations; ++step)
         {
@@ -729,31 +884,37 @@ int main(int argc, char* argv[])
             ns_solver.nondiag_shared_boundary_update();
             ns_solver.diag_shared_boundary_update();
 
-            const double u_residual = compute_velocity_residual(state.u_var, prev_u_map);
-            const double v_residual = compute_velocity_residual(state.v_var, prev_v_map);
-            final_residual          = std::max(u_residual, v_residual);
+            const SteadyMetrics metrics =
+                evaluate_steady_metrics(case_param, state.u_var, state.v_var, prev_u_map, prev_v_map, steady_history);
+            final_metrics  = metrics;
+            final_residual = metrics.indicator;
 
-            if (final_residual < case_param.convergence_tol)
+            if (is_steady_converged(case_param, metrics))
                 ++converged_hits;
             else
                 converged_hits = 0;
 
             if (step <= 10 || step % print_step == 0)
             {
-                std::cout << "  step=" << step << " residual(u,v,max)=(" << u_residual << "," << v_residual << ","
-                          << final_residual << "), hits=" << converged_hits << "/" << case_param.converged_hits
+                std::cout << "  step=" << step << " steady(u_step,v_step,bulk,u_peak,v_peak,v/u,indicator)=("
+                          << metrics.u_step_rel << "," << metrics.v_step_rel << "," << metrics.u_bulk_change_rel << ","
+                          << metrics.u_max_change_rel << "," << metrics.v_max_change_rel << "," << metrics.v_to_u_ratio
+                          << "," << metrics.indicator << "), hits=" << converged_hits << "/" << case_param.converged_hits
                           << std::endl;
             }
 
             if (converged_hits >= case_param.converged_hits)
             {
                 final_step = step;
-                std::cout << "Converged at step=" << final_step << " with residual=" << final_residual << std::endl;
+                steady_reached = true;
+                std::cout << "Converged at step=" << final_step << " with steady_indicator=" << final_residual
+                          << std::endl;
                 break;
             }
 
             update_prev_velocity(state.u_var, prev_u_map);
             update_prev_velocity(state.v_var, prev_v_map);
+            update_steady_history(metrics, steady_history);
 
             if (case_param.pv_output_step > 0 && step % case_param.pv_output_step == 0)
             {
@@ -768,6 +929,20 @@ int main(int argc, char* argv[])
         ns_solver.nondiag_shared_boundary_update();
         ns_solver.diag_shared_boundary_update();
 
+        if (!steady_reached)
+        {
+            if (case_param.require_steady_exit)
+                throw std::runtime_error(build_steady_failure_message(case_param, final_step, final_metrics));
+
+            std::cerr << "[WARN] " << build_steady_failure_message(case_param, final_step, final_metrics) << std::endl;
+        }
+
+        if (final_metrics.v_to_u_ratio > case_param.steady_v_ratio_tol)
+        {
+            std::cout << "[WARN] Final v/u ratio exceeds diagnostic threshold: " << final_metrics.v_to_u_ratio
+                      << " > " << case_param.steady_v_ratio_tol << std::endl;
+        }
+
         write_final_fields(case_param, final_step, state);
 
         const ProbeSelection probe_selection = select_probe_faces(case_param, bundle);
@@ -775,10 +950,21 @@ int main(int argc, char* argv[])
         ErrorNorms           field_norm      = compare_full_field(case_param, state.u_var);
 
         RunSummary summary;
-        summary.final_step     = final_step;
-        summary.final_residual = final_residual;
-        summary.profile_norms  = profile.norms;
-        summary.field_norms    = field_norm;
+        summary.final_step              = final_step;
+        summary.final_residual          = final_residual;
+        summary.steady_u_step           = final_metrics.u_step_rel;
+        summary.steady_v_step           = final_metrics.v_step_rel;
+        summary.steady_bulk             = final_metrics.u_bulk;
+        summary.steady_bulk_change_rel  = final_metrics.u_bulk_change_rel;
+        summary.steady_u_max_abs        = final_metrics.u_max_abs;
+        summary.steady_u_max_change_rel = final_metrics.u_max_change_rel;
+        summary.steady_v_max_abs        = final_metrics.v_max_abs;
+        summary.steady_v_max_change_rel = final_metrics.v_max_change_rel;
+        summary.steady_v_to_u_ratio     = final_metrics.v_to_u_ratio;
+        summary.steady_indicator        = final_metrics.indicator;
+        summary.steady_reached          = steady_reached;
+        summary.profile_norms           = profile.norms;
+        summary.field_norms             = field_norm;
 
         write_profile_csv(case_param.root_dir, profile);
         write_summary_csv(case_param, bundle, probe_selection, dt_selection, summary, profile);
