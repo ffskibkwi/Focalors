@@ -156,7 +156,9 @@ int main(int argc, char* argv[])
                                               case_param.n_index,
                                               case_param.Re,
                                               case_param.mu_ref,
-                                              case_param.use_dimensionless_viscosity);
+                                              case_param.use_dimensionless_viscosity,
+                                              case_param.mu_min_pl,
+                                              case_param.mu_max_pl);
         std::cout << "Configuring Carreau Model (Dimensionless):" << std::endl;
         std::cout << "  mu_0:           " << case_param.mu_0 << std::endl;
         std::cout << "  mu_inf:         " << case_param.mu_inf << std::endl;
@@ -166,6 +168,8 @@ int main(int argc, char* argv[])
         std::cout << "  use_dimensionless_viscosity: " << case_param.use_dimensionless_viscosity << std::endl;
         std::cout << "  a:      " << case_param.a << std::endl;
         std::cout << "  n:      " << case_param.n_index << std::endl;
+        std::cout << "  mu_min_pl: " << case_param.mu_min_pl << std::endl;
+        std::cout << "  mu_max_pl: " << case_param.mu_max_pl << std::endl;
     }
     else if (case_param.model_type == 3) // Casson
     {

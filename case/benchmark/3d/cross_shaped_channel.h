@@ -120,7 +120,7 @@ public:
         else if (model_type == 2)
         {
             physics_cfg.set_carreau_dimensionless(
-                mu_0, mu_inf, a, lambda, n_index, Re, mu_ref, use_dimensionless_viscosity);
+                mu_0, mu_inf, a, lambda, n_index, Re, mu_ref, use_dimensionless_viscosity, mu_min_pl, mu_max_pl);
         }
         else if (model_type == 3)
         {

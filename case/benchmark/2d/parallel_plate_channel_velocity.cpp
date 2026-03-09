@@ -137,7 +137,9 @@ int main(int argc, char* argv[])
                                               case_param.n_index,
                                               case_param.Re,
                                               case_param.mu_ref,
-                                              case_param.use_dimensionless_viscosity);
+                                              case_param.use_dimensionless_viscosity,
+                                              case_param.mu_min_pl,
+                                              case_param.mu_max_pl);
         std::cout << "Configuring Carreau Model (Dimensionless):" << std::endl;
         std::cout << "  mu_0:           " << case_param.mu_0 << std::endl;
         std::cout << "  mu_inf:         " << case_param.mu_inf << std::endl;
