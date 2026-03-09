@@ -132,7 +132,7 @@ public:
     double H        = 1.0 / 64.0;
     int    nx_total = 512;
     int    ny_total = 512;
-    double Lx = 16.0, Ly = 16.0;
+    double Lx = 8.0, Ly = 8.0;
 
     // Domain split
     int    nx_left  = 0;
@@ -159,9 +159,9 @@ public:
 
     // IBM parameters
     int    ibm_repeat_number = 1;
-    int    gmres_m           = 30;
+    int    gmres_m           = 20;
     double gmres_tol         = 1e-6;
-    int    gmres_max_iter    = 1000;
+    int    gmres_max_iter    = 100;
 };
 
 int main(int argc, char* argv[])
@@ -318,6 +318,8 @@ int main(int argc, char* argv[])
     // Main time loop
     for (int step = 1; step <= case_param.max_step; step++)
     {
+        SCOPE_TIMER("Iteration", TimeRecordType::None, step % 100 == 0);
+
         // Enable output periodically
         if (step % case_param.statistics_output_step == 0)
         {
@@ -374,14 +376,32 @@ int main(int argc, char* argv[])
             }
         }
 
-        // NS solve
-        ns_solver.solve();
+        ns_solver.euler_conv_diff_inner();
+        ns_solver.euler_conv_diff_outer();
 
         // IBM solve (multiple iterations for better convergence)
         for (int ib_iter = 0; ib_iter < case_param.ibm_repeat_number; ib_iter++)
         {
             ibm_solver.solve();
         }
+
+        ns_solver.phys_boundary_update();
+        ns_solver.nondiag_shared_boundary_update();
+        ns_solver.diag_shared_boundary_update();
+
+        // divu
+        ns_solver.velocity_div_inner();
+        ns_solver.velocity_div_outer();
+
+        // PE
+        ns_solver.normalize_pressure();
+        p_solver.solve();
+
+        // update buffer for p
+        ns_solver.pressure_buffer_update();
+
+        // p grad
+        ns_solver.add_pressure_gradient();
 
         // Boundary update
         ns_solver.phys_boundary_update();
@@ -394,7 +414,6 @@ int main(int argc, char* argv[])
             std::cout << "Saving step " << step << " to CSV files.\n";
             IO::write_csv(u, nowtime_dir + "/u/u_" + std::to_string(step));
             IO::write_csv(v, nowtime_dir + "/v/v_" + std::to_string(step));
-            IO::write_csv(p, nowtime_dir + "/p/p_" + std::to_string(step));
         }
 
         // Check for divergence
