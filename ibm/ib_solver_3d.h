@@ -3,8 +3,10 @@
 #include "ib_kernel.hpp"
 #include "particles_coordinate_3d.h"
 #include "particles_ib_3d.h"
+#include "variable3d.h"
 
 #include <algorithm>
+#include <functional>
 
 /**
  * @brief Immersed boundary method solver.
@@ -31,6 +33,11 @@ public:
 
     void apply_ib_force();
 
+    // Helper function to get velocity value from current or neighbor domain
+    double get_u_value(Domain3DUniform* domain, int iix, int iiy, int iiz);
+    double get_v_value(Domain3DUniform* domain, int iix, int iiy, int iiz);
+    double get_w_value(Domain3DUniform* domain, int iix, int iiy, int iiz);
+
 private:
     Variable3D* u_var;
     Variable3D* v_var;
@@ -41,4 +48,15 @@ private:
 
     double ib_h;
     double grid_h;
+
+    // Context helper to access field and buffer for a given domain
+    struct DomainContext
+    {
+        Domain3DUniform* domain;
+        std::function<double(int, int, int)> get_u;
+        std::function<double(int, int, int)> get_v;
+        std::function<double(int, int, int)> get_w;
+    };
+
+    std::function<DomainContext(Domain3DUniform*)> get_domain_context;
 };

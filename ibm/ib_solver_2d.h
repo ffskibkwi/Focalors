@@ -3,6 +3,9 @@
 #include "ib_kernel.hpp"
 #include "particles_coordinate_2d.h"
 #include "particles_ib_2d.h"
+#include "variable2d.h"
+
+#include <functional>
 
 /**
  * @brief Immersed boundary method solver.
@@ -28,6 +31,10 @@ public:
 
     void apply_ib_force();
 
+    // Helper function to get velocity value from current or neighbor domain
+    double get_u_value(Domain2DUniform* domain, int iix, int iiy);
+    double get_v_value(Domain2DUniform* domain, int iix, int iiy);
+
 private:
     Variable2D* u_var;
     Variable2D* v_var;
@@ -37,4 +44,14 @@ private:
 
     double ib_h;
     double grid_h;
+
+    // Context helper to access field and buffer for a given domain
+    struct DomainContext
+    {
+        Domain2DUniform* domain;
+        std::function<double(int, int)> get_u;
+        std::function<double(int, int)> get_v;
+    };
+
+    std::function<DomainContext(Domain2DUniform*)> get_domain_context;
 };
