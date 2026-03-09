@@ -50,12 +50,24 @@ void PCoordMap3D::generate_map(Geometry3D* geo)
     {
         Domain3DUniform* domain = domains[domain_idx];
 
-        coord_map[domain] = new PCoord3D(X_list[domain_idx].size());
+        PCoord3D* p_coord = new PCoord3D(X_list[domain_idx].size());
+        coord_map[domain] = p_coord;
 
         EXPOSE_PCOORD3D(coord_map[domain])
 
         std::memcpy(X, X_list[domain_idx].data(), X_list[domain_idx].size() * sizeof(double));
         std::memcpy(Y, Y_list[domain_idx].data(), Y_list[domain_idx].size() * sizeof(double));
         std::memcpy(Z, Z_list[domain_idx].data(), Z_list[domain_idx].size() * sizeof(double));
+
+        // Calculate bounding box
+        for (size_t i = 0; i < X_list[domain_idx].size(); i++)
+        {
+            if (X[i] < p_coord->min_X) p_coord->min_X = X[i];
+            if (X[i] > p_coord->max_X) p_coord->max_X = X[i];
+            if (Y[i] < p_coord->min_Y) p_coord->min_Y = Y[i];
+            if (Y[i] > p_coord->max_Y) p_coord->max_Y = Y[i];
+            if (Z[i] < p_coord->min_Z) p_coord->min_Z = Z[i];
+            if (Z[i] > p_coord->max_Z) p_coord->max_Z = Z[i];
+        }
     }
 }
