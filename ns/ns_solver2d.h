@@ -101,6 +101,9 @@ public:
      * (1) When a diagonal domain exists, it originates from the diagonal domain.
      * (2) When a diagonal domain does not exist, it originates from the directly adjacent domain.
      *
+     * This step is needed by the predictor's outer convection-diffusion stencil,
+     * but not by the div(u*)/pressure-gradient path, which only reads orthogonal buffers.
+     *
      * In some cases, the domain might not use the updated buffer/corner at this step, but that's okay.
      * To avoid programming complexity, we won't determine whether to update based on whether it will be used.
      * We'll simply determine it based on the connection conditions.

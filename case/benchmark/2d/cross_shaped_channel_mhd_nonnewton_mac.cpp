@@ -24,25 +24,43 @@ namespace
     // 2D FTCS-like stability range: dt <= C * h^2 / mu_max, with C < 0.25.
     constexpr double EXPLICIT_DIFFUSION_DT_FACTOR = 0.20;
 
+    /** @brief Convert the viscosity bound used in input/output units to solver units. */
+    double scale_viscosity_to_solver_units(double viscosity_value, const PhysicsConfig& physics_cfg)
+    {
+        if (physics_cfg.model_type == 0 || !physics_cfg.use_dimensionless_viscosity)
+            return viscosity_value;
+
+        const double solver_scale = physics_cfg.mu_ref * physics_cfg.Re;
+        if (solver_scale <= 0.0)
+            return viscosity_value;
+
+        return viscosity_value / solver_scale;
+    }
+
     struct TimeStepSelection
     {
-        double convective_dt         = 0.0;
-        double diffusion_dt_limit    = std::numeric_limits<double>::infinity();
-        double selected_dt           = 0.0;
-        double viscosity_upper_bound = 0.0;
-        bool   diffusion_limited     = false;
+        double convective_dt                   = 0.0;
+        double diffusion_dt_limit              = std::numeric_limits<double>::infinity();
+        double selected_dt                     = 0.0;
+        double viscosity_upper_bound_raw       = 0.0;
+        double viscosity_upper_bound_effective = 0.0;
+        bool   diffusion_limited               = false;
     };
 
+    /** @brief Select the smaller of the convective and explicit diffusion time-step limits. */
     TimeStepSelection select_time_step(double h, double dt_factor, const PhysicsConfig& physics_cfg)
     {
         TimeStepSelection selection;
 
-        selection.convective_dt         = dt_factor * h;
-        selection.viscosity_upper_bound = physics_cfg.model_type == 0 ? physics_cfg.nu : physics_cfg.mu_max;
+        selection.convective_dt             = dt_factor * h;
+        selection.viscosity_upper_bound_raw = physics_cfg.model_type == 0 ? physics_cfg.nu : physics_cfg.mu_max;
+        selection.viscosity_upper_bound_effective =
+            scale_viscosity_to_solver_units(selection.viscosity_upper_bound_raw, physics_cfg);
 
-        if (selection.viscosity_upper_bound > 0.0)
+        if (selection.viscosity_upper_bound_effective > 0.0)
         {
-            selection.diffusion_dt_limit = EXPLICIT_DIFFUSION_DT_FACTOR * h * h / selection.viscosity_upper_bound;
+            selection.diffusion_dt_limit =
+                EXPLICIT_DIFFUSION_DT_FACTOR * h * h / selection.viscosity_upper_bound_effective;
         }
 
         selection.selected_dt       = std::min(selection.convective_dt, selection.diffusion_dt_limit);
@@ -178,7 +196,9 @@ int main(int argc, char* argv[])
     std::cout << "Time Step Selection:" << std::endl;
     std::cout << "  convective_dt: " << time_step_selection.convective_dt << std::endl;
     std::cout << "  diffusion_dt_limit: " << time_step_selection.diffusion_dt_limit << std::endl;
-    std::cout << "  viscosity_upper_bound: " << time_step_selection.viscosity_upper_bound << std::endl;
+    std::cout << "  viscosity_upper_bound_raw: " << time_step_selection.viscosity_upper_bound_raw << std::endl;
+    std::cout << "  viscosity_upper_bound_effective: " << time_step_selection.viscosity_upper_bound_effective
+              << std::endl;
     std::cout << "  selected_dt: " << time_cfg.dt << std::endl;
     std::cout << "  diffusion_limited: " << std::boolalpha << time_step_selection.diffusion_limited << std::noboolalpha
               << std::endl;
@@ -188,7 +208,9 @@ int main(int argc, char* argv[])
         case_param.paras_record.record("dt", time_cfg.dt)
             .record("dt_convective", time_step_selection.convective_dt)
             .record("dt_diffusion_limit", time_step_selection.diffusion_dt_limit)
-            .record("viscosity_upper_bound", time_step_selection.viscosity_upper_bound)
+            .record("viscosity_upper_bound_raw", time_step_selection.viscosity_upper_bound_raw)
+            .record("viscosity_upper_bound_effective", time_step_selection.viscosity_upper_bound_effective)
+            .record("viscosity_upper_bound", time_step_selection.viscosity_upper_bound_effective)
             .record("dt_diffusion_limited", time_step_selection.diffusion_limited ? 1 : 0);
     }
 
@@ -247,6 +269,13 @@ int main(int argc, char* argv[])
     geo.connect(&A2, LocationType::XPositive, &A3);
     geo.connect(&A2, LocationType::YNegative, &A4);
     geo.connect(&A2, LocationType::YPositive, &A5);
+
+    // Set the center block as the geometric reference so domain offsets match the
+    // post-processing layout: A2 at (0, 0), A1/A3 along x, A4/A5 along y.
+    geo.axis(&A2, LocationType::XNegative);
+    geo.axis(&A2, LocationType::YNegative);
+    geo.check();
+    geo.solve_prepare();
 
     Variable2D u("u"), v("v"), p("p");
     u.set_geometry(geo);

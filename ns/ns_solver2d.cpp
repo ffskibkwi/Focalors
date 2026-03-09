@@ -95,7 +95,8 @@ void ConcatNSSolver2D::solve()
         mhd_module->applyLorentzForce();
     }
 
-    // update boundary for divu
+    // Update boundary data for div(u*). The pressure-correction path only reads
+    // direct neighbor buffers, so diagonal corner data is not needed here.
     phys_boundary_update();
     nondiag_shared_boundary_update();
 
@@ -116,7 +117,8 @@ void ConcatNSSolver2D::solve()
         add_pressure_gradient();
     }
 
-    // update boundary at last to ensure other solver get xpos value at boundary
+    // Restore the full shared-boundary state for the next predictor step and for
+    // other modules that may read diagonal corner values.
     phys_boundary_update();
     nondiag_shared_boundary_update();
     diag_shared_boundary_update();

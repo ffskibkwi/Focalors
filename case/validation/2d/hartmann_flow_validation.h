@@ -73,9 +73,25 @@ public:
         }
         IO::read_bool(para_map, "use_dimensionless_viscosity", use_dimensionless_viscosity);
 
-        IO::read_number(para_map, "convergence_tol", convergence_tol);
+        double legacy_convergence_tol = steady_u_tol;
+        if (IO::read_number(para_map, "convergence_tol", legacy_convergence_tol))
+        {
+            steady_u_tol    = legacy_convergence_tol;
+            steady_bulk_tol = legacy_convergence_tol;
+            steady_peak_tol = legacy_convergence_tol;
+            steady_v_peak_tol = legacy_convergence_tol;
+        }
+
+        IO::read_number(para_map, "steady_u_tol", steady_u_tol);
+        IO::read_number(para_map, "steady_bulk_tol", steady_bulk_tol);
+        IO::read_number(para_map, "steady_peak_tol", steady_peak_tol);
+        IO::read_number(para_map, "steady_v_peak_tol", steady_v_peak_tol);
+        IO::read_number(para_map, "steady_v_ratio_tol", steady_v_ratio_tol);
         IO::read_number(para_map, "converged_hits", converged_hits);
+        IO::read_bool(para_map, "require_steady_exit", require_steady_exit);
         IO::read_bool(para_map, "use_analytical_initialization", use_analytical_initialization);
+        IO::read_bool(para_map, "use_accuracy_dt_limit", use_accuracy_dt_limit);
+        IO::read_number(para_map, "dt_accuracy_factor", dt_accuracy_factor);
     }
 
     bool record_paras() override
@@ -126,9 +142,17 @@ public:
             .record("mu_max_pl", mu_max_pl)
             .record("mu_ref", mu_ref)
             .record("use_dimensionless_viscosity", use_dimensionless_viscosity ? 1 : 0)
-            .record("convergence_tol", convergence_tol)
+            .record("convergence_tol", steady_u_tol)
+            .record("steady_u_tol", steady_u_tol)
+            .record("steady_bulk_tol", steady_bulk_tol)
+            .record("steady_peak_tol", steady_peak_tol)
+            .record("steady_v_peak_tol", steady_v_peak_tol)
+            .record("steady_v_ratio_tol", steady_v_ratio_tol)
             .record("converged_hits", converged_hits)
-            .record("use_analytical_initialization", use_analytical_initialization ? 1 : 0);
+            .record("require_steady_exit", require_steady_exit ? 1 : 0)
+            .record("use_analytical_initialization", use_analytical_initialization ? 1 : 0)
+            .record("use_accuracy_dt_limit", use_accuracy_dt_limit ? 1 : 0)
+            .record("dt_accuracy_factor", dt_accuracy_factor);
 
         return true;
     }
@@ -184,7 +208,14 @@ public:
     double mu_ref                      = 1.0;
     bool   use_dimensionless_viscosity = true;
 
-    double convergence_tol               = 1.0e-8;
+    double steady_u_tol                  = 1.0e-8;
+    double steady_bulk_tol               = 1.0e-8;
+    double steady_peak_tol               = 1.0e-8;
+    double steady_v_peak_tol             = 1.0e-8;
+    double steady_v_ratio_tol            = 1.0e-4;
     int    converged_hits                = 5;
+    bool   require_steady_exit           = true;
     bool   use_analytical_initialization = true;
+    bool   use_accuracy_dt_limit         = true;
+    double dt_accuracy_factor            = 1.0;
 };

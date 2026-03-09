@@ -20,12 +20,12 @@ PhysicalPESolver3D::PhysicalPESolver3D(Variable3D*            in_u_var,
         auto v_field = v_var->field_map[domain];
         auto w_field = w_var->field_map[domain];
 
-        u_xpos_ypos_corner_map[domain] = new double[u_field->get_nz()];
-        u_xpos_zpos_corner_map[domain] = new double[u_field->get_ny()];
-        v_xpos_ypos_corner_map[domain] = new double[v_field->get_nz()];
-        v_ypos_zpos_corner_map[domain] = new double[v_field->get_nx()];
-        w_xpos_zpos_corner_map[domain] = new double[w_field->get_ny()];
-        w_ypos_zpos_corner_map[domain] = new double[w_field->get_nx()];
+        u_xpos_ypos_corner_map[domain] = new double[static_cast<std::size_t>(u_field->get_nz())]();
+        u_xpos_zpos_corner_map[domain] = new double[static_cast<std::size_t>(u_field->get_ny())]();
+        v_xpos_ypos_corner_map[domain] = new double[static_cast<std::size_t>(v_field->get_nz())]();
+        v_ypos_zpos_corner_map[domain] = new double[static_cast<std::size_t>(v_field->get_nx())]();
+        w_xpos_zpos_corner_map[domain] = new double[static_cast<std::size_t>(w_field->get_ny())]();
+        w_ypos_zpos_corner_map[domain] = new double[static_cast<std::size_t>(w_field->get_nx())]();
 
         // debug
 

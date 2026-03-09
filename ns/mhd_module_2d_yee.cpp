@@ -105,13 +105,13 @@ void MHDModule2DYee::init(Variable2D* phi_var)
         // set_inner_field() already allocates all four; for external phi we repair missing sides.
         auto& phi_buffer_map = m_phiVar->buffer_map[domain];
         if (!phi_buffer_map.count(LocationType::XNegative))
-            phi_buffer_map[LocationType::XNegative] = new double[ny];
+            phi_buffer_map[LocationType::XNegative] = new double[static_cast<std::size_t>(ny)]();
         if (!phi_buffer_map.count(LocationType::XPositive))
-            phi_buffer_map[LocationType::XPositive] = new double[ny];
+            phi_buffer_map[LocationType::XPositive] = new double[static_cast<std::size_t>(ny)]();
         if (!phi_buffer_map.count(LocationType::YNegative))
-            phi_buffer_map[LocationType::YNegative] = new double[nx];
+            phi_buffer_map[LocationType::YNegative] = new double[static_cast<std::size_t>(nx)]();
         if (!phi_buffer_map.count(LocationType::YPositive))
-            phi_buffer_map[LocationType::YPositive] = new double[nx];
+            phi_buffer_map[LocationType::YPositive] = new double[static_cast<std::size_t>(nx)]();
 
         m_jxFieldStorage[domain]->clear(0.0);
         m_jyFieldStorage[domain]->clear(0.0);
