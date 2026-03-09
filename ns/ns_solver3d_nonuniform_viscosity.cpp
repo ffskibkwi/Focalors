@@ -1,5 +1,7 @@
 #include "ns_solver3d_nonuniform_viscosity.h"
 
+#include "boundary_3d_utils.h"
+
 void NSSolver3DNonUniVisc::euler_conv_diff_inner()
 {
     for (auto& domain : domains)
@@ -29,8 +31,8 @@ void NSSolver3DNonUniVisc::euler_conv_diff_inner()
             {
                 for (int k = 1; k < nz - 1; k++)
                 {
-                    double c  = (c(i, j, k) + c(i - 1, j, k)) / 2.0;
-                    double mu = std::exp(c * ln_mu1_mu2);
+                    double c_avg = (c(i, j, k) + c(i - 1, j, k)) / 2.0;
+                    double mu    = std::exp(c_avg * ln_mu1_mu2);
 
                     double conv_x = 0.25 / hx *
                                     (u(i + 1, j, k) * (u(i + 1, j, k) + 2.0 * u(i, j, k)) -
@@ -58,8 +60,8 @@ void NSSolver3DNonUniVisc::euler_conv_diff_inner()
             {
                 for (int k = 1; k < nz - 1; k++)
                 {
-                    double c  = (c(i, j, k) + c(i, j - 1, k)) / 2.0;
-                    double mu = std::exp(c * ln_mu1_mu2);
+                    double c_avg = (c(i, j, k) + c(i, j - 1, k)) / 2.0;
+                    double mu    = std::exp(c_avg * ln_mu1_mu2);
 
                     double conv_x = 0.25 / hx *
                                     ((v(i, j, k) + v(i + 1, j, k)) * (u(i + 1, j - 1, k) + u(i + 1, j, k)) -
@@ -87,8 +89,8 @@ void NSSolver3DNonUniVisc::euler_conv_diff_inner()
             {
                 for (int k = 1; k < nz - 1; k++)
                 {
-                    double c  = (c(i, j, k) + c(i, j, k - 1)) / 2.0;
-                    double mu = std::exp(c * ln_mu1_mu2);
+                    double c_avg = (c(i, j, k) + c(i, j, k - 1)) / 2.0;
+                    double mu    = std::exp(c_avg * ln_mu1_mu2);
 
                     double conv_x = 0.25 / hx *
                                     ((w(i, j, k) + w(i + 1, j, k)) * (u(i + 1, j, k - 1) + u(i + 1, j, k)) -
@@ -110,7 +112,7 @@ void NSSolver3DNonUniVisc::euler_conv_diff_inner()
     }
 }
 
-void ConcatNSSolver3D::euler_conv_diff_outer()
+void NSSolver3DNonUniVisc::euler_conv_diff_outer()
 {
     for (auto& domain : domains)
     {
@@ -185,8 +187,8 @@ void ConcatNSSolver3D::euler_conv_diff_outer()
             double c_ijk = c(i, j, k);
             double c_im1 = i == 0 ? c_xneg_buffer(j, k) : c(i - 1, j, k);
 
-            double c  = (c_ijk + c_im1) / 2.0;
-            double mu = std::exp(c * ln_mu1_mu2);
+            double c_avg = (c_ijk + c_im1) / 2.0;
+            double mu    = std::exp(c_avg * ln_mu1_mu2);
 
             double conv_x = 0.25 / hx * (u_ip1 * (u_ip1 + 2.0 * u_ijk) - u_im1 * (u_im1 + 2.0 * u_ijk));
             double conv_y =
@@ -222,8 +224,8 @@ void ConcatNSSolver3D::euler_conv_diff_outer()
             double c_ijk = c(i, j, k);
             double c_jm1 = j == 0 ? c_yneg_buffer(i, k) : c(i, j - 1, k);
 
-            double c  = (c_ijk + c_jm1) / 2.0;
-            double mu = std::exp(c * ln_mu1_mu2);
+            double c_avg = (c_ijk + c_jm1) / 2.0;
+            double mu    = std::exp(c_avg * ln_mu1_mu2);
 
             double conv_x =
                 0.25 / hx * ((v_ijk + v_ip1) * (u_ip1_jm1 + u_ip1) - (v_im1 + v_ijk) * (u_jm1 + u(i, j, k)));
@@ -257,10 +259,10 @@ void ConcatNSSolver3D::euler_conv_diff_outer()
             double v_km1     = k == 0 ? v_zneg_buffer(i, j) : v(i, j, k - 1);
 
             double c_ijk = c(i, j, k);
-            double c_km1 = z == 0 ? c_zneg_buffer(i, j) : c(i, j, k - 1);
+            double c_km1 = k == 0 ? c_zneg_buffer(i, j) : c(i, j, k - 1);
 
-            double c  = (c_ijk + c_km1) / 2.0;
-            double mu = std::exp(c * ln_mu1_mu2);
+            double c_avg = (c_ijk + c_km1) / 2.0;
+            double mu    = std::exp(c_avg * ln_mu1_mu2);
 
             double conv_x =
                 0.25 / hx * ((w_ijk + w_ip1) * (u_ip1_km1 + u_ip1) - (w_im1 + w_ijk) * (u_km1 + u(i, j, k)));

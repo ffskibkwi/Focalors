@@ -29,6 +29,6 @@ class NSSolver3DNonUniVisc : public ConcatNSSolver3D
     void euler_conv_diff_outer();
 
 private:
-    Variable3D* c_var;
+    Variable3D* c_var      = nullptr;
     double      ln_mu1_mu2 = 0.0;
-}
+};

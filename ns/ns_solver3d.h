@@ -114,7 +114,7 @@ public:
     void pressure_buffer_update();
     void add_pressure_gradient();
 
-private:
+protected:
     std::vector<Domain3DUniform*>                                                            domains;
     std::unordered_map<Domain3DUniform*, std::unordered_map<LocationType, Domain3DUniform*>> adjacency;
 
