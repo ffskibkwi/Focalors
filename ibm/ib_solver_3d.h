@@ -15,17 +15,17 @@
  *
  * We associate a discrete volume ΔV with each force point such that the union of
  * all these volumes forms a thin shell (of thickness equal to one mesh width) around each particle.
- * It means that ImmersedBoundary point volume
+ * It means that IB point volume
  * ΔV = ib_h * ib_h * grid_h in 3D
  * ΔV = ib_h * grid_h in 3D
  */
-class ImmersedBoundarySolver3D
+class IBSolver3D
 {
 public:
-    ImmersedBoundarySolver3D(Variable3D*                                      _u_var,
-                             Variable3D*                                      _v_var,
-                             Variable3D*                                      _w_var,
-                             std::unordered_map<Domain3DUniform*, PCoord3D*>& _coord_map);
+    IBSolver3D(Variable3D*                                      _u_var,
+               Variable3D*                                      _v_var,
+               Variable3D*                                      _w_var,
+               std::unordered_map<Domain3DUniform*, PCoord3D*>& _coord_map);
 
     void solve();
 

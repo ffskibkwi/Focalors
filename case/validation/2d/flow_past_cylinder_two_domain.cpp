@@ -287,7 +287,7 @@ int main(int argc, char* argv[])
 
     auto coord_map_raw = coord_map.get_map();
 
-    ImmersedBoundarySolver2D ibm_solver(&u, &v, coord_map_raw);
+    IBSolver2D ibm_solver(&u, &v, coord_map_raw);
     ibm_solver.set_parameters(coord_map.get_h(), h);
 
     // Initialize IBM particle velocities to zero (solid cylinder)

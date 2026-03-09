@@ -317,7 +317,7 @@ int main(int /*argc*/, char* /*argv*/[])
 
     auto coord_map_single_raw = coord_map_single.get_map();
 
-    ImmersedBoundarySolver2D ibm_single(&u_single, &v_single, coord_map_single_raw);
+    IBSolver2D ibm_single(&u_single, &v_single, coord_map_single_raw);
     ibm_single.set_parameters(coord_map_single.get_h(), hx);
 
     // Sample before IBM solve
@@ -364,7 +364,7 @@ int main(int /*argc*/, char* /*argv*/[])
 
     auto coord_map_multi_raw = coord_map_multi.get_map();
 
-    ImmersedBoundarySolver2D ibm_multi(&u_multi, &v_multi, coord_map_multi_raw);
+    IBSolver2D ibm_multi(&u_multi, &v_multi, coord_map_multi_raw);
     ibm_multi.set_parameters(coord_map_multi.get_h(), hx);
 
     // Sample before IBM solve

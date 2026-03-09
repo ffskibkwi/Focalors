@@ -1,0 +1,252 @@
+#include "ib_solver_scalar_3d.h"
+
+#include <cmath>
+
+IBSolverScalar3D::IBSolverScalar3D(Variable3D* _scalar_var, std::unordered_map<Domain3DUniform*, PCoord3D*>& _coord_map)
+    : scalar_var(_scalar_var)
+    , coord_map(_coord_map)
+{
+    for (auto* domain : scalar_var->geometry->domains)
+    {
+        ib_map[domain] = new PIBScalar(coord_map[domain]->max_n);
+    }
+
+    // Setup domain context accessor
+    get_domain_context = [&](Domain3DUniform* domain) -> DomainContext {
+        auto& scalar = *scalar_var->field_map[domain];
+
+        auto& scalar_buffer_x_neg = *scalar_var->buffer_map[domain][LocationType::XNegative];
+        auto& scalar_buffer_x_pos = *scalar_var->buffer_map[domain][LocationType::XPositive];
+        auto& scalar_buffer_y_neg = *scalar_var->buffer_map[domain][LocationType::YNegative];
+        auto& scalar_buffer_y_pos = *scalar_var->buffer_map[domain][LocationType::YPositive];
+        auto& scalar_buffer_z_neg = *scalar_var->buffer_map[domain][LocationType::ZNegative];
+        auto& scalar_buffer_z_pos = *scalar_var->buffer_map[domain][LocationType::ZPositive];
+
+        return DomainContext {domain, [&](int i, int j, int k) -> double {
+                                  // scalar is cell-centered
+                                  if (i == -1)
+                                  {
+                                      j = std::clamp(j, 0, scalar.get_ny() - 1);
+                                      k = std::clamp(k, 0, scalar.get_nz() - 1);
+                                      return scalar_buffer_x_neg(j, k);
+                                  }
+                                  else if (i == scalar.get_nx())
+                                  {
+                                      j = std::clamp(j, 0, scalar.get_ny() - 1);
+                                      k = std::clamp(k, 0, scalar.get_nz() - 1);
+                                      return scalar_buffer_x_pos(j, k);
+                                  }
+                                  else if (j == -1)
+                                  {
+                                      i = std::clamp(i, 0, scalar.get_nx() - 1);
+                                      k = std::clamp(k, 0, scalar.get_nz() - 1);
+                                      return scalar_buffer_y_neg(i, k);
+                                  }
+                                  else if (j == scalar.get_ny())
+                                  {
+                                      i = std::clamp(i, 0, scalar.get_nx() - 1);
+                                      k = std::clamp(k, 0, scalar.get_nz() - 1);
+                                      return scalar_buffer_y_pos(i, k);
+                                  }
+                                  else if (k == -1)
+                                  {
+                                      i = std::clamp(i, 0, scalar.get_nx() - 1);
+                                      j = std::clamp(j, 0, scalar.get_ny() - 1);
+                                      return scalar_buffer_z_neg(i, j);
+                                  }
+                                  else if (k == scalar.get_nz())
+                                  {
+                                      i = std::clamp(i, 0, scalar.get_nx() - 1);
+                                      j = std::clamp(j, 0, scalar.get_ny() - 1);
+                                      return scalar_buffer_z_pos(i, j);
+                                  }
+                                  else
+                                  {
+                                      return scalar(i, j, k);
+                                  }
+                              }};
+    };
+}
+
+void IBSolverScalar3D::solve()
+{
+    calc_ib_scalar();
+    apply_ib_scalar();
+}
+
+double& IBSolverScalar3D::get_scalar_value(Domain3DUniform* domain, int iix, int iiy, int iiz)
+{
+    // iix, iiy, iiz are GLOBAL grid indices
+    // Compute global position of this cell center
+    double global_x = iix * grid_h;
+    double global_y = iiy * grid_h;
+    double global_z = iiz * grid_h;
+
+    // Helper lambda: try map a global position to a cell in given domain for scalar
+    auto try_map_scalar =
+        [&](Domain3DUniform* d, double gx, double gy, double gz, double*& ptr, int& li, int& lj, int& lk) -> bool {
+        double hx = d->get_hx();
+        double hy = d->get_hy();
+        double hz = d->get_hz();
+
+        double local_x = gx - d->get_offset_x();
+        double local_y = gy - d->get_offset_y();
+        double local_z = gz - d->get_offset_z();
+
+        int si = static_cast<int>(std::floor(local_x / hx));
+        int sj = static_cast<int>(std::floor(local_y / hy));
+        int sk = static_cast<int>(std::floor(local_z / hz));
+
+        auto& s = *scalar_var->field_map[d];
+        if (si >= 0 && si < s.get_nx() && sj >= 0 && sj < s.get_ny() && sk >= 0 && sk < s.get_nz())
+        {
+            ptr = &s(si, sj, sk);
+            li  = si;
+            lj  = sj;
+            lk  = sk;
+            return true;
+        }
+        return false;
+    };
+
+    // Try current domain
+    {
+        double* cell = nullptr;
+        int     li   = 0;
+        int     lj   = 0;
+        int     lk   = 0;
+        if (try_map_scalar(domain, global_x, global_y, global_z, cell, li, lj, lk))
+        {
+            return *cell;
+        }
+    }
+
+    // Try neighbors
+    if (scalar_var->geometry->adjacency.count(domain))
+    {
+        for (auto& loc_neighbor_pair : scalar_var->geometry->adjacency[domain])
+        {
+            auto* other_domain = loc_neighbor_pair.second;
+
+            double* cell = nullptr;
+            int     li   = 0;
+            int     lj   = 0;
+            int     lk   = 0;
+            if (try_map_scalar(other_domain, global_x, global_y, global_z, cell, li, lj, lk))
+            {
+                return *cell;
+            }
+        }
+    }
+
+    static double zero = 0.0;
+    return zero;
+}
+
+void IBSolverScalar3D::calc_ib_scalar()
+{
+    // Process each domain in the geometry tree
+    for (auto* domain : scalar_var->geometry->domains)
+    {
+        auto* particles = coord_map[domain];
+        auto* ib_data   = ib_map[domain];
+
+        EXPOSE_PCOORD3D(particles)
+        EXPOSE_PIBSCALAR(ib_data)
+
+        OPENMP_PARALLEL_FOR()
+        for (int i = 0; i < particles->cur_n; i++)
+        {
+            // X[i], Y[i], Z[i] are global coordinates
+            // ix, iy, iz are global grid indices
+            int ix = static_cast<int>(std::floor(X[i] / grid_h));
+            int iy = static_cast<int>(std::floor(Y[i] / grid_h));
+            int iz = static_cast<int>(std::floor(Z[i] / grid_h));
+
+            // For scalar: support domain is 5 points in x, y, and z
+            // range: [i-2, i+2] in each direction
+            int min_iix = ix - 2;
+            int max_iix = ix + 2;
+            int min_iiy = iy - 2;
+            int max_iiy = iy + 2;
+            int min_iiz = iz - 2;
+            int max_iiz = iz + 2;
+
+            Sf[i] = 0.0;
+            for (int iix = min_iix; iix <= max_iix; iix++)
+            {
+                for (int iiy = min_iiy; iiy <= max_iiy; iiy++)
+                {
+                    for (int iiz = min_iiz; iiz <= max_iiz; iiz++)
+                    {
+                        double xi         = iix * grid_h;
+                        double yi         = iiy * grid_h;
+                        double zi         = iiz * grid_h;
+                        double scalar_val = get_scalar_value(domain, iix, iiy, iiz);
+
+                        Sf[i] +=
+                            scalar_val * ib_delta(X[i] - xi, Y[i] - yi, Z[i] - zi, grid_h) * grid_h * grid_h * grid_h;
+                    }
+                }
+            }
+            Fs[i] = Sp[i] - Sf[i];
+            Fs_sum[i] += Fs[i];
+        }
+    }
+}
+
+void IBSolverScalar3D::apply_ib_scalar()
+{
+    // Process each domain in geometry tree
+    for (auto* domain : scalar_var->geometry->domains)
+    {
+        auto* particles = coord_map[domain];
+        auto* ib_data   = ib_map[domain];
+
+        EXPOSE_PCOORD3D(particles)
+        EXPOSE_PIBSCALAR(ib_data)
+
+        if (particles->cur_n == 0)
+        {
+            continue;
+        }
+
+        // Use PCoord cached global bounding box (support domain is ±2)
+        double min_X = particles->min_X;
+        double max_X = particles->max_X;
+        double min_Y = particles->min_Y;
+        double max_Y = particles->max_Y;
+        double min_Z = particles->min_Z;
+        double max_Z = particles->max_Z;
+
+        int min_ix = static_cast<int>(std::floor(min_X / grid_h)) - 2;
+        int max_ix = static_cast<int>(std::floor(max_X / grid_h)) + 2;
+        int min_iy = static_cast<int>(std::floor(min_Y / grid_h)) - 2;
+        int max_iy = static_cast<int>(std::floor(max_Y / grid_h)) + 2;
+        int min_iz = static_cast<int>(std::floor(min_Z / grid_h)) - 2;
+        int max_iz = static_cast<int>(std::floor(max_Z / grid_h)) + 2;
+
+        // scalar (cell-centered)
+        OPENMP_PARALLEL_FOR()
+        for (int i = min_ix; i <= max_ix; i++)
+        {
+            for (int j = min_iy; j <= max_iy; j++)
+            {
+                for (int k = min_iz; k <= max_iz; k++)
+                {
+                    double xx = i * grid_h;
+                    double yy = j * grid_h;
+                    double zz = k * grid_h;
+
+                    for (int ib = 0; ib < particles->cur_n; ib++)
+                    {
+                        double ib_force =
+                            Fs[ib] * ib_delta(xx - X[ib], yy - Y[ib], zz - Z[ib], grid_h) * ib_h * ib_h * grid_h;
+
+                        get_scalar_value(domain, i, j, k) += ib_force;
+                    }
+                }
+            }
+        }
+    }
+}

@@ -14,16 +14,14 @@
  *
  * We associate a discrete volume ΔV with each force point such that the union of
  * all these volumes forms a thin shell (of thickness equal to one mesh width) around each particle.
- * It means that ImmersedBoundary point volume
+ * It means that IB point volume
  * ΔV = ib_h * ib_h * grid_h in 3D
  * ΔV = ib_h * grid_h in 2D
  */
-class ImmersedBoundarySolver2D
+class IBSolver2D
 {
 public:
-    ImmersedBoundarySolver2D(Variable2D*                                      _u_var,
-                             Variable2D*                                      _v_var,
-                             std::unordered_map<Domain2DUniform*, PCoord2D*>& _coord_map);
+    IBSolver2D(Variable2D* _u_var, Variable2D* _v_var, std::unordered_map<Domain2DUniform*, PCoord2D*>& _coord_map);
 
     void solve();
 
@@ -42,7 +40,7 @@ public:
     }
 
     // Access IB data for a domain
-    PIB2D* get_ib_data(Domain2DUniform* domain) { return ib_map[domain]; }
+    PIB2D*                                        get_ib_data(Domain2DUniform* domain) { return ib_map[domain]; }
     std::unordered_map<Domain2DUniform*, PIB2D*>& get_ib_map() { return ib_map; }
 
 private:

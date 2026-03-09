@@ -2,9 +2,9 @@
 
 #include <cmath>
 
-ImmersedBoundarySolver2D::ImmersedBoundarySolver2D(Variable2D*                                      _u_var,
-                                                   Variable2D*                                      _v_var,
-                                                   std::unordered_map<Domain2DUniform*, PCoord2D*>& _coord_map)
+IBSolver2D::IBSolver2D(Variable2D*                                      _u_var,
+                       Variable2D*                                      _v_var,
+                       std::unordered_map<Domain2DUniform*, PCoord2D*>& _coord_map)
     : u_var(_u_var)
     , v_var(_v_var)
     , coord_map(_coord_map)
@@ -87,13 +87,13 @@ ImmersedBoundarySolver2D::ImmersedBoundarySolver2D(Variable2D*                  
     };
 }
 
-void ImmersedBoundarySolver2D::solve()
+void IBSolver2D::solve()
 {
     calc_ib_force();
     apply_ib_force();
 }
 
-double& ImmersedBoundarySolver2D::get_u_value(Domain2DUniform* domain, int iix, int iiy)
+double& IBSolver2D::get_u_value(Domain2DUniform* domain, int iix, int iiy)
 {
     // iix, iiy are GLOBAL grid indices
     // Compute global position of this u-face
@@ -154,7 +154,7 @@ double& ImmersedBoundarySolver2D::get_u_value(Domain2DUniform* domain, int iix, 
     return zero;
 }
 
-double& ImmersedBoundarySolver2D::get_v_value(Domain2DUniform* domain, int iix, int iiy)
+double& IBSolver2D::get_v_value(Domain2DUniform* domain, int iix, int iiy)
 {
     // iix, iiy are GLOBAL grid indices
     // Compute global position of this v-face
@@ -215,7 +215,7 @@ double& ImmersedBoundarySolver2D::get_v_value(Domain2DUniform* domain, int iix, 
     return zero;
 }
 
-void ImmersedBoundarySolver2D::calc_ib_force()
+void IBSolver2D::calc_ib_force()
 {
     // Process each domain in the geometry tree
     for (auto* domain : u_var->geometry->domains)
@@ -280,7 +280,7 @@ void ImmersedBoundarySolver2D::calc_ib_force()
     }
 }
 
-void ImmersedBoundarySolver2D::apply_ib_force()
+void IBSolver2D::apply_ib_force()
 {
     // Process each domain in the geometry tree
     for (auto* domain : u_var->geometry->domains)
