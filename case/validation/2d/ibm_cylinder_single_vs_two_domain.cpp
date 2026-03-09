@@ -10,8 +10,8 @@
 
 #include <cmath>
 #include <iostream>
-#include <vector>
 #include <tuple>
+#include <vector>
 
 // 简单初始化速度场：u = sin(x), v = cos(y)
 static void init_velocity_sin(Variable2D& u, Variable2D& v)
@@ -97,51 +97,25 @@ static void compare_velocity_fields(const Variable2D& u1,
     }
 }
 
-// 生成圆柱边界上的采样点
-static std::vector<std::tuple<double, double>> generate_cylinder_surface_points(double cx, double cy, double r, int n_points)
+// 采样并输出几个点的速度值，用于验证 IBM solver 工作正常
+static void sample_and_print_velocity(const Variable2D& u, const Variable2D& v, const std::string& label)
 {
-    std::vector<std::tuple<double, double>> points;
-    for (int i = 0; i < n_points; i++)
-    {
-        double theta = 2.0 * M_PI * i / n_points;
-        double x = cx + r * std::cos(theta);
-        double y = cy + r * std::sin(theta);
-        points.push_back({x, y});
-    }
-    return points;
-}
-
-// 打印几何信息
-static void print_geometry_info(const Geometry2D& geo, const std::string& label)
-{
-    std::cout << "[" << label << "] Geometry info:\n";
-    std::cout << "    Domain count: " << geo.domains.size() << "\n";
-    for (auto* d : geo.domains)
-    {
-        std::cout << "    Domain '" << d->name << "':\n";
-        std::cout << "        Offset: (" << d->get_offset_x() << "," << d->get_offset_y() << ")\n";
-        std::cout << "        Size: (" << d->get_lx() << "," << d->get_ly() << ")\n";
-        std::cout << "        Grid: (" << d->get_nx() << "," << d->get_ny() << ")\n";
-        std::cout << "        Spacing: (" << d->get_hx() << "," << d->get_hy() << ")\n";
-    }
-}
-
-// 采样并输出圆柱边界上的速度值
-static void sample_and_print_velocity(const Variable2D& u,
-                                      const Variable2D& v,
-                                      const std::string& label,
-                                      double cylinder_cx,
-                                      double cylinder_cy,
-                                      double cylinder_r)
-{
-    std::cout << "[" << label << "] Velocity samples on cylinder surface (r=" << cylinder_r << "):\n";
-    auto sample_points = generate_cylinder_surface_points(cylinder_cx, cylinder_cy, cylinder_r, 10);
+    std::cout << "[" << label << "] Velocity samples:\n";
+    std::vector<std::tuple<double, double>> sample_points = {
+        {0.5, 0.5},   // Center
+        {0.3, 0.5},   // Left of center
+        {0.7, 0.5},   // Right of center
+        {0.5, 0.3},   // Below center
+        {0.5, 0.7},   // Above center
+        {0.25, 0.25}, // Corner
+        {0.75, 0.75}, // Opposite corner
+    };
 
     for (const auto& [x, y] : sample_points)
     {
         double u_val = 0.0, v_val = 0.0;
-        bool u_ok = sample_u_at(u, x, y, u_val);
-        bool v_ok = sample_v_at(v, x, y, v_val);
+        bool   u_ok = sample_u_at(u, x, y, u_val);
+        bool   v_ok = sample_v_at(v, x, y, v_val);
         std::cout << "    (" << x << "," << y << ") u=" << (u_ok ? std::to_string(u_val) : "N/A")
                   << " v=" << (v_ok ? std::to_string(v_val) : "N/A") << "\n";
     }
@@ -206,6 +180,30 @@ static bool sample_v_at(const Variable2D& v, double x, double y, double& value)
         }
     }
     return false;
+}
+
+// 采样并输出几个点的速度值，用于验证 IBM solver 工作正常
+static void sample_and_print_velocity(const Variable2D& u, const Variable2D& v, const std::string& label)
+{
+    std::cout << "[" << label << "] Velocity samples:\n";
+    std::vector<std::tuple<double, double>> sample_points = {
+        {0.5, 0.5},   // Center
+        {0.3, 0.5},   // Left of center
+        {0.7, 0.5},   // Right of center
+        {0.5, 0.3},   // Below center
+        {0.5, 0.7},   // Above center
+        {0.25, 0.25}, // Corner
+        {0.75, 0.75}, // Opposite corner
+    };
+
+    for (const auto& [x, y] : sample_points)
+    {
+        double u_val = 0.0, v_val = 0.0;
+        bool   u_ok = sample_u_at(u, x, y, u_val);
+        bool   v_ok = sample_v_at(v, x, y, v_val);
+        std::cout << "    (" << x << "," << y << ") u=" << (u_ok ? std::to_string(u_val) : "N/A")
+                  << " v=" << (v_ok ? std::to_string(v_val) : "N/A") << "\n";
+    }
 }
 
 // 真正对比：单域 (u_single,v_single) 与 多域 (u_multi,v_multi) 在同一物理位置上的速度
