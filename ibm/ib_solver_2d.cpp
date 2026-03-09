@@ -89,7 +89,7 @@ ImmersedBoundarySolver2D::ImmersedBoundarySolver2D(Variable2D*                  
 
 void ImmersedBoundarySolver2D::solve()
 {
-    u2F();
+    calc_ib_force();
     apply_ib_force();
 }
 
@@ -219,16 +219,16 @@ double& ImmersedBoundarySolver2D::get_v_value(Domain2DUniform* domain, int iix, 
     return zero;
 }
 
-void ImmersedBoundarySolver2D::u2F()
+void ImmersedBoundarySolver2D::calc_ib_force()
 {
     // Process each domain in the geometry tree
     for (auto* domain : u_var->geometry->domains)
     {
-        auto& particles = *coord_map[domain];
-        auto& ib_data   = *ib_map[domain];
+        auto* particles = coord_map[domain];
+        auto* ib_data   = ib_map[domain];
 
-        EXPOSE_PCOORD2D(&particles)
-        EXPOSE_PIB2D(&ib_data)
+        EXPOSE_PCOORD2D(particles)
+        EXPOSE_PIB2D(ib_data)
 
         OPENMP_PARALLEL_FOR()
         for (int i = 0; i < particles.cur_n; i++)
@@ -285,11 +285,11 @@ void ImmersedBoundarySolver2D::apply_ib_force()
     // Process each domain in the geometry tree
     for (auto* domain : u_var->geometry->domains)
     {
-        auto& particles = *coord_map[domain];
-        auto& ib_data   = *ib_map[domain];
+        auto* particles = coord_map[domain];
+        auto* ib_data   = ib_map[domain];
 
-        EXPOSE_PCOORD2D(&particles)
-        EXPOSE_PIB2D(&ib_data)
+        EXPOSE_PCOORD2D(particles)
+        EXPOSE_PIB2D(ib_data)
 
         auto& u_recv = *u_var->field_map[domain];
         auto& v_recv = *v_var->field_map[domain];

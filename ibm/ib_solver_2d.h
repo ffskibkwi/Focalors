@@ -27,8 +27,7 @@ public:
 
     void solve();
 
-    void u2F();
-
+    void calc_ib_force();
     void apply_ib_force();
 
     // Helper function to get velocity reference from current or neighbor domain

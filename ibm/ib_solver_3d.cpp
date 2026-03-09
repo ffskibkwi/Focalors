@@ -178,7 +178,7 @@ ImmersedBoundarySolver3D::ImmersedBoundarySolver3D(Variable3D*                  
 
 void ImmersedBoundarySolver3D::solve()
 {
-    u2F();
+    calc_ib_force();
     apply_ib_force();
 }
 
@@ -193,8 +193,8 @@ double& ImmersedBoundarySolver3D::get_u_value(Domain3DUniform* domain, int iix, 
     double global_y = py + domain->get_offset_y();
     double global_z = pz + domain->get_offset_z();
 
-    auto try_map_u = [&](Domain3DUniform* d, double gx, double gy, double gz, double*& ptr,
-                         int& li, int& lj, int& lk) -> bool {
+    auto try_map_u =
+        [&](Domain3DUniform* d, double gx, double gy, double gz, double*& ptr, int& li, int& lj, int& lk) -> bool {
         double hx = d->get_hx();
         double hy = d->get_hy();
         double hz = d->get_hz();
@@ -264,8 +264,8 @@ double& ImmersedBoundarySolver3D::get_v_value(Domain3DUniform* domain, int iix, 
     double global_y = py + domain->get_offset_y();
     double global_z = pz + domain->get_offset_z();
 
-    auto try_map_v = [&](Domain3DUniform* d, double gx, double gy, double gz, double*& ptr,
-                         int& li, int& lj, int& lk) -> bool {
+    auto try_map_v =
+        [&](Domain3DUniform* d, double gx, double gy, double gz, double*& ptr, int& li, int& lj, int& lk) -> bool {
         double hx = d->get_hx();
         double hy = d->get_hy();
         double hz = d->get_hz();
@@ -335,8 +335,8 @@ double& ImmersedBoundarySolver3D::get_w_value(Domain3DUniform* domain, int iix, 
     double global_y = py + domain->get_offset_y();
     double global_z = pz + domain->get_offset_z();
 
-    auto try_map_w = [&](Domain3DUniform* d, double gx, double gy, double gz, double*& ptr,
-                         int& li, int& lj, int& lk) -> bool {
+    auto try_map_w =
+        [&](Domain3DUniform* d, double gx, double gy, double gz, double*& ptr, int& li, int& lj, int& lk) -> bool {
         double hx = d->get_hx();
         double hy = d->get_hy();
         double hz = d->get_hz();
@@ -394,51 +394,17 @@ double& ImmersedBoundarySolver3D::get_w_value(Domain3DUniform* domain, int iix, 
     static double zero = 0.0;
     return zero;
 }
-            int    other_nz       = other_domain->get_nz();
 
-            // Convert global to local coordinates
-            double local_x = global_x - other_offset_x;
-            double local_y = global_y - other_offset_y;
-            double local_z = global_z - other_offset_z;
-
-            // Check if within domain bounds (considering buffer regions)
-            if (local_x >= -0.5 * other_hx && local_x <= other_nx * other_hx + 0.5 * other_hx &&
-                local_y >= -0.5 * other_hy && local_y <= other_ny * other_hy + 0.5 * other_hy && local_z >= -other_hz &&
-                local_z <= other_nz * other_hz)
-            {
-                // Convert to grid indices for this domain
-                int local_iix = static_cast<int>(std::floor((local_x - 0.5 * other_hx) / other_hx));
-                int local_iiy = static_cast<int>(std::floor((local_y - 0.5 * other_hy) / other_hy));
-                int local_iiz = static_cast<int>(std::floor(local_z / other_hz));
-
-                auto  other_ctx = get_domain_context(other_domain);
-                auto& other_w   = *w_var->field_map[other_domain];
-
-                // Check if valid indices for this domain
-                // DomainContext can handle boundary buffer layers: i/j/k in [-1, nx/ny/nz]
-                if (local_iix >= -1 && local_iix <= other_w.get_nx() && local_iiy >= -1 &&
-                    local_iiy <= other_w.get_ny() && local_iiz >= -1 && local_iiz <= other_w.get_nz())
-                {
-                    return other_ctx.get_w(local_iix, local_iiy, local_iiz);
-                }
-            }
-        }
-    }
-
-    // If no neighbor found, return 0 (or handle boundary condition)
-    return 0.0;
-}
-
-void ImmersedBoundarySolver3D::u2F()
+void ImmersedBoundarySolver3D::calc_ib_force()
 {
     // Process each domain in the geometry tree
     for (auto* domain : u_var->geometry->domains)
     {
-        auto& particles = *coord_map[domain];
-        auto& ib_data   = *ib_map[domain];
+        auto* particles = coord_map[domain];
+        auto* ib_data   = ib_map[domain];
 
-        EXPOSE_PCOORD3D(&particles)
-        EXPOSE_PIB3D(&ib_data)
+        EXPOSE_PCOORD3D(particles)
+        EXPOSE_PIB3D(ib_data)
 
         OPENMP_PARALLEL_FOR()
         for (int i = 0; i < particles.cur_n; i++)
@@ -533,11 +499,11 @@ void ImmersedBoundarySolver3D::apply_ib_force()
     // Process each domain in geometry tree
     for (auto* domain : u_var->geometry->domains)
     {
-        auto& particles = *coord_map[domain];
-        auto& ib_data   = *ib_map[domain];
+        auto* particles = coord_map[domain];
+        auto* ib_data   = ib_map[domain];
 
-        EXPOSE_PCOORD3D(&particles)
-        EXPOSE_PIB3D(&ib_data)
+        EXPOSE_PCOORD3D(particles)
+        EXPOSE_PIB3D(ib_data)
 
         auto& u_recv = *u_var->field_map[domain];
         auto& v_recv = *v_var->field_map[domain];
