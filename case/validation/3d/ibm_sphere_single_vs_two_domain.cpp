@@ -49,7 +49,7 @@ static bool sample_u_at(const Variable3D& u, double x, double y, double z, doubl
         static int debug_counter = 0;
         if (debug_counter < 10 && (i < 0 || i >= f.get_nx() || j < 0 || j >= f.get_ny() || k < 0 || k >= f.get_nz()))
         {
-            std::cout << "[DEBUG sample_u_at] Point (" << x << "," << y << "," << z << ") in domain '" << d->get_name()
+            std::cout << "[DEBUG sample_u_at] Point (" << x << "," << y << "," << z << ") in domain '" << d->name
                       << "'\n";
             std::cout << "    Computed indices: i=" << i << ", j=" << j << ", k=" << k << "\n";
             std::cout << "    Field size: nx=" << f.get_nx() << ", ny=" << f.get_ny() << ", nz=" << f.get_nz() << "\n";
@@ -158,7 +158,7 @@ static void compare_velocity_fields_phys(const Variable3D& u_single,
     std::cout << "[DEBUG] Single domain count: " << geo_single->domains.size() << "\n";
     for (auto* d : geo_single->domains)
     {
-        std::cout << "[DEBUG] Single domain '" << d->get_name() << "': offset=(" << d->get_offset_x() << ","
+        std::cout << "[DEBUG] Single domain '" << d->name << "': offset=(" << d->get_offset_x() << ","
                   << d->get_offset_y() << "," << d->get_offset_z() << "), size=(" << d->get_nx() << "," << d->get_ny()
                   << "," << d->get_nz() << ")\n";
     }
@@ -166,7 +166,7 @@ static void compare_velocity_fields_phys(const Variable3D& u_single,
     std::cout << "[DEBUG] Multi domain count: " << geo_multi->domains.size() << "\n";
     for (auto* d : geo_multi->domains)
     {
-        std::cout << "[DEBUG] Multi domain '" << d->get_name() << "': offset=(" << d->get_offset_x() << ","
+        std::cout << "[DEBUG] Multi domain '" << d->name << "': offset=(" << d->get_offset_x() << ","
                   << d->get_offset_y() << "," << d->get_offset_z() << "), size=(" << d->get_nx() << "," << d->get_ny()
                   << "," << d->get_nz() << ")\n";
     }
@@ -217,7 +217,7 @@ static void compare_velocity_fields_phys(const Variable3D& u_single,
 
                             if (x >= mox && x <= mox + mlx && y >= moy && y <= moy + mly && z >= moz && z <= moz + mlz)
                             {
-                                std::cout << "    [DEBUG] Point is in multi-domain '" << md->get_name() << "'\n";
+                                std::cout << "    [DEBUG] Point is in multi-domain '" << md->name << "'\n";
                                 std::cout << "    [DEBUG] Domain bounds: x=[" << mox << "," << mox + mlx << "], y=["
                                           << moy << "," << moy + mly << "], z=[" << moz << "," << moz + mlz << "]\n";
 
@@ -394,7 +394,7 @@ int main(int /*argc*/, char* /*argv*/[])
     for (auto* d : geo_multi.domains)
     {
         auto& f = *u_multi.field_map.at(d);
-        std::cout << "    Domain '" << d->get_name() << "': sample values\n";
+        std::cout << "    Domain '" << d->name << "': sample values\n";
         for (int k = 0; k < std::min(3, f.get_nz()); ++k)
         {
             for (int j = 0; j < std::min(3, f.get_ny()); ++j)

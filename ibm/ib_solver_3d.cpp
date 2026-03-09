@@ -194,7 +194,7 @@ double& ImmersedBoundarySolver3D::get_u_value(Domain3DUniform* domain, int iix, 
     double global_z = pz + domain->get_offset_z();
 
     static int debug_counter = 0;
-    bool should_debug = (debug_counter < 20);
+    bool       should_debug  = (debug_counter < 20);
 
     auto try_map_u =
         [&](Domain3DUniform* d, double gx, double gy, double gz, double*& ptr, int& li, int& lj, int& lk) -> bool {
@@ -220,10 +220,10 @@ double& ImmersedBoundarySolver3D::get_u_value(Domain3DUniform* domain, int iix, 
 
             if (should_debug)
             {
-                std::cout << "[DEBUG get_u_value] Mapped to domain '" << d->get_name() << "' at ("
-                          << global_x << "," << global_y << "," << global_z << ")\n";
-                std::cout << "    Grid indices: (" << iix << "," << iiy << "," << iiz << ") -> (" << ui << ","
-                          << uj << "," << uk << ")\n";
+                std::cout << "[DEBUG get_u_value] Mapped to domain '" << d->name << "' at (" << global_x << ","
+                          << global_y << "," << global_z << ")\n";
+                std::cout << "    Grid indices: (" << iix << "," << iiy << "," << iiz << ") -> (" << ui << "," << uj
+                          << "," << uk << ")\n";
                 std::cout << "    Value: " << u(ui, uj, uk) << "\n";
                 debug_counter++;
             }
@@ -231,10 +231,10 @@ double& ImmersedBoundarySolver3D::get_u_value(Domain3DUniform* domain, int iix, 
         }
         if (should_debug)
         {
-            std::cout << "[DEBUG get_u_value] FAILED to map to domain '" << d->get_name() << "' at ("
-                      << global_x << "," << global_y << "," << global_z << ")\n";
-            std::cout << "    Computed indices: (" << ui << "," << uj << "," << uk << "), bounds: (0-"
-                      << u.get_nx() << ",0-" << u.get_ny() << ",0-" << u.get_nz() << ")\n";
+            std::cout << "[DEBUG get_u_value] FAILED to map to domain '" << d->name << "' at (" << global_x << ","
+                      << global_y << "," << global_z << ")\n";
+            std::cout << "    Computed indices: (" << ui << "," << uj << "," << uk << "), bounds: (0-" << u.get_nx()
+                      << ",0-" << u.get_ny() << ",0-" << u.get_nz() << ")\n";
             std::cout << "    Local coords: (" << local_x << "," << local_y << "," << local_z << ")\n";
             std::cout << "    Grid spacing: (" << hx << "," << hy << "," << hz << ")\n";
         }
