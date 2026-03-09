@@ -59,31 +59,6 @@ static void print_geometry_info(const Geometry3D& geo, const std::string& label)
     }
 }
 
-// 采样并输出球体边界上的速度值
-static void sample_and_print_velocity(const Variable3D&  u,
-                                      const Variable3D&  v,
-                                      const Variable3D&  w,
-                                      const std::string& label,
-                                      double             sphere_cx,
-                                      double             sphere_cy,
-                                      double             sphere_cz,
-                                      double             sphere_r)
-{
-    std::cout << "[" << label << "] Velocity samples on sphere surface (r=" << sphere_r << "):\n";
-    auto sample_points = generate_sphere_surface_points(sphere_cx, sphere_cy, sphere_cz, sphere_r, 10);
-
-    for (const auto& [x, y, z] : sample_points)
-    {
-        double u_val = 0.0, v_val = 0.0, w_val = 0.0;
-        bool   u_ok = sample_u_at(u, x, y, z, u_val);
-        bool   v_ok = sample_v_at(v, x, y, z, v_val);
-        bool   w_ok = sample_w_at(w, x, y, z, w_val);
-        std::cout << "    (" << x << "," << y << "," << z << ") u=" << (u_ok ? std::to_string(u_val) : "N/A")
-                  << " v=" << (v_ok ? std::to_string(v_val) : "N/A") << " w=" << (w_ok ? std::to_string(w_val) : "N/A")
-                  << "\n";
-    }
-}
-
 // 在给定物理坐标 (x,y,z) 上，从 Variable3D 中采样 u/v/w（面心变量）
 static bool sample_u_at(const Variable3D& u, double x, double y, double z, double& value)
 {
@@ -187,22 +162,18 @@ static bool sample_w_at(const Variable3D& w, double x, double y, double z, doubl
     return false;
 }
 
-// 采样并输出几个点的速度值，用于验证 IBM solver 工作正常
-static void
-sample_and_print_velocity(const Variable3D& u, const Variable3D& v, const Variable3D& w, const std::string& label)
+// 采样并输出球体边界上的速度值
+static void sample_and_print_velocity(const Variable3D&  u,
+                                      const Variable3D&  v,
+                                      const Variable3D&  w,
+                                      const std::string& label,
+                                      double             sphere_cx,
+                                      double             sphere_cy,
+                                      double             sphere_cz,
+                                      double             sphere_r)
 {
-    std::cout << "[" << label << "] Velocity samples:\n";
-    std::vector<std::tuple<double, double, double>> sample_points = {
-        {0.5, 0.5, 0.5},    // Center
-        {0.3, 0.5, 0.5},    // Left of center
-        {0.7, 0.5, 0.5},    // Right of center
-        {0.5, 0.3, 0.5},    // Below center
-        {0.5, 0.7, 0.5},    // Above center
-        {0.5, 0.5, 0.3},    // Front of center
-        {0.5, 0.5, 0.7},    // Back of center
-        {0.25, 0.25, 0.25}, // Corner
-        {0.75, 0.75, 0.75}, // Opposite corner
-    };
+    std::cout << "[" << label << "] Velocity samples on sphere surface (r=" << sphere_r << "):\n";
+    auto sample_points = generate_sphere_surface_points(sphere_cx, sphere_cy, sphere_cz, sphere_r, 10);
 
     for (const auto& [x, y, z] : sample_points)
     {
@@ -323,20 +294,6 @@ int main(int /*argc*/, char* /*argv*/[])
     const double hx = LX / NX_TOTAL;
     const double hy = LY / NY_TOTAL;
     const double hz = LZ / NZ_TOTAL;
-
-    // IBM 粒子：在立方体中间放一个球
-    const double cx = 0.5 * LX;
-    const double cy = 0.5 * LY;
-    const double cz = 0.5 * LZ;
-    const double r  = 0.15 * LX;
-
-    std::cout << "=== IBM 3D Sphere Validation ===\n";
-    std::cout << "Computational domain: [" << 0 << "," << LX << "] x [" << 0 << "," << LY << "] x [" << 0 << "," << LZ
-              << "]\n";
-    std::cout << "Grid size: " << NX_TOTAL << " x " << NY_TOTAL << " x " << NZ_TOTAL << "\n";
-    std::cout << "Grid spacing: (" << hx << "," << hy << "," << hz << ")\n";
-    std::cout << "IBM sphere: center=(" << cx << "," << cy << "," << cz << "), radius=" << r << "\n";
-    std::cout << "Number of IBM particles: 400\n\n";
 
     // IBM 粒子：在立方体中间放一个球
     const double cx = 0.5 * LX;
