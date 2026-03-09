@@ -19,34 +19,6 @@ static void init_velocity_sin(Variable3D& u, Variable3D& v, Variable3D& w)
     w.set_value([](double /*x*/, double /*y*/, double z) { return std::sin(z); });
 }
 
-// 采样并输出几个点的速度值，用于验证 IBM solver 工作正常
-static void sample_and_print_velocity(const Variable3D& u, const Variable3D& v, const Variable3D& w, const std::string& label)
-{
-    std::cout << "[" << label << "] Velocity samples:\n";
-    std::vector<std::tuple<double, double, double>> sample_points = {
-        {0.5, 0.5, 0.5},    // Center
-        {0.3, 0.5, 0.5},    // Left of center
-        {0.7, 0.5, 0.5},    // Right of center
-        {0.5, 0.3, 0.5},    // Below center
-        {0.5, 0.7, 0.5},    // Above center
-        {0.5, 0.5, 0.3},    // Front of center
-        {0.5, 0.5, 0.7},    // Back of center
-        {0.25, 0.25, 0.25}, // Corner
-        {0.75, 0.75, 0.75}, // Opposite corner
-    };
-
-    for (const auto& [x, y, z] : sample_points)
-    {
-        double u_val = 0.0, v_val = 0.0, w_val = 0.0;
-        bool u_ok = sample_u_at(u, x, y, z, u_val);
-        bool v_ok = sample_v_at(v, x, y, z, v_val);
-        bool w_ok = sample_w_at(w, x, y, z, w_val);
-        std::cout << "    (" << x << "," << y << "," << z << ") u=" << (u_ok ? std::to_string(u_val) : "N/A")
-                  << " v=" << (v_ok ? std::to_string(v_val) : "N/A")
-                  << " w=" << (w_ok ? std::to_string(w_val) : "N/A") << "\n";
-    }
-}
-
 // 在给定物理坐标 (x,y,z) 上，从 Variable3D 中采样 u/v/w（面心变量）
 static bool sample_u_at(const Variable3D& u, double x, double y, double z, double& value)
 {
@@ -148,6 +120,35 @@ static bool sample_w_at(const Variable3D& w, double x, double y, double z, doubl
         }
     }
     return false;
+}
+
+// 采样并输出几个点的速度值，用于验证 IBM solver 工作正常
+static void
+sample_and_print_velocity(const Variable3D& u, const Variable3D& v, const Variable3D& w, const std::string& label)
+{
+    std::cout << "[" << label << "] Velocity samples:\n";
+    std::vector<std::tuple<double, double, double>> sample_points = {
+        {0.5, 0.5, 0.5},    // Center
+        {0.3, 0.5, 0.5},    // Left of center
+        {0.7, 0.5, 0.5},    // Right of center
+        {0.5, 0.3, 0.5},    // Below center
+        {0.5, 0.7, 0.5},    // Above center
+        {0.5, 0.5, 0.3},    // Front of center
+        {0.5, 0.5, 0.7},    // Back of center
+        {0.25, 0.25, 0.25}, // Corner
+        {0.75, 0.75, 0.75}, // Opposite corner
+    };
+
+    for (const auto& [x, y, z] : sample_points)
+    {
+        double u_val = 0.0, v_val = 0.0, w_val = 0.0;
+        bool   u_ok = sample_u_at(u, x, y, z, u_val);
+        bool   v_ok = sample_v_at(v, x, y, z, v_val);
+        bool   w_ok = sample_w_at(w, x, y, z, w_val);
+        std::cout << "    (" << x << "," << y << "," << z << ") u=" << (u_ok ? std::to_string(u_val) : "N/A")
+                  << " v=" << (v_ok ? std::to_string(v_val) : "N/A") << " w=" << (w_ok ? std::to_string(w_val) : "N/A")
+                  << "\n";
+    }
 }
 
 // 真正对比：单域 (u_single,v_single,w_single) 与 多域 (u_multi,v_multi,w_multi)

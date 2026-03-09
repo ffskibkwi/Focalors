@@ -10,8 +10,8 @@
 
 #include <cmath>
 #include <iostream>
-#include <vector>
 #include <tuple>
+#include <vector>
 
 // 简单初始化速度场：u = sin(x), v = cos(y)
 static void init_velocity_sin(Variable2D& u, Variable2D& v)
@@ -97,30 +97,6 @@ static void compare_velocity_fields(const Variable2D& u1,
     }
 }
 
-// 采样并输出几个点的速度值，用于验证 IBM solver 工作正常
-static void sample_and_print_velocity(const Variable2D& u, const Variable2D& v, const std::string& label)
-{
-    std::cout << "[" << label << "] Velocity samples:\n";
-    std::vector<std::tuple<double, double>> sample_points = {
-        {0.5, 0.5},    // Center
-        {0.3, 0.5},    // Left of center
-        {0.7, 0.5},    // Right of center
-        {0.5, 0.3},    // Below center
-        {0.5, 0.7},    // Above center
-        {0.25, 0.25}, // Corner
-        {0.75, 0.75}, // Opposite corner
-    };
-
-    for (const auto& [x, y] : sample_points)
-    {
-        double u_val = 0.0, v_val = 0.0;
-        bool u_ok = sample_u_at(u, x, y, u_val);
-        bool v_ok = sample_v_at(v, x, y, v_val);
-        std::cout << "    (" << x << "," << y << ") u=" << (u_ok ? std::to_string(u_val) : "N/A")
-                  << " v=" << (v_ok ? std::to_string(v_val) : "N/A") << "\n";
-    }
-}
-
 // 在给定物理坐标 (x,y) 上，从 Variable2D 中采样 u(x,y)（x-face centered）/ v(x,y)（y-face centered）
 static bool sample_u_at(const Variable2D& u, double x, double y, double& value)
 {
@@ -180,6 +156,30 @@ static bool sample_v_at(const Variable2D& v, double x, double y, double& value)
         }
     }
     return false;
+}
+
+// 采样并输出几个点的速度值，用于验证 IBM solver 工作正常
+static void sample_and_print_velocity(const Variable2D& u, const Variable2D& v, const std::string& label)
+{
+    std::cout << "[" << label << "] Velocity samples:\n";
+    std::vector<std::tuple<double, double>> sample_points = {
+        {0.5, 0.5},   // Center
+        {0.3, 0.5},   // Left of center
+        {0.7, 0.5},   // Right of center
+        {0.5, 0.3},   // Below center
+        {0.5, 0.7},   // Above center
+        {0.25, 0.25}, // Corner
+        {0.75, 0.75}, // Opposite corner
+    };
+
+    for (const auto& [x, y] : sample_points)
+    {
+        double u_val = 0.0, v_val = 0.0;
+        bool   u_ok = sample_u_at(u, x, y, u_val);
+        bool   v_ok = sample_v_at(v, x, y, v_val);
+        std::cout << "    (" << x << "," << y << ") u=" << (u_ok ? std::to_string(u_val) : "N/A")
+                  << " v=" << (v_ok ? std::to_string(v_val) : "N/A") << "\n";
+    }
 }
 
 // 真正对比：单域 (u_single,v_single) 与 多域 (u_multi,v_multi) 在同一物理位置上的速度
