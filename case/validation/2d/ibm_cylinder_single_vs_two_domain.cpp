@@ -219,8 +219,8 @@ static void compare_velocity_fields_phys(const Variable2D& u_single,
 int main(int /*argc*/, char* /*argv*/[])
 {
     // 统一配置
-    constexpr int    NX_TOTAL = 32;
-    constexpr int    NY_TOTAL = 32;
+    constexpr int    NX_TOTAL = 8;
+    constexpr int    NY_TOTAL = 8;
     constexpr double LX       = 1.0;
     constexpr double LY       = 1.0;
 

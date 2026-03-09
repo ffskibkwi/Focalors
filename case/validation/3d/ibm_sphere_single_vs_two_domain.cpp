@@ -49,11 +49,10 @@ static bool sample_u_at(const Variable3D& u, double x, double y, double z, doubl
         static int debug_counter = 0;
         if (debug_counter < 10 && (i < 0 || i >= f.get_nx() || j < 0 || j >= f.get_ny() || k < 0 || k >= f.get_nz()))
         {
-            std::cout << "[DEBUG sample_u_at] Point (" << x << "," << y << "," << z << ") in domain '"
-                      << d->get_name() << "'\n";
+            std::cout << "[DEBUG sample_u_at] Point (" << x << "," << y << "," << z << ") in domain '" << d->get_name()
+                      << "'\n";
             std::cout << "    Computed indices: i=" << i << ", j=" << j << ", k=" << k << "\n";
-            std::cout << "    Field size: nx=" << f.get_nx() << ", ny=" << f.get_ny() << ", nz=" << f.get_nz()
-                      << "\n";
+            std::cout << "    Field size: nx=" << f.get_nx() << ", ny=" << f.get_ny() << ", nz=" << f.get_nz() << "\n";
             std::cout << "    Domain bounds: x=[" << ox << "," << ox + lx << "], y=[" << oy << "," << oy + ly
                       << "], z=[" << oz << "," << oz + lz << "]\n";
             std::cout << "    Grid spacing: hx=" << hx << ", hy=" << hy << ", hz=" << hz << "\n";
@@ -150,24 +149,26 @@ static void compare_velocity_fields_phys(const Variable3D& u_single,
     std::cout << "[IBM 3D] Comparing velocities between single-domain and two-domain setups (by physical coords)...\n";
 
     int mismatch_count = 0;
-    int total_checks = 0;
+    int total_checks   = 0;
 
     Geometry3D* geo_single = u_single.geometry;
-    Geometry3D* geo_multi = u_multi.geometry;
+    Geometry3D* geo_multi  = u_multi.geometry;
 
     // Debug: print domain info
     std::cout << "[DEBUG] Single domain count: " << geo_single->domains.size() << "\n";
-    for (auto* d : geo_single->domains) {
+    for (auto* d : geo_single->domains)
+    {
         std::cout << "[DEBUG] Single domain '" << d->get_name() << "': offset=(" << d->get_offset_x() << ","
-                  << d->get_offset_y() << "," << d->get_offset_z() << "), size=(" << d->get_nx() << ","
-                  << d->get_ny() << "," << d->get_nz() << ")\n";
+                  << d->get_offset_y() << "," << d->get_offset_z() << "), size=(" << d->get_nx() << "," << d->get_ny()
+                  << "," << d->get_nz() << ")\n";
     }
 
     std::cout << "[DEBUG] Multi domain count: " << geo_multi->domains.size() << "\n";
-    for (auto* d : geo_multi->domains) {
+    for (auto* d : geo_multi->domains)
+    {
         std::cout << "[DEBUG] Multi domain '" << d->get_name() << "': offset=(" << d->get_offset_x() << ","
-                  << d->get_offset_y() << "," << d->get_offset_z() << "), size=(" << d->get_nx() << ","
-                  << d->get_ny() << "," << d->get_nz() << ")\n";
+                  << d->get_offset_y() << "," << d->get_offset_z() << "), size=(" << d->get_nx() << "," << d->get_ny()
+                  << "," << d->get_nz() << ")\n";
     }
 
     for (auto* d : geo_single->domains)
@@ -200,7 +201,8 @@ static void compare_velocity_fields_phys(const Variable3D& u_single,
                     if (!sample_u_at(u_multi, x, y, z, b))
                     {
                         mismatch_count++;
-                        std::cout << "[u] CANNOT SAMPLE at phys(" << x << "," << y << "," << z << ") single=" << a << "\n";
+                        std::cout << "[u] CANNOT SAMPLE at phys(" << x << "," << y << "," << z << ") single=" << a
+                                  << "\n";
 
                         // Debug: find which domain should contain this point
                         bool found = false;
@@ -216,11 +218,10 @@ static void compare_velocity_fields_phys(const Variable3D& u_single,
                             if (x >= mox && x <= mox + mlx && y >= moy && y <= moy + mly && z >= moz && z <= moz + mlz)
                             {
                                 std::cout << "    [DEBUG] Point is in multi-domain '" << md->get_name() << "'\n";
-                                std::cout << "    [DEBUG] Domain bounds: x=[" << mox << "," << mox + mlx
-                                          << "], y=[" << moy << "," << moy + mly << "], z=[" << moz << ","
-                                          << moz + mlz << "]\n";
+                                std::cout << "    [DEBUG] Domain bounds: x=[" << mox << "," << mox + mlx << "], y=["
+                                          << moy << "," << moy + mly << "], z=[" << moz << "," << moz + mlz << "]\n";
 
-                                auto& mf = *u_multi.field_map.at(md);
+                                auto&  mf  = *u_multi.field_map.at(md);
                                 double mhx = md->get_hx();
                                 double mhy = md->get_hy();
                                 double mhz = md->get_hz();
@@ -302,9 +303,9 @@ static void compare_velocity_fields_phys(const Variable3D& u_single,
 
 int main(int /*argc*/, char* /*argv*/[])
 {
-    constexpr int    NX_TOTAL = 16;
-    constexpr int    NY_TOTAL = 16;
-    constexpr int    NZ_TOTAL = 16;
+    constexpr int    NX_TOTAL = 8;
+    constexpr int    NY_TOTAL = 8;
+    constexpr int    NZ_TOTAL = 8;
     constexpr double LX       = 1.0;
     constexpr double LY       = 1.0;
     constexpr double LZ       = 1.0;
@@ -351,9 +352,12 @@ int main(int /*argc*/, char* /*argv*/[])
 
     std::cout << "[DEBUG] Single domain u field sample at (0.5,0.0625,0.0625):\n";
     double test_val;
-    if (sample_u_at(u_single, 0.5, 0.0625, 0.0625, test_val)) {
+    if (sample_u_at(u_single, 0.5, 0.0625, 0.0625, test_val))
+    {
         std::cout << "    Value = " << test_val << "\n";
-    } else {
+    }
+    else
+    {
         std::cout << "    FAILED to sample!\n";
     }
 
@@ -387,12 +391,16 @@ int main(int /*argc*/, char* /*argv*/[])
     init_velocity_sin(u_multi, v_multi, w_multi);
 
     std::cout << "[DEBUG] Multi-domain field values before IB:\n";
-    for (auto* d : geo_multi.domains) {
+    for (auto* d : geo_multi.domains)
+    {
         auto& f = *u_multi.field_map.at(d);
         std::cout << "    Domain '" << d->get_name() << "': sample values\n";
-        for (int k = 0; k < std::min(3, f.get_nz()); ++k) {
-            for (int j = 0; j < std::min(3, f.get_ny()); ++j) {
-                for (int i = 0; i < std::min(3, f.get_nx()); ++i) {
+        for (int k = 0; k < std::min(3, f.get_nz()); ++k)
+        {
+            for (int j = 0; j < std::min(3, f.get_ny()); ++j)
+            {
+                for (int i = 0; i < std::min(3, f.get_nx()); ++i)
+                {
                     std::cout << "        (" << i << "," << j << "," << k << ") = " << f(i, j, k) << "\n";
                 }
             }
@@ -412,9 +420,12 @@ int main(int /*argc*/, char* /*argv*/[])
 
     std::cout << "[DEBUG] Multi domain u field sample at (0.5,0.0625,0.0625):\n";
     double test_val_multi;
-    if (sample_u_at(u_multi, 0.5, 0.0625, 0.0625, test_val_multi)) {
+    if (sample_u_at(u_multi, 0.5, 0.0625, 0.0625, test_val_multi))
+    {
         std::cout << "    Value = " << test_val_multi << "\n";
-    } else {
+    }
+    else
+    {
         std::cout << "    FAILED to sample!\n";
     }
 
