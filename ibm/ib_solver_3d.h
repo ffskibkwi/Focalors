@@ -44,6 +44,10 @@ public:
         grid_h = grid_spacing;
     }
 
+    // Access IB data for a domain
+    PIB3D*                                        get_ib_data(Domain3DUniform* domain) { return ib_map[domain]; }
+    std::unordered_map<Domain3DUniform*, PIB3D*>& get_ib_map() { return ib_map; }
+
 private:
     Variable3D* u_var;
     Variable3D* v_var;
