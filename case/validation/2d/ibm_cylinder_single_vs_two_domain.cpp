@@ -10,6 +10,8 @@
 
 #include <cmath>
 #include <iostream>
+#include <vector>
+#include <tuple>
 
 // 简单初始化速度场：u = sin(x), v = cos(y)
 static void init_velocity_sin(Variable2D& u, Variable2D& v)
@@ -92,6 +94,30 @@ static void compare_velocity_fields(const Variable2D& u1,
                 }
             }
         }
+    }
+}
+
+// 采样并输出几个点的速度值，用于验证 IBM solver 工作正常
+static void sample_and_print_velocity(const Variable2D& u, const Variable2D& v, const std::string& label)
+{
+    std::cout << "[" << label << "] Velocity samples:\n";
+    std::vector<std::tuple<double, double>> sample_points = {
+        {0.5, 0.5},    // Center
+        {0.3, 0.5},    // Left of center
+        {0.7, 0.5},    // Right of center
+        {0.5, 0.3},    // Below center
+        {0.5, 0.7},    // Above center
+        {0.25, 0.25}, // Corner
+        {0.75, 0.75}, // Opposite corner
+    };
+
+    for (const auto& [x, y] : sample_points)
+    {
+        double u_val = 0.0, v_val = 0.0;
+        bool u_ok = sample_u_at(u, x, y, u_val);
+        bool v_ok = sample_v_at(v, x, y, v_val);
+        std::cout << "    (" << x << "," << y << ") u=" << (u_ok ? std::to_string(u_val) : "N/A")
+                  << " v=" << (v_ok ? std::to_string(v_val) : "N/A") << "\n";
     }
 }
 
@@ -258,7 +284,13 @@ int main(int /*argc*/, char* /*argv*/[])
     ImmersedBoundarySolver2D ibm_single(&u_single, &v_single, coord_map_single_raw);
     ibm_single.set_parameters(coord_map_single.get_h(), hx);
 
+    // Sample before IBM solve
+    sample_and_print_velocity(u_single, v_single, "Single Domain (Before IBM)");
+
     ibm_single.solve();
+
+    // Sample after IBM solve
+    sample_and_print_velocity(u_single, v_single, "Single Domain (After IBM)");
 
     // ------------------ 情况 2：两个 domain 拼接 ------------------
     Geometry2D geo_multi;
@@ -297,7 +329,13 @@ int main(int /*argc*/, char* /*argv*/[])
     ImmersedBoundarySolver2D ibm_multi(&u_multi, &v_multi, coord_map_multi_raw);
     ibm_multi.set_parameters(coord_map_multi.get_h(), hx);
 
+    // Sample before IBM solve
+    sample_and_print_velocity(u_multi, v_multi, "Multi Domain (Before IBM)");
+
     ibm_multi.solve();
+
+    // Sample after IBM solve
+    sample_and_print_velocity(u_multi, v_multi, "Multi Domain (After IBM)");
 
     // 为了在同一个几何/域索引下比较，把 multi 的结果复制到 single 几何布局下。
     // 这里简化处理：geo_multi 和 geo_single 在物理空间完全重合，只是划分不同；

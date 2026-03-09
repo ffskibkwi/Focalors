@@ -19,6 +19,34 @@ static void init_velocity_sin(Variable3D& u, Variable3D& v, Variable3D& w)
     w.set_value([](double /*x*/, double /*y*/, double z) { return std::sin(z); });
 }
 
+// 采样并输出几个点的速度值，用于验证 IBM solver 工作正常
+static void sample_and_print_velocity(const Variable3D& u, const Variable3D& v, const Variable3D& w, const std::string& label)
+{
+    std::cout << "[" << label << "] Velocity samples:\n";
+    std::vector<std::tuple<double, double, double>> sample_points = {
+        {0.5, 0.5, 0.5},    // Center
+        {0.3, 0.5, 0.5},    // Left of center
+        {0.7, 0.5, 0.5},    // Right of center
+        {0.5, 0.3, 0.5},    // Below center
+        {0.5, 0.7, 0.5},    // Above center
+        {0.5, 0.5, 0.3},    // Front of center
+        {0.5, 0.5, 0.7},    // Back of center
+        {0.25, 0.25, 0.25}, // Corner
+        {0.75, 0.75, 0.75}, // Opposite corner
+    };
+
+    for (const auto& [x, y, z] : sample_points)
+    {
+        double u_val = 0.0, v_val = 0.0, w_val = 0.0;
+        bool u_ok = sample_u_at(u, x, y, z, u_val);
+        bool v_ok = sample_v_at(v, x, y, z, v_val);
+        bool w_ok = sample_w_at(w, x, y, z, w_val);
+        std::cout << "    (" << x << "," << y << "," << z << ") u=" << (u_ok ? std::to_string(u_val) : "N/A")
+                  << " v=" << (v_ok ? std::to_string(v_val) : "N/A")
+                  << " w=" << (w_ok ? std::to_string(w_val) : "N/A") << "\n";
+    }
+}
+
 // 在给定物理坐标 (x,y,z) 上，从 Variable3D 中采样 u/v/w（面心变量）
 static bool sample_u_at(const Variable3D& u, double x, double y, double z, double& value)
 {
@@ -44,20 +72,6 @@ static bool sample_u_at(const Variable3D& u, double x, double y, double z, doubl
         int i = static_cast<int>(std::round((x - ox) / hx));
         int j = static_cast<int>(std::round((y - oy) / hy - 0.5));
         int k = static_cast<int>(std::round((z - oz) / hz - 0.5));
-
-        // Debug output for boundary cases
-        static int debug_counter = 0;
-        if (debug_counter < 10 && (i < 0 || i >= f.get_nx() || j < 0 || j >= f.get_ny() || k < 0 || k >= f.get_nz()))
-        {
-            std::cout << "[DEBUG sample_u_at] Point (" << x << "," << y << "," << z << ") in domain '" << d->name
-                      << "'\n";
-            std::cout << "    Computed indices: i=" << i << ", j=" << j << ", k=" << k << "\n";
-            std::cout << "    Field size: nx=" << f.get_nx() << ", ny=" << f.get_ny() << ", nz=" << f.get_nz() << "\n";
-            std::cout << "    Domain bounds: x=[" << ox << "," << ox + lx << "], y=[" << oy << "," << oy + ly
-                      << "], z=[" << oz << "," << oz + lz << "]\n";
-            std::cout << "    Grid spacing: hx=" << hx << ", hy=" << hy << ", hz=" << hz << "\n";
-            debug_counter++;
-        }
 
         if (i >= 0 && i < f.get_nx() && j >= 0 && j < f.get_ny() && k >= 0 && k < f.get_nz())
         {
@@ -148,28 +162,7 @@ static void compare_velocity_fields_phys(const Variable3D& u_single,
 {
     std::cout << "[IBM 3D] Comparing velocities between single-domain and two-domain setups (by physical coords)...\n";
 
-    int mismatch_count = 0;
-    int total_checks   = 0;
-
     Geometry3D* geo_single = u_single.geometry;
-    Geometry3D* geo_multi  = u_multi.geometry;
-
-    // Debug: print domain info
-    std::cout << "[DEBUG] Single domain count: " << geo_single->domains.size() << "\n";
-    for (auto* d : geo_single->domains)
-    {
-        std::cout << "[DEBUG] Single domain '" << d->name << "': offset=(" << d->get_offset_x() << ","
-                  << d->get_offset_y() << "," << d->get_offset_z() << "), size=(" << d->get_nx() << "," << d->get_ny()
-                  << "," << d->get_nz() << ")\n";
-    }
-
-    std::cout << "[DEBUG] Multi domain count: " << geo_multi->domains.size() << "\n";
-    for (auto* d : geo_multi->domains)
-    {
-        std::cout << "[DEBUG] Multi domain '" << d->name << "': offset=(" << d->get_offset_x() << ","
-                  << d->get_offset_y() << "," << d->get_offset_z() << "), size=(" << d->get_nx() << "," << d->get_ny()
-                  << "," << d->get_nz() << ")\n";
-    }
 
     for (auto* d : geo_single->domains)
     {
@@ -197,57 +190,10 @@ static void compare_velocity_fields_phys(const Variable3D& u_single,
 
                     double a = fu(i, j, k);
                     double b = 0.0;
-                    total_checks++;
-                    if (!sample_u_at(u_multi, x, y, z, b))
+                    if (!sample_u_at(u_multi, x, y, z, b) || !approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
                     {
-                        mismatch_count++;
-                        std::cout << "[u] CANNOT SAMPLE at phys(" << x << "," << y << "," << z << ") single=" << a
-                                  << "\n";
-
-                        // Debug: find which domain should contain this point
-                        bool found = false;
-                        for (auto* md : geo_multi->domains)
-                        {
-                            double mox = md->get_offset_x();
-                            double moy = md->get_offset_y();
-                            double moz = md->get_offset_z();
-                            double mlx = md->get_lx();
-                            double mly = md->get_ly();
-                            double mlz = md->get_lz();
-
-                            if (x >= mox && x <= mox + mlx && y >= moy && y <= moy + mly && z >= moz && z <= moz + mlz)
-                            {
-                                std::cout << "    [DEBUG] Point is in multi-domain '" << md->name << "'\n";
-                                std::cout << "    [DEBUG] Domain bounds: x=[" << mox << "," << mox + mlx << "], y=["
-                                          << moy << "," << moy + mly << "], z=[" << moz << "," << moz + mlz << "]\n";
-
-                                auto&  mf  = *u_multi.field_map.at(md);
-                                double mhx = md->get_hx();
-                                double mhy = md->get_hy();
-                                double mhz = md->get_hz();
-
-                                int mi = static_cast<int>(std::round((x - mox) / mhx));
-                                int mj = static_cast<int>(std::round((y - moy) / mhy - 0.5));
-                                int mk = static_cast<int>(std::round((z - moz) / mhz - 0.5));
-
-                                std::cout << "    [DEBUG] Computed indices: i=" << mi << ", j=" << mj << ", k=" << mk
-                                          << "\n";
-                                std::cout << "    [DEBUG] Field size: nx=" << mf.get_nx() << ", ny=" << mf.get_ny()
-                                          << ", nz=" << mf.get_nz() << "\n";
-                                found = true;
-                                break;
-                            }
-                        }
-                        if (!found)
-                        {
-                            std::cout << "    [DEBUG] Point NOT in any multi-domain!\n";
-                        }
-                    }
-                    else if (!approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
-                    {
-                        mismatch_count++;
-                        std::cout << "[u] VALUE MISMATCH at phys(" << x << "," << y << "," << z << ") single=" << a
-                                  << ", multi=" << b << ", diff=" << (a - b) << "\n";
+                        std::cout << "[u] mismatch at phys(" << x << "," << y << "," << z << ") single=" << a
+                                  << ", multi=" << b << "\n";
                     }
                 }
             }
@@ -297,8 +243,6 @@ static void compare_velocity_fields_phys(const Variable3D& u_single,
             }
         }
     }
-
-    std::cout << "[IBM 3D] Total checks: " << total_checks << ", Mismatches: " << mismatch_count << "\n";
 }
 
 int main(int /*argc*/, char* /*argv*/[])
@@ -348,7 +292,13 @@ int main(int /*argc*/, char* /*argv*/[])
     ImmersedBoundarySolver3D ibm_single(&u_single, &v_single, &w_single, coord_map_single_raw);
     ibm_single.set_parameters(coord_map_single.get_h(), hx);
 
+    // Sample before IBM solve
+    sample_and_print_velocity(u_single, v_single, w_single, "Single Domain (Before IBM)");
+
     ibm_single.solve();
+
+    // Sample after IBM solve
+    sample_and_print_velocity(u_single, v_single, w_single, "Single Domain (After IBM)");
 
     std::cout << "[DEBUG] Single domain u field sample at (0.5,0.0625,0.0625):\n";
     double test_val;
@@ -375,15 +325,6 @@ int main(int /*argc*/, char* /*argv*/[])
     // Set the axis to automatically compute offsets
     geo_multi.axis(&d_left, LocationType::XNegative);
 
-    // Debug: verify domain offsets after setup
-    std::cout << "[DEBUG] After setup:\n";
-    std::cout << "    Left domain: offset=(" << d_left.get_offset_x() << "," << d_left.get_offset_y()
-              << "," << d_left.get_offset_z() << "), bounds=[" << d_left.get_offset_x() << ","
-              << d_left.get_offset_x() + d_left.get_lx() << "]\n";
-    std::cout << "    Right domain: offset=(" << d_right.get_offset_x() << "," << d_right.get_offset_y()
-              << "," << d_right.get_offset_z() << "), bounds=[" << d_right.get_offset_x() << ","
-              << d_right.get_offset_x() + d_right.get_lx() << "]\n";
-
     Variable3D u_multi("u_multi"), v_multi("v_multi"), w_multi("w_multi");
     u_multi.set_geometry(geo_multi);
     v_multi.set_geometry(geo_multi);
@@ -402,23 +343,6 @@ int main(int /*argc*/, char* /*argv*/[])
 
     init_velocity_sin(u_multi, v_multi, w_multi);
 
-    std::cout << "[DEBUG] Multi-domain field values before IB:\n";
-    for (auto* d : geo_multi.domains)
-    {
-        auto& f = *u_multi.field_map.at(d);
-        std::cout << "    Domain '" << d->name << "': sample values\n";
-        for (int k = 0; k < std::min(3, f.get_nz()); ++k)
-        {
-            for (int j = 0; j < std::min(3, f.get_ny()); ++j)
-            {
-                for (int i = 0; i < std::min(3, f.get_nx()); ++i)
-                {
-                    std::cout << "        (" << i << "," << j << "," << k << ") = " << f(i, j, k) << "\n";
-                }
-            }
-        }
-    }
-
     PCoordMap3D coord_map_multi;
     coord_map_multi.add_sphere(400, r, cx, cy, cz);
     coord_map_multi.generate_map(&geo_multi);
@@ -428,18 +352,13 @@ int main(int /*argc*/, char* /*argv*/[])
     ImmersedBoundarySolver3D ibm_multi(&u_multi, &v_multi, &w_multi, coord_map_multi_raw);
     ibm_multi.set_parameters(coord_map_multi.get_h(), hx);
 
+    // Sample before IBM solve
+    sample_and_print_velocity(u_multi, v_multi, w_multi, "Multi Domain (Before IBM)");
+
     ibm_multi.solve();
 
-    std::cout << "[DEBUG] Multi domain u field sample at (0.5,0.0625,0.0625):\n";
-    double test_val_multi;
-    if (sample_u_at(u_multi, 0.5, 0.0625, 0.0625, test_val_multi))
-    {
-        std::cout << "    Value = " << test_val_multi << "\n";
-    }
-    else
-    {
-        std::cout << "    FAILED to sample!\n";
-    }
+    // Sample after IBM solve
+    sample_and_print_velocity(u_multi, v_multi, w_multi, "Multi Domain (After IBM)");
 
     // 按物理坐标真正对比单域结果和双域结果
     compare_velocity_fields_phys(u_single, v_single, w_single, u_multi, v_multi, w_multi, 1e-10, 1e-8);
