@@ -93,134 +93,132 @@ void ImmersedBoundarySolver2D::solve()
     apply_ib_force();
 }
 
-double ImmersedBoundarySolver2D::get_u_value(Domain2DUniform* domain, int iix, int iiy)
+double& ImmersedBoundarySolver2D::get_u_value(Domain2DUniform* domain, int iix, int iiy)
 {
-    auto  ctx = get_domain_context(domain);
-    auto& u   = *u_var->field_map[domain];
-
-    // Check if indices are within current domain bounds
-    // DomainContext can handle boundary buffer layers: i in [-1,nx], j in [-1,ny]
-    if (iix >= -1 && iix <= u.get_nx() && iiy >= -1 && iiy <= u.get_ny())
-    {
-        return ctx.get_u(iix, iiy);
-    }
-
-    // Check if there's a neighbor domain that can provide the value
+    // Compute global position of this u-face
     double px = iix * grid_h;
     double py = iiy * grid_h + 0.5 * grid_h;
 
-    // Convert to global coordinates
     double global_x = px + domain->get_offset_x();
     double global_y = py + domain->get_offset_y();
 
-    // Find which domain contains this global position
-    // Check neighbors through adjacency
+    // Helper lambda: try map a global position to a cell in given domain for u
+    auto try_map_u = [&](Domain2DUniform* d, double gx, double gy, double*& field_ptr,
+                         int& li, int& lj) -> bool {
+        double hx = d->get_hx();
+        double hy = d->get_hy();
+
+        double local_x = gx - d->get_offset_x();
+        double local_y = gy - d->get_offset_y();
+
+        int ui = static_cast<int>(std::floor(local_x / hx));
+        int uj = static_cast<int>(std::floor((local_y - 0.5 * hy) / hy));
+
+        auto& u = *u_var->field_map[d];
+        if (ui >= 0 && ui < u.get_nx() && uj >= 0 && uj < u.get_ny())
+        {
+            field_ptr = &u(ui, uj);
+            li        = ui;
+            lj        = uj;
+            return true;
+        }
+        return false;
+    };
+
+    // First try current domain
+    {
+        double* cell = nullptr;
+        int     li   = 0;
+        int     lj   = 0;
+        if (try_map_u(domain, global_x, global_y, cell, li, lj))
+        {
+            return *cell;
+        }
+    }
+
+    // Then try neighbor domains via adjacency
     if (u_var->geometry->adjacency.count(domain))
     {
         for (auto& loc_neighbor_pair : u_var->geometry->adjacency[domain])
         {
             auto* other_domain = loc_neighbor_pair.second;
 
-            double other_offset_x = other_domain->get_offset_x();
-            double other_offset_y = other_domain->get_offset_y();
-            double other_hx       = other_domain->get_hx();
-            double other_hy       = other_domain->get_hy();
-            int    other_nx       = other_domain->get_nx();
-            int    other_ny       = other_domain->get_ny();
-
-            // Convert global to local coordinates
-            double local_x = global_x - other_offset_x;
-            double local_y = global_y - other_offset_y;
-
-            // Check if within domain bounds (considering buffer regions)
-            if (local_x >= -other_hx && local_x <= other_nx * other_hx && local_y >= -0.5 * other_hy &&
-                local_y <= other_ny * other_hy + 0.5 * other_hy)
+            double* cell = nullptr;
+            int     li   = 0;
+            int     lj   = 0;
+            if (try_map_u(other_domain, global_x, global_y, cell, li, lj))
             {
-                // Convert to grid indices for this domain
-                int local_iix = static_cast<int>(std::floor(local_x / other_hx));
-                int local_iiy = static_cast<int>(std::floor((local_y - 0.5 * other_hy) / other_hy));
-
-                auto  other_ctx = get_domain_context(other_domain);
-                auto& other_u   = *u_var->field_map[other_domain];
-
-                // Check if valid indices for this domain
-                // DomainContext can handle boundary buffer layers: i in [-1,nx], j in [-1,ny]
-                if (local_iix >= -1 && local_iix <= other_u.get_nx() && local_iiy >= -1 &&
-                    local_iiy <= other_u.get_ny())
-                {
-                    return other_ctx.get_u(local_iix, local_iiy);
-                }
+                return *cell;
             }
         }
     }
 
-    // If no neighbor found, return 0 (or handle boundary condition)
-    return 0.0;
+    static double zero = 0.0;
+    return zero;
 }
 
-double ImmersedBoundarySolver2D::get_v_value(Domain2DUniform* domain, int iix, int iiy)
+double& ImmersedBoundarySolver2D::get_v_value(Domain2DUniform* domain, int iix, int iiy)
 {
-    auto  ctx = get_domain_context(domain);
-    auto& v   = *v_var->field_map[domain];
-
-    // Check if indices are within current domain bounds
-    // DomainContext can handle boundary buffer layers: i in [-1,nx], j in [-1,ny]
-    if (iix >= -1 && iix <= v.get_nx() && iiy >= -1 && iiy <= v.get_ny())
-    {
-        return ctx.get_v(iix, iiy);
-    }
-
-    // Check if there's a neighbor domain that can provide the value
+    // Compute global position of this v-face
     double px = iix * grid_h + 0.5 * grid_h;
     double py = iiy * grid_h;
 
-    // Convert to global coordinates
     double global_x = px + domain->get_offset_x();
     double global_y = py + domain->get_offset_y();
 
-    // Find which domain contains this global position
-    // Check neighbors through adjacency
+    // Helper lambda: try map a global position to a cell in given domain for v
+    auto try_map_v = [&](Domain2DUniform* d, double gx, double gy, double*& field_ptr,
+                         int& li, int& lj) -> bool {
+        double hx = d->get_hx();
+        double hy = d->get_hy();
+
+        double local_x = gx - d->get_offset_x();
+        double local_y = gy - d->get_offset_y();
+
+        int vi = static_cast<int>(std::floor((local_x - 0.5 * hx) / hx));
+        int vj = static_cast<int>(std::floor(local_y / hy));
+
+        auto& v = *v_var->field_map[d];
+        if (vi >= 0 && vi < v.get_nx() && vj >= 0 && vj < v.get_ny())
+        {
+            field_ptr = &v(vi, vj);
+            li        = vi;
+            lj        = vj;
+            return true;
+        }
+        return false;
+    };
+
+    // First try current domain
+    {
+        double* cell = nullptr;
+        int     li   = 0;
+        int     lj   = 0;
+        if (try_map_v(domain, global_x, global_y, cell, li, lj))
+        {
+            return *cell;
+        }
+    }
+
+    // Then try neighbor domains via adjacency
     if (v_var->geometry->adjacency.count(domain))
     {
         for (auto& loc_neighbor_pair : v_var->geometry->adjacency[domain])
         {
             auto* other_domain = loc_neighbor_pair.second;
 
-            double other_offset_x = other_domain->get_offset_x();
-            double other_offset_y = other_domain->get_offset_y();
-            double other_hx       = other_domain->get_hx();
-            double other_hy       = other_domain->get_hy();
-            int    other_nx       = other_domain->get_nx();
-            int    other_ny       = other_domain->get_ny();
-
-            // Convert global to local coordinates
-            double local_x = global_x - other_offset_x;
-            double local_y = global_y - other_offset_y;
-
-            // Check if within domain bounds (considering buffer regions)
-            if (local_x >= -0.5 * other_hx && local_x <= other_nx * other_hx + 0.5 * other_hx && local_y >= -other_hy &&
-                local_y <= other_ny * other_hy)
+            double* cell = nullptr;
+            int     li   = 0;
+            int     lj   = 0;
+            if (try_map_v(other_domain, global_x, global_y, cell, li, lj))
             {
-                // Convert to grid indices for this domain
-                int local_iix = static_cast<int>(std::floor((local_x - 0.5 * other_hx) / other_hx));
-                int local_iiy = static_cast<int>(std::floor(local_y / other_hy));
-
-                auto  other_ctx = get_domain_context(other_domain);
-                auto& other_v   = *v_var->field_map[other_domain];
-
-                // Check if valid indices for this domain
-                // DomainContext can handle boundary buffer layers: i in [-1,nx], j in [-1,ny]
-                if (local_iix >= -1 && local_iix <= other_v.get_nx() && local_iiy >= -1 &&
-                    local_iiy <= other_v.get_ny())
-                {
-                    return other_ctx.get_v(local_iix, local_iiy);
-                }
+                return *cell;
             }
         }
     }
 
-    // If no neighbor found, return 0 (or handle boundary condition)
-    return 0.0;
+    static double zero = 0.0;
+    return zero;
 }
 
 void ImmersedBoundarySolver2D::u2F()
@@ -292,11 +290,32 @@ void ImmersedBoundarySolver2D::apply_ib_force()
         auto& particles = *coord_map[domain];
         auto& ib_data   = *ib_map[domain];
 
-        EXPOSE_PCOORD2D_BOUND(&particles)
+        EXPOSE_PCOORD2D(&particles)
         EXPOSE_PIB2D(&ib_data)
 
         auto& u_recv = *u_var->field_map[domain];
         auto& v_recv = *v_var->field_map[domain];
+
+        if (particles.cur_n == 0)
+        {
+            continue;
+        }
+
+        // 使用 PCoord 中缓存的全局 bounding box（2h 支持域索引允许跨越 domain，不 clamp）
+        double min_X = particles.min_X;
+        double max_X = particles.max_X;
+        double min_Y = particles.min_Y;
+        double max_Y = particles.max_Y;
+
+        int min_ix_u = static_cast<int>(std::floor(min_X / grid_h)) - 1;
+        int max_ix_u = static_cast<int>(std::floor(max_X / grid_h)) + 2;
+        int min_iy_u = static_cast<int>(std::floor(min_Y / grid_h)) - 2;
+        int max_iy_u = static_cast<int>(std::floor(max_Y / grid_h)) + 2;
+
+        int min_ix_v = static_cast<int>(std::floor(min_X / grid_h)) - 2;
+        int max_ix_v = static_cast<int>(std::floor(max_X / grid_h)) + 2;
+        int min_iy_v = static_cast<int>(std::floor(min_Y / grid_h)) - 1;
+        int max_iy_v = static_cast<int>(std::floor(max_Y / grid_h)) + 2;
 
         // u
         OPENMP_PARALLEL_FOR()
@@ -310,7 +329,7 @@ void ImmersedBoundarySolver2D::apply_ib_force()
                 for (int ib = 0; ib < particles.cur_n; ib++)
                 {
                     double ib_force = Fx[ib] * ib_delta(xx - X[ib], yy - Y[ib], grid_h) * ib_h * grid_h;
-                    u_recv(i, j) += ib_force;
+                    get_u_value(domain, i, j) += ib_force;
                 }
             }
         }
@@ -327,7 +346,7 @@ void ImmersedBoundarySolver2D::apply_ib_force()
                 for (int ib = 0; ib < particles.cur_n; ib++)
                 {
                     double ib_force = Fy[ib] * ib_delta(xx - X[ib], yy - Y[ib], grid_h) * ib_h * grid_h;
-                    v_recv(i, j) += ib_force;
+                    get_v_value(domain, i, j) += ib_force;
                 }
             }
         }

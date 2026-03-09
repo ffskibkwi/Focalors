@@ -31,9 +31,9 @@ public:
 
     void apply_ib_force();
 
-    // Helper function to get velocity value from current or neighbor domain
-    double get_u_value(Domain2DUniform* domain, int iix, int iiy);
-    double get_v_value(Domain2DUniform* domain, int iix, int iiy);
+    // Helper function to get velocity reference from current or neighbor domain
+    double& get_u_value(Domain2DUniform* domain, int iix, int iiy);
+    double& get_v_value(Domain2DUniform* domain, int iix, int iiy);
 
 private:
     Variable2D* u_var;

@@ -33,10 +33,10 @@ public:
 
     void apply_ib_force();
 
-    // Helper function to get velocity value from current or neighbor domain
-    double get_u_value(Domain3DUniform* domain, int iix, int iiy, int iiz);
-    double get_v_value(Domain3DUniform* domain, int iix, int iiy, int iiz);
-    double get_w_value(Domain3DUniform* domain, int iix, int iiy, int iiz);
+    // Helper function to get velocity reference from current or neighbor domain
+    double& get_u_value(Domain3DUniform* domain, int iix, int iiy, int iiz);
+    double& get_v_value(Domain3DUniform* domain, int iix, int iiy, int iiz);
+    double& get_w_value(Domain3DUniform* domain, int iix, int iiy, int iiz);
 
 private:
     Variable3D* u_var;
