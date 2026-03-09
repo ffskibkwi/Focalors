@@ -62,6 +62,9 @@ static void print_geometry_info(const Geometry3D& geo, const std::string& label)
 // 在给定物理坐标 (x,y,z) 上，从 Variable3D 中采样 u/v/w（面心变量）
 static bool sample_u_at(const Variable3D& u, double x, double y, double z, double& value)
 {
+    static int debug_count = 0;
+    bool debug_this = (debug_count < 5);
+
     Geometry3D* geo = u.geometry;
     for (auto* d : geo->domains)
     {
@@ -85,17 +88,34 @@ static bool sample_u_at(const Variable3D& u, double x, double y, double z, doubl
         int j = static_cast<int>(std::round((y - oy) / hy - 0.5));
         int k = static_cast<int>(std::round((z - oz) / hz - 0.5));
 
+        if (debug_this)
+        {
+            std::cout << "[DEBUG sample_u] Point (" << x << "," << y << "," << z << ") in domain '" << d->name << "'\n";
+            std::cout << "    Indices: i=" << i << ", j=" << j << ", k=" << k << "\n";
+            std::cout << "    Field size: nx=" << f.get_nx() << ", ny=" << f.get_ny() << ", nz=" << f.get_nz() << "\n";
+            debug_count++;
+        }
+
         if (i >= 0 && i < f.get_nx() && j >= 0 && j < f.get_ny() && k >= 0 && k < f.get_nz())
         {
             value = f(i, j, k);
+            if (debug_this)
+                std::cout << "    SUCCESS: value=" << value << "\n";
             return true;
         }
+        if (debug_this)
+            std::cout << "    FAILED: indices out of bounds\n";
     }
+    if (debug_this)
+        std::cout << "[DEBUG sample_u] Point (" << x << "," << y << "," << z << ") NOT in any domain\n";
     return false;
 }
 
 static bool sample_v_at(const Variable3D& v, double x, double y, double z, double& value)
 {
+    static int debug_count = 0;
+    bool debug_this = (debug_count < 5);
+
     Geometry3D* geo = v.geometry;
     for (auto* d : geo->domains)
     {
@@ -119,12 +139,26 @@ static bool sample_v_at(const Variable3D& v, double x, double y, double z, doubl
         int j = static_cast<int>(std::round((y - oy) / hy));
         int k = static_cast<int>(std::round((z - oz) / hz - 0.5));
 
+        if (debug_this)
+        {
+            std::cout << "[DEBUG sample_v] Point (" << x << "," << y << "," << z << ") in domain '" << d->name << "'\n";
+            std::cout << "    Indices: i=" << i << ", j=" << j << ", k=" << k << "\n";
+            std::cout << "    Field size: nx=" << f.get_nx() << ", ny=" << f.get_ny() << ", nz=" << f.get_nz() << "\n";
+            debug_count++;
+        }
+
         if (i >= 0 && i < f.get_nx() && j >= 0 && j < f.get_ny() && k >= 0 && k < f.get_nz())
         {
             value = f(i, j, k);
+            if (debug_this)
+                std::cout << "    SUCCESS: value=" << value << "\n";
             return true;
         }
+        if (debug_this)
+            std::cout << "    FAILED: indices out of bounds\n";
     }
+    if (debug_this)
+        std::cout << "[DEBUG sample_v] Point (" << x << "," << y << "," << z << ") NOT in any domain\n";
     return false;
 }
 
@@ -335,6 +369,18 @@ int main(int /*argc*/, char* /*argv*/[])
     coord_map_single.generate_map(&geo_single);
 
     auto coord_map_single_raw = coord_map_single.get_map();
+
+    // Debug: check particle data
+    for (auto* domain : geo_single.domains)
+    {
+        auto* particles = coord_map_single_raw[domain];
+        std::cout << "[DEBUG] Domain '" << domain->name << "' has " << particles->cur_n << " particles\n";
+        if (particles->cur_n > 0)
+        {
+            EXPOSE_PCOORD3D(particles)
+            std::cout << "    First particle position: (" << X[0] << "," << Y[0] << "," << Z[0] << ")\n";
+        }
+    }
 
     ImmersedBoundarySolver3D ibm_single(&u_single, &v_single, &w_single, coord_map_single_raw);
     ibm_single.set_parameters(coord_map_single.get_h(), hx);
