@@ -397,9 +397,6 @@ double& ImmersedBoundarySolver3D::get_w_value(Domain3DUniform* domain, int iix, 
 
 void ImmersedBoundarySolver3D::calc_ib_force()
 {
-    std::cout << "[IBM 3D DEBUG] calc_ib_force starting...\n";
-    std::cout << "[IBM 3D DEBUG] grid_h=" << grid_h << ", ib_h=" << ib_h << "\n";
-
     // Process each domain in the geometry tree
     for (auto* domain : u_var->geometry->domains)
     {
@@ -408,8 +405,6 @@ void ImmersedBoundarySolver3D::calc_ib_force()
 
         EXPOSE_PCOORD3D(particles)
         EXPOSE_PIB3D(ib_data)
-
-        std::cout << "[IBM 3D DEBUG] Processing domain '" << domain->name << "' with " << particles->cur_n << " particles\n";
 
         OPENMP_PARALLEL_FOR()
         for (int i = 0; i < particles->cur_n; i++)
@@ -443,12 +438,6 @@ void ImmersedBoundarySolver3D::calc_ib_force()
             }
             Fx[i] = Up[i] - Uf[i];
             Fx_sum[i] += Fx[i];
-
-            if (i == 0)  // Debug first particle
-            {
-                std::cout << "[IBM 3D DEBUG] Particle 0: pos=(" << X[i] << "," << Y[i] << "," << Z[i] << ")\n";
-                std::cout << "[IBM 3D DEBUG]   Up=" << Up[i] << ", Uf=" << Uf[i] << ", Fx=" << Fx[i] << "\n";
-            }
 
             min_iix = std::clamp(ix - 2, -1, v_var->field_map[domain]->get_nx());
             max_iix = std::clamp(ix + 2, -1, v_var->field_map[domain]->get_nx());
@@ -503,13 +492,10 @@ void ImmersedBoundarySolver3D::calc_ib_force()
             Fz_sum[i] += Fz[i];
         }
     }
-    std::cout << "[IBM 3D DEBUG] calc_ib_force finished\n";
 }
 
 void ImmersedBoundarySolver3D::apply_ib_force()
 {
-    std::cout << "[IBM 3D DEBUG] apply_ib_force starting...\n";
-
     // Process each domain in geometry tree
     for (auto* domain : u_var->geometry->domains)
     {
@@ -519,19 +505,12 @@ void ImmersedBoundarySolver3D::apply_ib_force()
         EXPOSE_PCOORD3D(particles)
         EXPOSE_PIB3D(ib_data)
 
-        auto& u_recv = *u_var->field_map[domain];
-        auto& v_recv = *v_var->field_map[domain];
-        auto& w_recv = *w_var->field_map[domain];
-
         if (particles->cur_n == 0)
         {
             continue;
         }
 
-        std::cout << "[IBM 3D DEBUG] Applying force on domain '" << domain->name << "'\n";
-        std::cout << "[IBM 3D DEBUG]   Particles: " << particles->cur_n << ", Bounding box: X=[" << particles->min_X << "," << particles->max_X << "], Y=[" << particles->min_Y << "," << particles->max_Y << "], Z=[" << particles->min_Z << "," << particles->max_Z << "]\n";
-
-        // 使用 PCoord 中缓存的全局 bounding box（2h 支持域索引允许跨越 domain，不 clamp）
+        // 使用 PCoord 中缓存的全局 bounding box
         double min_X = particles->min_X;
         double max_X = particles->max_X;
         double min_Y = particles->min_Y;
@@ -545,8 +524,6 @@ void ImmersedBoundarySolver3D::apply_ib_force()
         int max_iy_u = static_cast<int>(std::floor(max_Y / grid_h)) + 2;
         int min_iz_u = static_cast<int>(std::floor(min_Z / grid_h)) - 2;
         int max_iz_u = static_cast<int>(std::floor(max_Z / grid_h)) + 2;
-
-        std::cout << "[IBM 3D DEBUG]   U grid range: ix=[" << min_ix_u << "," << max_ix_u << "], iy=[" << min_iy_u << "," << max_iy_u << "], iz=[" << min_iz_u << "," << max_iz_u << "]\n";
 
         int min_ix_v = static_cast<int>(std::floor(min_X / grid_h)) - 2;
         int max_ix_v = static_cast<int>(std::floor(max_X / grid_h)) + 2;
@@ -563,7 +540,6 @@ void ImmersedBoundarySolver3D::apply_ib_force()
         int max_iz_w = static_cast<int>(std::floor(max_Z / grid_h)) + 2;
 
         // u
-        double total_u_force = 0.0;
         OPENMP_PARALLEL_FOR()
         for (int i = min_ix_u; i <= max_ix_u; i++)
         {
@@ -581,12 +557,10 @@ void ImmersedBoundarySolver3D::apply_ib_force()
                         double ib_force = Fx[ib] * delta * ib_h * ib_h * grid_h;
 
                         get_u_value(domain, i, j, k) += ib_force;
-                        total_u_force += std::abs(ib_force);
                     }
                 }
             }
         }
-        std::cout << "[IBM 3D DEBUG]   Total U force applied: " << total_u_force << "\n";
 
         // v
         OPENMP_PARALLEL_FOR()
@@ -634,5 +608,4 @@ void ImmersedBoundarySolver3D::apply_ib_force()
             }
         }
     }
-    std::cout << "[IBM 3D DEBUG] apply_ib_force finished\n";
 }

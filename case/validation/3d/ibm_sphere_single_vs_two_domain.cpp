@@ -62,9 +62,6 @@ static void print_geometry_info(const Geometry3D& geo, const std::string& label)
 // 在给定物理坐标 (x,y,z) 上，从 Variable3D 中采样 u/v/w（面心变量）
 static bool sample_u_at(const Variable3D& u, double x, double y, double z, double& value)
 {
-    static int debug_count = 0;
-    bool debug_this = (debug_count < 5);
-
     Geometry3D* geo = u.geometry;
     for (auto* d : geo->domains)
     {
@@ -74,48 +71,32 @@ static bool sample_u_at(const Variable3D& u, double x, double y, double z, doubl
         double lx = d->get_lx();
         double ly = d->get_ly();
         double lz = d->get_lz();
-
-        if (x < ox || x > ox + lx || y < oy || y > oy + ly || z < oz || z > oz + lz)
-            continue;
-
-        auto&  f  = *u.field_map.at(d);
         double hx = d->get_hx();
         double hy = d->get_hy();
         double hz = d->get_hz();
 
         // u: x-face centered, x = ox + i*hx, y = oy + (j+0.5)*hy, z = oz + (k+0.5)*hz
+        // 对于边界点，需要特殊处理：允许 x 恰好等于右边界（因为 u 存储在边界上）
+        double eps = 1e-10;
+        if (x < ox - eps || x > ox + lx + eps || y < oy - eps || y > oy + ly + eps || z < oz - eps || z > oz + lz + eps)
+            continue;
+
         int i = static_cast<int>(std::round((x - ox) / hx));
         int j = static_cast<int>(std::round((y - oy) / hy - 0.5));
         int k = static_cast<int>(std::round((z - oz) / hz - 0.5));
 
-        if (debug_this)
-        {
-            std::cout << "[DEBUG sample_u] Point (" << x << "," << y << "," << z << ") in domain '" << d->name << "'\n";
-            std::cout << "    Indices: i=" << i << ", j=" << j << ", k=" << k << "\n";
-            std::cout << "    Field size: nx=" << f.get_nx() << ", ny=" << f.get_ny() << ", nz=" << f.get_nz() << "\n";
-            debug_count++;
-        }
-
+        auto& f = *u.field_map.at(d);
         if (i >= 0 && i < f.get_nx() && j >= 0 && j < f.get_ny() && k >= 0 && k < f.get_nz())
         {
             value = f(i, j, k);
-            if (debug_this)
-                std::cout << "    SUCCESS: value=" << value << "\n";
             return true;
         }
-        if (debug_this)
-            std::cout << "    FAILED: indices out of bounds\n";
     }
-    if (debug_this)
-        std::cout << "[DEBUG sample_u] Point (" << x << "," << y << "," << z << ") NOT in any domain\n";
     return false;
 }
 
 static bool sample_v_at(const Variable3D& v, double x, double y, double z, double& value)
 {
-    static int debug_count = 0;
-    bool debug_this = (debug_count < 5);
-
     Geometry3D* geo = v.geometry;
     for (auto* d : geo->domains)
     {
@@ -125,40 +106,26 @@ static bool sample_v_at(const Variable3D& v, double x, double y, double z, doubl
         double lx = d->get_lx();
         double ly = d->get_ly();
         double lz = d->get_lz();
-
-        if (x < ox || x > ox + lx || y < oy || y > oy + ly || z < oz || z > oz + lz)
-            continue;
-
-        auto&  f  = *v.field_map.at(d);
         double hx = d->get_hx();
         double hy = d->get_hy();
         double hz = d->get_hz();
 
         // v: y-face centered, x = ox + (i+0.5)*hx, y = oy + j*hy, z = oz + (k+0.5)*hz
+        double eps = 1e-10;
+        if (x < ox - eps || x > ox + lx + eps || y < oy - eps || y > oy + ly + eps || z < oz - eps || z > oz + lz + eps)
+            continue;
+
         int i = static_cast<int>(std::round((x - ox) / hx - 0.5));
         int j = static_cast<int>(std::round((y - oy) / hy));
         int k = static_cast<int>(std::round((z - oz) / hz - 0.5));
 
-        if (debug_this)
-        {
-            std::cout << "[DEBUG sample_v] Point (" << x << "," << y << "," << z << ") in domain '" << d->name << "'\n";
-            std::cout << "    Indices: i=" << i << ", j=" << j << ", k=" << k << "\n";
-            std::cout << "    Field size: nx=" << f.get_nx() << ", ny=" << f.get_ny() << ", nz=" << f.get_nz() << "\n";
-            debug_count++;
-        }
-
+        auto& f = *v.field_map.at(d);
         if (i >= 0 && i < f.get_nx() && j >= 0 && j < f.get_ny() && k >= 0 && k < f.get_nz())
         {
             value = f(i, j, k);
-            if (debug_this)
-                std::cout << "    SUCCESS: value=" << value << "\n";
             return true;
         }
-        if (debug_this)
-            std::cout << "    FAILED: indices out of bounds\n";
     }
-    if (debug_this)
-        std::cout << "[DEBUG sample_v] Point (" << x << "," << y << "," << z << ") NOT in any domain\n";
     return false;
 }
 
@@ -173,20 +140,20 @@ static bool sample_w_at(const Variable3D& w, double x, double y, double z, doubl
         double lx = d->get_lx();
         double ly = d->get_ly();
         double lz = d->get_lz();
-
-        if (x < ox || x > ox + lx || y < oy || y > oy + ly || z < oz || z > oz + lz)
-            continue;
-
-        auto&  f  = *w.field_map.at(d);
         double hx = d->get_hx();
         double hy = d->get_hy();
         double hz = d->get_hz();
 
         // w: z-face centered, x = ox + (i+0.5)*hx, y = oy + (j+0.5)*hy, z = oz + k*hz
+        double eps = 1e-10;
+        if (x < ox - eps || x > ox + lx + eps || y < oy - eps || y > oy + ly + eps || z < oz - eps || z > oz + lz + eps)
+            continue;
+
         int i = static_cast<int>(std::round((x - ox) / hx - 0.5));
         int j = static_cast<int>(std::round((y - oy) / hy - 0.5));
         int k = static_cast<int>(std::round((z - oz) / hz));
 
+        auto& f = *w.field_map.at(d);
         if (i >= 0 && i < f.get_nx() && j >= 0 && j < f.get_ny() && k >= 0 && k < f.get_nz())
         {
             value = f(i, j, k);
@@ -369,18 +336,6 @@ int main(int /*argc*/, char* /*argv*/[])
     coord_map_single.generate_map(&geo_single);
 
     auto coord_map_single_raw = coord_map_single.get_map();
-
-    // Debug: check particle data
-    for (auto* domain : geo_single.domains)
-    {
-        auto* particles = coord_map_single_raw[domain];
-        std::cout << "[DEBUG] Domain '" << domain->name << "' has " << particles->cur_n << " particles\n";
-        if (particles->cur_n > 0)
-        {
-            EXPOSE_PCOORD3D(particles)
-            std::cout << "    First particle position: (" << X[0] << "," << Y[0] << "," << Z[0] << ")\n";
-        }
-    }
 
     ImmersedBoundarySolver3D ibm_single(&u_single, &v_single, &w_single, coord_map_single_raw);
     ibm_single.set_parameters(coord_map_single.get_h(), hx);

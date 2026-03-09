@@ -137,18 +137,18 @@ static bool sample_u_at(const Variable2D& u, double x, double y, double& value)
         double oy = d->get_offset_y();
         double lx = d->get_lx();
         double ly = d->get_ly();
-
-        if (x < ox || x > ox + lx || y < oy || y > oy + ly)
-            continue;
-
-        auto&  f  = *u.field_map.at(d);
         double hx = d->get_hx();
         double hy = d->get_hy();
 
         // u 是 x-face centered: x = ox + i*hx, y = oy + (j+0.5)*hy
+        double eps = 1e-10;
+        if (x < ox - eps || x > ox + lx + eps || y < oy - eps || y > oy + ly + eps)
+            continue;
+
         int i = static_cast<int>(std::round((x - ox) / hx));
         int j = static_cast<int>(std::round((y - oy) / hy - 0.5));
 
+        auto& f = *u.field_map.at(d);
         if (i >= 0 && i < f.get_nx() && j >= 0 && j < f.get_ny())
         {
             value = f(i, j);
@@ -167,18 +167,18 @@ static bool sample_v_at(const Variable2D& v, double x, double y, double& value)
         double oy = d->get_offset_y();
         double lx = d->get_lx();
         double ly = d->get_ly();
-
-        if (x < ox || x > ox + lx || y < oy || y > oy + ly)
-            continue;
-
-        auto&  f  = *v.field_map.at(d);
         double hx = d->get_hx();
         double hy = d->get_hy();
 
         // v 是 y-face centered: x = ox + (i+0.5)*hx, y = oy + j*hy
+        double eps = 1e-10;
+        if (x < ox - eps || x > ox + lx + eps || y < oy - eps || y > oy + ly + eps)
+            continue;
+
         int i = static_cast<int>(std::round((x - ox) / hx - 0.5));
         int j = static_cast<int>(std::round((y - oy) / hy));
 
+        auto& f = *v.field_map.at(d);
         if (i >= 0 && i < f.get_nx() && j >= 0 && j < f.get_ny())
         {
             value = f(i, j);
