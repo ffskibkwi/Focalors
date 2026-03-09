@@ -5,10 +5,14 @@
 #include "base/field/field3.h"
 #include "base/location_boundary.h"
 #include "base/math/random.h"
+#include "ibm/ib_solver_3d.h"
+#include "ibm/ib_solver_scalar_3d.h"
+#include "ibm/particles_coordinate_map_3d.h"
 #include "io/csv_handler.h"
 #include "io/stat.h"
 #include "io/vtk_writer.h"
 #include "ns/ns_solver3d.h"
+#include "ns/physical_pe_solver3d.h"
 #include "ns/scalar_solver3d.h"
 #include "pe/concat/concat_solver3d.h"
 
@@ -301,13 +305,68 @@ int main(int argc, char* argv[])
     add_random_number(w_A3, -0.01, 0.01, 42);
     add_random_number(w_A4, -0.01, 0.01, 42);
 
+    // IBM setup: sphere at T-junction center
+    double sphere_radius   = Height / 3.0;  // Radius = H/3
+    double sphere_center_x = 21.0 * Height; // Center of A2 domain (21*H from origin)
+    double sphere_center_y = 0.5 * Height;  // T-junction y coordinate (within A2)
+    double sphere_center_z = 0.5 * Height;  // Center in z direction
+    int    Nib             = static_cast<int>(std::round(2.0 * M_PI * sphere_radius / hx));
+
+    std::cout << "IBM sphere: center = (" << sphere_center_x << ", " << sphere_center_y << ", " << sphere_center_z
+              << "), radius = " << sphere_radius << ", Nib = " << Nib << std::endl;
+
+    PCoordMap3D coord_map;
+    coord_map.add_sphere(Nib, sphere_radius, sphere_center_x, sphere_center_y, sphere_center_z);
+    coord_map.generate_map(&geo);
+
+    auto coord_map_raw = coord_map.get_map();
+
+    // Velocity IBM solver
+    IBSolver3D ibm_solver(&u, &v, &w, coord_map_raw);
+    ibm_solver.set_parameters(coord_map.get_h(), hx);
+
+    // Concentration IBM solver
+    IBSolverScalar3D ibm_solver_c(&c, coord_map_raw);
+    ibm_solver_c.set_parameters(coord_map.get_h(), hx);
+
+    // Initialize IBM particle velocities to zero (solid sphere)
+    for (auto& kv : coord_map_raw)
+    {
+        auto* p_coord = kv.second;
+        auto* ib_data = ibm_solver.get_ib_data(kv.first);
+
+        EXPOSE_PCOORD3D(p_coord)
+        EXPOSE_PIB3D(ib_data)
+
+        for (int i = 0; i < p_coord->cur_n; i++)
+        {
+            Up[i] = 0.0;
+            Vp[i] = 0.0;
+            Wp[i] = 0.0;
+        }
+    }
+
+    // Initialize IBM concentration particles (no source/sink, just interpolation)
+    for (auto& kv : coord_map_raw)
+    {
+        auto* p_coord   = kv.second;
+        auto* ib_data_c = ibm_solver_c.get_ib_data(kv.first);
+        EXPOSE_PIBSCALAR(ib_data_c)
+        for (int i = 0; i < p_coord->cur_n; i++)
+        {
+            Sp[i] = 0.0; // No prescribed concentration value
+        }
+    }
+
     ConcatPoissonSolver3D p_solver(&p);
     ConcatNSSolver3D      ns_solver(&u, &v, &w, &p, &p_solver);
     ScalarSolver3D        solver_c(&u, &v, &w, &c, nr, c_scheme);
+    PhysicalPESolver3D    ppe_solver(&u, &v, &w, &p, &p_solver, density);
 
     VTKWriter vtk_writer;
     vtk_writer.add_vector_as_cell_data(&u, &v, &w, "velocity");
     vtk_writer.add_scalar_as_cell_data(&c);
+    vtk_writer.add_scalar_as_cell_data(&p);
     vtk_writer.validate();
 
     TIMER_END(Init);
@@ -324,8 +383,41 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = true;
         }
 
-        ns_solver.solve();
+        ns_solver.euler_conv_diff_inner();
+        ns_solver.euler_conv_diff_outer();
+
+        ibm_solver.solve();
+
+        ns_solver.phys_boundary_update();
+        ns_solver.nondiag_shared_boundary_update();
+        ns_solver.diag_shared_boundary_update();
+
+        // divu
+        ns_solver.velocity_div_inner();
+        ns_solver.velocity_div_outer();
+
+        // PE
+        ns_solver.normalize_pressure();
+        p_solver.solve();
+
+        // update buffer for p
+        ns_solver.pressure_buffer_update();
+
+        // p grad
+        ns_solver.add_pressure_gradient();
+
+        // Boundary update
+        ns_solver.phys_boundary_update();
+        ns_solver.nondiag_shared_boundary_update();
+        ns_solver.diag_shared_boundary_update();
+
+        if (iter % static_cast<int>(5e2) == 0)
+        {
+            ppe_solver.solve();
+        }
+
         solver_c.solve();
+        ibm_solver_c.solve();
 
         if (iter % 100 == 0)
         {
@@ -333,7 +425,7 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = false;
         }
 
-        if (iter % static_cast<int>(1e4) == 0)
+        if (iter % static_cast<int>(5e2) == 0)
         {
             static int count = 0;
             vtk_writer.write(env_cfg.debugOutputDir + "/vtk/" + std::to_string(count++));

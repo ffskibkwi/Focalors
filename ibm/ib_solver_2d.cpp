@@ -254,7 +254,6 @@ void IBSolver2D::calc_ib_force()
                 }
             }
             Fx[i] = Up[i] - Uf[i];
-            Fx_sum[i] += Fx[i];
 
             // For v: support domain is 5 points in x, 4 points in y
             int min_iix_v = ix - 2;
@@ -275,7 +274,6 @@ void IBSolver2D::calc_ib_force()
                 }
             }
             Fy[i] = Vp[i] - Vf[i];
-            Fy_sum[i] += Fy[i];
         }
     }
 }

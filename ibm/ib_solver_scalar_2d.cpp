@@ -156,7 +156,6 @@ void IBSolverScalar2D::calc_ib_scalar()
                 }
             }
             Fs[i] = Sp[i] - Sf[i];
-            Fs_sum[i] += Fs[i];
         }
     }
 }

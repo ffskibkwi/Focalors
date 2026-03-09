@@ -331,18 +331,6 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes = (step <= 5);
         }
 
-        // Clear IBM force accumulators
-        for (auto& kv : coord_map_raw)
-        {
-            auto* ib_data = ibm_solver.get_ib_data(kv.first);
-            EXPOSE_PIB2D(ib_data)
-            for (int i = 0; i < ib_data->cur_n; i++)
-            {
-                Fx_sum[i] = 0.0;
-                Fy_sum[i] = 0.0;
-            }
-        }
-
         // Speed up transition to vortex street
         if (step == 1)
         {

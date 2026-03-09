@@ -9,7 +9,6 @@ struct PIBScalar : public ParticlesBase
     DECLARE_PROPERTY(Sf)
     DECLARE_PROPERTY(Sp)
     DECLARE_PROPERTY(Fs)
-    DECLARE_PROPERTY(Fs_sum)
 
     PIBScalar() {}
 
@@ -21,7 +20,6 @@ struct PIBScalar : public ParticlesBase
         INITIALIZE_PROPERTY(Sf)
         INITIALIZE_PROPERTY(Sp)
         INITIALIZE_PROPERTY(Fs)
-        INITIALIZE_PROPERTY(Fs_sum)
     }
 
     PIBScalar(PIBScalar&& rhs) noexcept { swap(*this, rhs); }
@@ -42,5 +40,4 @@ struct PIBScalar : public ParticlesBase
 #define EXPOSE_PIBSCALAR(p) \
     EXPOSE_PROPERTY(p, Sf)  \
     EXPOSE_PROPERTY(p, Sp)  \
-    EXPOSE_PROPERTY(p, Fs)  \
-    EXPOSE_PROPERTY(p, Fs_sum)
+    EXPOSE_PROPERTY(p, Fs)

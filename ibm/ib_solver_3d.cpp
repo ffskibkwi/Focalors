@@ -432,7 +432,6 @@ void IBSolver3D::calc_ib_force()
                 }
             }
             Fx[i] = Up[i] - Uf[i];
-            Fx_sum[i] += Fx[i];
 
             // For v: support domain is 5 points in x and z, 4 points in y
             int min_iix_v = ix - 2;
@@ -459,7 +458,6 @@ void IBSolver3D::calc_ib_force()
                 }
             }
             Fy[i] = Vp[i] - Vf[i];
-            Fy_sum[i] += Fy[i];
 
             // For w: support domain is 5 points in x and y, 4 points in z
             int min_iix_w = ix - 2;
@@ -486,7 +484,6 @@ void IBSolver3D::calc_ib_force()
                 }
             }
             Fz[i] = Wp[i] - Wf[i];
-            Fz_sum[i] += Fz[i];
         }
     }
 }

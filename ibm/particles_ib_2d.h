@@ -13,8 +13,6 @@ struct PIB2D : public ParticlesBase
 
     DECLARE_PROPERTY(Fx)
     DECLARE_PROPERTY(Fy)
-    DECLARE_PROPERTY(Fx_sum)
-    DECLARE_PROPERTY(Fy_sum)
 
     PIB2D() {}
 
@@ -30,8 +28,6 @@ struct PIB2D : public ParticlesBase
 
         INITIALIZE_PROPERTY(Fx)
         INITIALIZE_PROPERTY(Fy)
-        INITIALIZE_PROPERTY(Fx_sum)
-        INITIALIZE_PROPERTY(Fy_sum)
     }
 
     PIB2D(PIB2D&& rhs) noexcept { swap(*this, rhs); }
@@ -49,12 +45,10 @@ struct PIB2D : public ParticlesBase
     void clear_force_sum();
 };
 
-#define EXPOSE_PIB2D(p)        \
-    EXPOSE_PROPERTY(p, Uf)     \
-    EXPOSE_PROPERTY(p, Vf)     \
-    EXPOSE_PROPERTY(p, Up)     \
-    EXPOSE_PROPERTY(p, Vp)     \
-    EXPOSE_PROPERTY(p, Fx)     \
-    EXPOSE_PROPERTY(p, Fy)     \
-    EXPOSE_PROPERTY(p, Fx_sum) \
-    EXPOSE_PROPERTY(p, Fy_sum)
+#define EXPOSE_PIB2D(p)    \
+    EXPOSE_PROPERTY(p, Uf) \
+    EXPOSE_PROPERTY(p, Vf) \
+    EXPOSE_PROPERTY(p, Up) \
+    EXPOSE_PROPERTY(p, Vp) \
+    EXPOSE_PROPERTY(p, Fx) \
+    EXPOSE_PROPERTY(p, Fy)
