@@ -38,6 +38,13 @@ public:
     double& get_v_value(Domain3DUniform* domain, int iix, int iiy, int iiz);
     double& get_w_value(Domain3DUniform* domain, int iix, int iiy, int iiz);
 
+    // Configure IB parameters (particle spacing and grid spacing)
+    void set_parameters(double ib_spacing, double grid_spacing)
+    {
+        ib_h   = ib_spacing;
+        grid_h = grid_spacing;
+    }
+
 private:
     Variable3D* u_var;
     Variable3D* v_var;

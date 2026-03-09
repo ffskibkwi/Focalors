@@ -35,6 +35,13 @@ public:
     double& get_u_value(Domain2DUniform* domain, int iix, int iiy);
     double& get_v_value(Domain2DUniform* domain, int iix, int iiy);
 
+    // Configure IB parameters (particle spacing and grid spacing)
+    void set_parameters(double ib_spacing, double grid_spacing)
+    {
+        ib_h   = ib_spacing;
+        grid_h = grid_spacing;
+    }
+
 private:
     Variable2D* u_var;
     Variable2D* v_var;

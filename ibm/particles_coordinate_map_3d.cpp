@@ -2,7 +2,7 @@
 
 #include "particles_spawner.h"
 
-void PCoordMap3D::add_cylinder(int n, double r, double cx, double cy)
+void PCoordMap3D::add_sphere(int n, double r, double cx, double cy, double cz)
 {
     PCoord3D* p_coord = new PCoord3D(n);
     collections.push_back(p_coord);
@@ -10,7 +10,7 @@ void PCoordMap3D::add_cylinder(int n, double r, double cx, double cy)
     EXPOSE_PCOORD3D(p_coord)
 
     // TODO: validate h
-    spawn_cylinder(X, Y, Z, n, r, cx, cy, h);
+    spawn_sphere(X, Y, Z, n, r, cx, cy, cz, h);
 }
 
 void PCoordMap3D::generate_map(Geometry3D* geo)
