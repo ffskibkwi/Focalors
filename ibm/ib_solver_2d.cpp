@@ -95,12 +95,10 @@ void ImmersedBoundarySolver2D::solve()
 
 double& ImmersedBoundarySolver2D::get_u_value(Domain2DUniform* domain, int iix, int iiy)
 {
+    // iix, iiy are GLOBAL grid indices
     // Compute global position of this u-face
-    double px = iix * grid_h;
-    double py = iiy * grid_h + 0.5 * grid_h;
-
-    double global_x = px + domain->get_offset_x();
-    double global_y = py + domain->get_offset_y();
+    double global_x = iix * grid_h;
+    double global_y = iiy * grid_h + 0.5 * grid_h;
 
     // Helper lambda: try map a global position to a cell in given domain for u
     auto try_map_u = [&](Domain2DUniform* d, double gx, double gy, double*& field_ptr, int& li, int& lj) -> bool {
@@ -158,12 +156,10 @@ double& ImmersedBoundarySolver2D::get_u_value(Domain2DUniform* domain, int iix, 
 
 double& ImmersedBoundarySolver2D::get_v_value(Domain2DUniform* domain, int iix, int iiy)
 {
+    // iix, iiy are GLOBAL grid indices
     // Compute global position of this v-face
-    double px = iix * grid_h + 0.5 * grid_h;
-    double py = iiy * grid_h;
-
-    double global_x = px + domain->get_offset_x();
-    double global_y = py + domain->get_offset_y();
+    double global_x = iix * grid_h + 0.5 * grid_h;
+    double global_y = iiy * grid_h;
 
     // Helper lambda: try map a global position to a cell in given domain for v
     auto try_map_v = [&](Domain2DUniform* d, double gx, double gy, double*& field_ptr, int& li, int& lj) -> bool {
@@ -233,19 +229,22 @@ void ImmersedBoundarySolver2D::calc_ib_force()
         OPENMP_PARALLEL_FOR()
         for (int i = 0; i < particles->cur_n; i++)
         {
-            // Convert particle position to grid indices (local coordinates)
-            int ix = std::floor(X[i] / grid_h);
-            int iy = std::floor(Y[i] / grid_h);
+            // X[i], Y[i] are global coordinates
+            // ix, iy are global grid indices
+            int ix = static_cast<int>(std::floor(X[i] / grid_h));
+            int iy = static_cast<int>(std::floor(Y[i] / grid_h));
 
-            int min_iix = std::clamp(ix - 1, 0, u_var->field_map[domain]->get_nx() - 1);
-            int max_iix = std::clamp(ix + 2, 0, u_var->field_map[domain]->get_nx() - 1);
-            int min_iiy = std::clamp(iy - 2, -1, u_var->field_map[domain]->get_ny());
-            int max_iiy = std::clamp(iy + 2, -1, u_var->field_map[domain]->get_ny());
+            // For u: support domain is 4 points in x, 5 points in y
+            // Remove clamps to allow cross-domain access via get_u_value
+            int min_iix_u = ix - 1;
+            int max_iix_u = ix + 2;
+            int min_iiy_u = iy - 2;
+            int max_iiy_u = iy + 2;
 
             Uf[i] = 0.0;
-            for (int iix = min_iix; iix <= max_iix; iix++)
+            for (int iix = min_iix_u; iix <= max_iix_u; iix++)
             {
-                for (int iiy = min_iiy; iiy <= max_iiy; iiy++)
+                for (int iiy = min_iiy_u; iiy <= max_iiy_u; iiy++)
                 {
                     double xi      = iix * grid_h;
                     double yi      = iiy * grid_h + 0.5 * grid_h;
@@ -257,15 +256,16 @@ void ImmersedBoundarySolver2D::calc_ib_force()
             Fx[i] = Up[i] - Uf[i];
             Fx_sum[i] += Fx[i];
 
-            min_iix = std::clamp(ix - 2, -1, v_var->field_map[domain]->get_nx());
-            max_iix = std::clamp(ix + 2, -1, v_var->field_map[domain]->get_nx());
-            min_iiy = std::clamp(iy - 1, 0, v_var->field_map[domain]->get_ny() - 1);
-            max_iiy = std::clamp(iy + 2, 0, v_var->field_map[domain]->get_ny() - 1);
+            // For v: support domain is 5 points in x, 4 points in y
+            int min_iix_v = ix - 2;
+            int max_iix_v = ix + 2;
+            int min_iiy_v = iy - 1;
+            int max_iiy_v = iy + 2;
 
             Vf[i] = 0.0;
-            for (int iix = min_iix; iix <= max_iix; iix++)
+            for (int iix = min_iix_v; iix <= max_iix_v; iix++)
             {
-                for (int iiy = min_iiy; iiy <= max_iiy; iiy++)
+                for (int iiy = min_iiy_v; iiy <= max_iiy_v; iiy++)
                 {
                     double xi      = iix * grid_h + 0.5 * grid_h;
                     double yi      = iiy * grid_h;

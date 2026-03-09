@@ -184,14 +184,11 @@ void ImmersedBoundarySolver3D::solve()
 
 double& ImmersedBoundarySolver3D::get_u_value(Domain3DUniform* domain, int iix, int iiy, int iiz)
 {
+    // iix, iiy, iiz are GLOBAL grid indices
     // Compute global position of this u-face
-    double px = iix * grid_h;
-    double py = iiy * grid_h + 0.5 * grid_h;
-    double pz = iiz * grid_h + 0.5 * grid_h;
-
-    double global_x = px + domain->get_offset_x();
-    double global_y = py + domain->get_offset_y();
-    double global_z = pz + domain->get_offset_z();
+    double global_x = iix * grid_h;
+    double global_y = iiy * grid_h + 0.5 * grid_h;
+    double global_z = iiz * grid_h + 0.5 * grid_h;
 
     auto try_map_u =
         [&](Domain3DUniform* d, double gx, double gy, double gz, double*& ptr, int& li, int& lj, int& lk) -> bool {
@@ -255,14 +252,11 @@ double& ImmersedBoundarySolver3D::get_u_value(Domain3DUniform* domain, int iix, 
 
 double& ImmersedBoundarySolver3D::get_v_value(Domain3DUniform* domain, int iix, int iiy, int iiz)
 {
+    // iix, iiy, iiz are GLOBAL grid indices
     // Compute global position of this v-face
-    double px = iix * grid_h + 0.5 * grid_h;
-    double py = iiy * grid_h;
-    double pz = iiz * grid_h + 0.5 * grid_h;
-
-    double global_x = px + domain->get_offset_x();
-    double global_y = py + domain->get_offset_y();
-    double global_z = pz + domain->get_offset_z();
+    double global_x = iix * grid_h + 0.5 * grid_h;
+    double global_y = iiy * grid_h;
+    double global_z = iiz * grid_h + 0.5 * grid_h;
 
     auto try_map_v =
         [&](Domain3DUniform* d, double gx, double gy, double gz, double*& ptr, int& li, int& lj, int& lk) -> bool {
@@ -326,14 +320,11 @@ double& ImmersedBoundarySolver3D::get_v_value(Domain3DUniform* domain, int iix, 
 
 double& ImmersedBoundarySolver3D::get_w_value(Domain3DUniform* domain, int iix, int iiy, int iiz)
 {
+    // iix, iiy, iiz are GLOBAL grid indices
     // Compute global position of this w-face
-    double px = iix * grid_h + 0.5 * grid_h;
-    double py = iiy * grid_h + 0.5 * grid_h;
-    double pz = iiz * grid_h;
-
-    double global_x = px + domain->get_offset_x();
-    double global_y = py + domain->get_offset_y();
-    double global_z = pz + domain->get_offset_z();
+    double global_x = iix * grid_h + 0.5 * grid_h;
+    double global_y = iiy * grid_h + 0.5 * grid_h;
+    double global_z = iiz * grid_h;
 
     auto try_map_w =
         [&](Domain3DUniform* d, double gx, double gy, double gz, double*& ptr, int& li, int& lj, int& lk) -> bool {
@@ -409,23 +400,27 @@ void ImmersedBoundarySolver3D::calc_ib_force()
         OPENMP_PARALLEL_FOR()
         for (int i = 0; i < particles->cur_n; i++)
         {
-            int ix = std::floor(X[i] / grid_h);
-            int iy = std::floor(Y[i] / grid_h);
-            int iz = std::floor(Z[i] / grid_h);
+            // X[i], Y[i], Z[i] are global coordinates
+            // ix, iy, iz are global grid indices
+            int ix = static_cast<int>(std::floor(X[i] / grid_h));
+            int iy = static_cast<int>(std::floor(Y[i] / grid_h));
+            int iz = static_cast<int>(std::floor(Z[i] / grid_h));
 
-            int min_iix = std::clamp(ix - 1, 0, u_var->field_map[domain]->get_nx() - 1);
-            int max_iix = std::clamp(ix + 2, 0, u_var->field_map[domain]->get_nx() - 1);
-            int min_iiy = std::clamp(iy - 2, -1, u_var->field_map[domain]->get_ny());
-            int max_iiy = std::clamp(iy + 2, -1, u_var->field_map[domain]->get_ny());
-            int min_iiz = std::clamp(iz - 2, -1, u_var->field_map[domain]->get_nz());
-            int max_iiz = std::clamp(iz + 2, -1, u_var->field_map[domain]->get_nz());
+            // For u: support domain is 4 points in x, 5 points in y and z
+            // Remove clamps to allow cross-domain access via get_u_value
+            int min_iix_u = ix - 1;
+            int max_iix_u = ix + 2;
+            int min_iiy_u = iy - 2;
+            int max_iiy_u = iy + 2;
+            int min_iiz_u = iz - 2;
+            int max_iiz_u = iz + 2;
 
             Uf[i] = 0.0;
-            for (int iix = min_iix; iix <= max_iix; iix++)
+            for (int iix = min_iix_u; iix <= max_iix_u; iix++)
             {
-                for (int iiy = min_iiy; iiy <= max_iiy; iiy++)
+                for (int iiy = min_iiy_u; iiy <= max_iiy_u; iiy++)
                 {
-                    for (int iiz = min_iiz; iiz <= max_iiz; iiz++)
+                    for (int iiz = min_iiz_u; iiz <= max_iiz_u; iiz++)
                     {
                         double xi      = iix * grid_h;
                         double yi      = iiy * grid_h + 0.5 * grid_h;
@@ -439,19 +434,20 @@ void ImmersedBoundarySolver3D::calc_ib_force()
             Fx[i] = Up[i] - Uf[i];
             Fx_sum[i] += Fx[i];
 
-            min_iix = std::clamp(ix - 2, -1, v_var->field_map[domain]->get_nx());
-            max_iix = std::clamp(ix + 2, -1, v_var->field_map[domain]->get_nx());
-            min_iiy = std::clamp(iy - 1, 0, v_var->field_map[domain]->get_ny() - 1);
-            max_iiy = std::clamp(iy + 2, 0, v_var->field_map[domain]->get_ny() - 1);
-            min_iiz = std::clamp(iz - 2, -1, v_var->field_map[domain]->get_nz());
-            max_iiz = std::clamp(iz + 2, -1, v_var->field_map[domain]->get_nz());
+            // For v: support domain is 5 points in x and z, 4 points in y
+            int min_iix_v = ix - 2;
+            int max_iix_v = ix + 2;
+            int min_iiy_v = iy - 1;
+            int max_iiy_v = iy + 2;
+            int min_iiz_v = iz - 2;
+            int max_iiz_v = iz + 2;
 
             Vf[i] = 0.0;
-            for (int iix = min_iix; iix <= max_iix; iix++)
+            for (int iix = min_iix_v; iix <= max_iix_v; iix++)
             {
-                for (int iiy = min_iiy; iiy <= max_iiy; iiy++)
+                for (int iiy = min_iiy_v; iiy <= max_iiy_v; iiy++)
                 {
-                    for (int iiz = min_iiz; iiz <= max_iiz; iiz++)
+                    for (int iiz = min_iiz_v; iiz <= max_iiz_v; iiz++)
                     {
                         double xi      = iix * grid_h + 0.5 * grid_h;
                         double yi      = iiy * grid_h;
@@ -465,19 +461,20 @@ void ImmersedBoundarySolver3D::calc_ib_force()
             Fy[i] = Vp[i] - Vf[i];
             Fy_sum[i] += Fy[i];
 
-            min_iix = std::clamp(ix - 2, -1, w_var->field_map[domain]->get_nx());
-            max_iix = std::clamp(ix + 2, -1, w_var->field_map[domain]->get_nx());
-            min_iiy = std::clamp(iy - 2, -1, w_var->field_map[domain]->get_ny());
-            max_iiy = std::clamp(iy + 2, -1, w_var->field_map[domain]->get_ny());
-            min_iiz = std::clamp(iz - 1, 0, w_var->field_map[domain]->get_nz() - 1);
-            max_iiz = std::clamp(iz + 2, 0, w_var->field_map[domain]->get_nz() - 1);
+            // For w: support domain is 5 points in x and y, 4 points in z
+            int min_iix_w = ix - 2;
+            int max_iix_w = ix + 2;
+            int min_iiy_w = iy - 2;
+            int max_iiy_w = iy + 2;
+            int min_iiz_w = iz - 1;
+            int max_iiz_w = iz + 2;
 
             Wf[i] = 0.0;
-            for (int iix = min_iix; iix <= max_iix; iix++)
+            for (int iix = min_iix_w; iix <= max_iix_w; iix++)
             {
-                for (int iiy = min_iiy; iiy <= max_iiy; iiy++)
+                for (int iiy = min_iiy_w; iiy <= max_iiy_w; iiy++)
                 {
-                    for (int iiz = min_iiz; iiz <= max_iiz; iiz++)
+                    for (int iiz = min_iiz_w; iiz <= max_iiz_w; iiz++)
                     {
                         double xi      = iix * grid_h + 0.5 * grid_h;
                         double yi      = iiy * grid_h + 0.5 * grid_h;
