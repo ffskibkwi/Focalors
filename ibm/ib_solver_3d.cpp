@@ -409,8 +409,6 @@ void ImmersedBoundarySolver3D::u2F()
         auto& particles = *coord_map[domain];
         auto& ib_data   = *ib_map[domain];
 
-        auto ctx = get_domain_context(domain);
-
         EXPOSE_PCOORD3D(&particles)
         EXPOSE_PIB3D(&ib_data)
 
@@ -435,31 +433,10 @@ void ImmersedBoundarySolver3D::u2F()
                 {
                     for (int iiz = min_iiz; iiz <= max_iiz; iiz++)
                     {
-                        double xi = iix * grid_h;
-                        double yi = iiy * grid_h + 0.5 * grid_h;
-                        double zi = iiz * grid_h + 0.5 * grid_h;
-
-                        double u_value;
-                        if (iiy == -1)
-                        {
-                            u_value = ctx.get_u(iix, iiy, iiz);
-                        }
-                        else if (iiy == u_var->field_map[domain]->get_ny())
-                        {
-                            u_value = ctx.get_u(iix, iiy, iiz);
-                        }
-                        else if (iiz == -1)
-                        {
-                            u_value = ctx.get_u(iix, iiy, iiz);
-                        }
-                        else if (iiz == u_var->field_map[domain]->get_nz())
-                        {
-                            u_value = ctx.get_u(iix, iiy, iiz);
-                        }
-                        else
-                        {
-                            u_value = get_u_value(domain, iix, iiy, iiz);
-                        }
+                        double xi      = iix * grid_h;
+                        double yi      = iiy * grid_h + 0.5 * grid_h;
+                        double zi      = iiz * grid_h + 0.5 * grid_h;
+                        double u_value = get_u_value(domain, iix, iiy, iiz);
 
                         Uf[i] += u_value * ib_delta(X[i] - xi, Y[i] - yi, Z[i] - zi, grid_h) * grid_h * grid_h * grid_h;
                     }
@@ -482,31 +459,10 @@ void ImmersedBoundarySolver3D::u2F()
                 {
                     for (int iiz = min_iiz; iiz <= max_iiz; iiz++)
                     {
-                        double xi = iix * grid_h + 0.5 * grid_h;
-                        double yi = iiy * grid_h;
-                        double zi = iiz * grid_h + 0.5 * grid_h;
-
-                        double v_value;
-                        if (iix == -1)
-                        {
-                            v_value = ctx.get_v(iix, iiy, iiz);
-                        }
-                        else if (iix == v_var->field_map[domain]->get_nx())
-                        {
-                            v_value = ctx.get_v(iix, iiy, iiz);
-                        }
-                        else if (iiz == -1)
-                        {
-                            v_value = ctx.get_v(iix, iiy, iiz);
-                        }
-                        else if (iiz == v_var->field_map[domain]->get_nz())
-                        {
-                            v_value = ctx.get_v(iix, iiy, iiz);
-                        }
-                        else
-                        {
-                            v_value = get_v_value(domain, iix, iiy, iiz);
-                        }
+                        double xi      = iix * grid_h + 0.5 * grid_h;
+                        double yi      = iiy * grid_h;
+                        double zi      = iiz * grid_h + 0.5 * grid_h;
+                        double v_value = get_v_value(domain, iix, iiy, iiz);
 
                         Vf[i] += v_value * ib_delta(X[i] - xi, Y[i] - yi, Z[i] - zi, grid_h) * grid_h * grid_h * grid_h;
                     }
@@ -529,31 +485,10 @@ void ImmersedBoundarySolver3D::u2F()
                 {
                     for (int iiz = min_iiz; iiz <= max_iiz; iiz++)
                     {
-                        double xi = iix * grid_h + 0.5 * grid_h;
-                        double yi = iiy * grid_h + 0.5 * grid_h;
-                        double zi = iiz * grid_h;
-
-                        double w_value;
-                        if (iix == -1)
-                        {
-                            w_value = ctx.get_w(iix, iiy, iiz);
-                        }
-                        else if (iix == w_var->field_map[domain]->get_nx())
-                        {
-                            w_value = ctx.get_w(iix, iiy, iiz);
-                        }
-                        else if (iiy == -1)
-                        {
-                            w_value = ctx.get_w(iix, iiy, iiz);
-                        }
-                        else if (iiy == w_var->field_map[domain]->get_ny())
-                        {
-                            w_value = ctx.get_w(iix, iiy, iiz);
-                        }
-                        else
-                        {
-                            w_value = get_w_value(domain, iix, iiy, iiz);
-                        }
+                        double xi      = iix * grid_h + 0.5 * grid_h;
+                        double yi      = iiy * grid_h + 0.5 * grid_h;
+                        double zi      = iiz * grid_h;
+                        double w_value = get_w_value(domain, iix, iiy, iiz);
 
                         Wf[i] += w_value * ib_delta(X[i] - xi, Y[i] - yi, Z[i] - zi, grid_h) * grid_h * grid_h * grid_h;
                     }

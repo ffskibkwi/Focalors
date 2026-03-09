@@ -231,8 +231,6 @@ void ImmersedBoundarySolver2D::u2F()
         auto& particles = *coord_map[domain];
         auto& ib_data   = *ib_map[domain];
 
-        auto ctx = get_domain_context(domain);
-
         EXPOSE_PCOORD2D(&particles)
         EXPOSE_PIB2D(&ib_data)
 
@@ -253,22 +251,9 @@ void ImmersedBoundarySolver2D::u2F()
             {
                 for (int iiy = min_iiy; iiy <= max_iiy; iiy++)
                 {
-                    double xi = iix * grid_h;
-                    double yi = iiy * grid_h + 0.5 * grid_h;
-
-                    double u_value;
-                    if (iiy == -1)
-                    {
-                        u_value = ctx.get_u(iix, iiy);
-                    }
-                    else if (iiy == u_var->field_map[domain]->get_ny())
-                    {
-                        u_value = ctx.get_u(iix, iiy);
-                    }
-                    else
-                    {
-                        u_value = get_u_value(domain, iix, iiy);
-                    }
+                    double xi      = iix * grid_h;
+                    double yi      = iiy * grid_h + 0.5 * grid_h;
+                    double u_value = get_u_value(domain, iix, iiy);
 
                     Uf[i] += u_value * ib_delta(X[i] - xi, Y[i] - yi, grid_h) * grid_h * grid_h;
                 }
@@ -286,22 +271,9 @@ void ImmersedBoundarySolver2D::u2F()
             {
                 for (int iiy = min_iiy; iiy <= max_iiy; iiy++)
                 {
-                    double xi = iix * grid_h + 0.5 * grid_h;
-                    double yi = iiy * grid_h;
-
-                    double v_value;
-                    if (iix == -1)
-                    {
-                        v_value = ctx.get_v(iix, iiy);
-                    }
-                    else if (iix == v_var->field_map[domain]->get_nx())
-                    {
-                        v_value = ctx.get_v(iix, iiy);
-                    }
-                    else
-                    {
-                        v_value = get_v_value(domain, iix, iiy);
-                    }
+                    double xi      = iix * grid_h + 0.5 * grid_h;
+                    double yi      = iiy * grid_h;
+                    double v_value = get_v_value(domain, iix, iiy);
 
                     Vf[i] += v_value * ib_delta(X[i] - xi, Y[i] - yi, grid_h) * grid_h * grid_h;
                 }
