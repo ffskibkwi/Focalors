@@ -6,7 +6,14 @@
 
 class PCoordMap3D
 {
-    ~PCoordMap3D();
+public:
+    ~PCoordMap3D()
+    {
+        for (auto coord : collections)
+            delete coord;
+        for (auto kv : coord_map)
+            delete kv.second;
+    }
 
     void add_sphere(int n, double r, double cx, double cy, double cz);
 
@@ -22,4 +29,4 @@ private:
     std::unordered_map<Domain3DUniform*, PCoord3D*> coord_map;
 
     double h;
-}
+};

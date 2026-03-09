@@ -6,7 +6,14 @@
 
 class PCoordMap2D
 {
-    ~PCoordMap2D();
+public:
+    ~PCoordMap2D()
+    {
+        for (auto coord : collections)
+            delete coord;
+        for (auto kv : coord_map)
+            delete kv.second;
+    }
 
     void add_cylinder(int n, double r, double cx, double cy);
 
@@ -22,4 +29,4 @@ private:
     std::unordered_map<Domain2DUniform*, PCoord2D*> coord_map;
 
     double h;
-}
+};

@@ -1,9 +1,9 @@
 #pragma once
 
+#include "base/domain/variable2d.h"
 #include "ib_kernel.hpp"
 #include "particles_coordinate_2d.h"
 #include "particles_ib_2d.h"
-#include "variable2d.h"
 
 #include <functional>
 

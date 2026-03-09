@@ -4,8 +4,8 @@
 #include "base/domain/variable3d.h"
 #include "base/field/field3.h"
 #include "base/location_boundary.h"
-#include "ib_solver_3d.h"
-#include "particles_coordinate_map_3d.h"
+#include "ibm/ib_solver_3d.h"
+#include "ibm/particles_coordinate_map_3d.h"
 #include "poisson_base/base/math/compare.h"
 
 #include <cmath>
@@ -162,11 +162,10 @@ static void compare_velocity_fields_phys(const Variable3D& u_single,
 
                     double a = fu(i, j, k);
                     double b = 0.0;
-                    if (!sample_u_at(u_multi, x, y, z, b) ||
-                        !approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
+                    if (!sample_u_at(u_multi, x, y, z, b) || !approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
                     {
-                        std::cout << "[u] mismatch at phys(" << x << "," << y << "," << z
-                                  << ") single=" << a << ", multi=" << b << "\n";
+                        std::cout << "[u] mismatch at phys(" << x << "," << y << "," << z << ") single=" << a
+                                  << ", multi=" << b << "\n";
                     }
                 }
             }
@@ -185,11 +184,10 @@ static void compare_velocity_fields_phys(const Variable3D& u_single,
 
                     double a = fv(i, j, k);
                     double b = 0.0;
-                    if (!sample_v_at(v_multi, x, y, z, b) ||
-                        !approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
+                    if (!sample_v_at(v_multi, x, y, z, b) || !approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
                     {
-                        std::cout << "[v] mismatch at phys(" << x << "," << y << "," << z
-                                  << ") single=" << a << ", multi=" << b << "\n";
+                        std::cout << "[v] mismatch at phys(" << x << "," << y << "," << z << ") single=" << a
+                                  << ", multi=" << b << "\n";
                     }
                 }
             }
@@ -208,11 +206,10 @@ static void compare_velocity_fields_phys(const Variable3D& u_single,
 
                     double a = fw(i, j, k);
                     double b = 0.0;
-                    if (!sample_w_at(w_multi, x, y, z, b) ||
-                        !approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
+                    if (!sample_w_at(w_multi, x, y, z, b) || !approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
                     {
-                        std::cout << "[w] mismatch at phys(" << x << "," << y << "," << z
-                                  << ") single=" << a << ", multi=" << b << "\n";
+                        std::cout << "[w] mismatch at phys(" << x << "," << y << "," << z << ") single=" << a
+                                  << ", multi=" << b << "\n";
                     }
                 }
             }
@@ -275,7 +272,8 @@ int main(int /*argc*/, char* /*argv*/[])
     Domain3DUniform d_left(NX_TOTAL / 2, NY_TOTAL, NZ_TOTAL, LX / 2.0, LY, LZ, "Left3D");
     Domain3DUniform d_right(NX_TOTAL / 2, NY_TOTAL, NZ_TOTAL, LX / 2.0, LY, LZ, "Right3D");
 
-    geo_multi.add_domain({&d_left, &d_right});
+    geo_multi.add_domain(&d_left);
+    geo_multi.add_domain(&d_right);
     geo_multi.connect(&d_left, LocationType::XPositive, &d_right);
     geo_multi.set_global_spatial_step(hx, hy, hz);
 
@@ -309,12 +307,9 @@ int main(int /*argc*/, char* /*argv*/[])
     ibm_multi.solve();
 
     // 按物理坐标真正对比单域结果和双域结果
-    compare_velocity_fields_phys(u_single, v_single, w_single,
-                                 u_multi,  v_multi,  w_multi,
-                                 1e-10, 1e-8);
+    compare_velocity_fields_phys(u_single, v_single, w_single, u_multi, v_multi, w_multi, 1e-10, 1e-8);
 
     std::cout << "[IBM 3D] Validation finished.\n";
 
     return 0;
 }
-

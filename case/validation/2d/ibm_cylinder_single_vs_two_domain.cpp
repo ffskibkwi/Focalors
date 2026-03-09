@@ -4,8 +4,8 @@
 #include "base/domain/variable2d.h"
 #include "base/field/field2.h"
 #include "base/location_boundary.h"
-#include "ib_solver_2d.h"
-#include "particles_coordinate_map_2d.h"
+#include "ibm/ib_solver_2d.h"
+#include "ibm/particles_coordinate_map_2d.h"
 #include "poisson_base/base/math/compare.h"
 
 #include <cmath>
@@ -23,9 +23,9 @@ static void copy_velocity(const Variable2D& src_u, const Variable2D& src_v, Vari
 {
     for (auto& kv : src_u.field_map)
     {
-        Domain2DUniform* d      = kv.first;
-        const field2&     src_f = *kv.second;
-        field2&           dst_f = *dst_u.field_map[d];
+        Domain2DUniform* d     = kv.first;
+        const field2&    src_f = *kv.second;
+        field2&          dst_f = *dst_u.field_map[d];
         for (int i = 0; i < src_f.get_nx(); ++i)
             for (int j = 0; j < src_f.get_ny(); ++j)
                 dst_f(i, j) = src_f(i, j);
@@ -33,9 +33,9 @@ static void copy_velocity(const Variable2D& src_u, const Variable2D& src_v, Vari
 
     for (auto& kv : src_v.field_map)
     {
-        Domain2DUniform* d      = kv.first;
-        const field2&     src_f = *kv.second;
-        field2&           dst_f = *dst_v.field_map[d];
+        Domain2DUniform* d     = kv.first;
+        const field2&    src_f = *kv.second;
+        field2&          dst_f = *dst_v.field_map[d];
         for (int i = 0; i < src_f.get_nx(); ++i)
             for (int j = 0; j < src_f.get_ny(); ++j)
                 dst_f(i, j) = src_f(i, j);
@@ -54,9 +54,9 @@ static void compare_velocity_fields(const Variable2D& u1,
 
     for (auto& kv : u1.field_map)
     {
-        Domain2DUniform* d    = kv.first;
-        const field2&     f_u = *kv.second;
-        const field2&     g_u = *u2.field_map.at(d);
+        Domain2DUniform* d   = kv.first;
+        const field2&    f_u = *kv.second;
+        const field2&    g_u = *u2.field_map.at(d);
 
         for (int i = 0; i < f_u.get_nx(); ++i)
         {
@@ -66,8 +66,8 @@ static void compare_velocity_fields(const Variable2D& u1,
                 double b = g_u(i, j);
                 if (!approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
                 {
-                    std::cout << "[u] Domain " << d->name << " mismatch at (" << i << "," << j
-                              << "): single=" << a << ", multi=" << b << "\n";
+                    std::cout << "[u] Domain " << d->name << " mismatch at (" << i << "," << j << "): single=" << a
+                              << ", multi=" << b << "\n";
                 }
             }
         }
@@ -75,9 +75,9 @@ static void compare_velocity_fields(const Variable2D& u1,
 
     for (auto& kv : v1.field_map)
     {
-        Domain2DUniform* d    = kv.first;
-        const field2&     f_v = *kv.second;
-        const field2&     g_v = *v2.field_map.at(d);
+        Domain2DUniform* d   = kv.first;
+        const field2&    f_v = *kv.second;
+        const field2&    g_v = *v2.field_map.at(d);
 
         for (int i = 0; i < f_v.get_nx(); ++i)
         {
@@ -87,8 +87,8 @@ static void compare_velocity_fields(const Variable2D& u1,
                 double b = g_v(i, j);
                 if (!approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
                 {
-                    std::cout << "[v] Domain " << d->name << " mismatch at (" << i << "," << j
-                              << "): single=" << a << ", multi=" << b << "\n";
+                    std::cout << "[v] Domain " << d->name << " mismatch at (" << i << "," << j << "): single=" << a
+                              << ", multi=" << b << "\n";
                 }
             }
         }
@@ -188,8 +188,7 @@ static void compare_velocity_fields_phys(const Variable2D& u_single,
 
                 double a = fu(i, j);
                 double b = 0.0;
-                if (!sample_u_at(u_multi, x, y, b) ||
-                    !approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
+                if (!sample_u_at(u_multi, x, y, b) || !approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
                 {
                     std::cout << "[u] mismatch at phys(" << x << "," << y << ") single=" << a << ", multi=" << b
                               << "\n";
@@ -207,8 +206,7 @@ static void compare_velocity_fields_phys(const Variable2D& u_single,
 
                 double a = fv(i, j);
                 double b = 0.0;
-                if (!sample_v_at(v_multi, x, y, b) ||
-                    !approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
+                if (!sample_v_at(v_multi, x, y, b) || !approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
                 {
                     std::cout << "[v] mismatch at phys(" << x << "," << y << ") single=" << a << ", multi=" << b
                               << "\n";
@@ -309,4 +307,3 @@ int main(int /*argc*/, char* /*argv*/[])
 
     return 0;
 }
-

@@ -2,6 +2,8 @@
 
 #include "particles_spawner.h"
 
+#include <cstring>
+
 void PCoordMap2D::add_cylinder(int n, double r, double cx, double cy)
 {
     PCoord2D* p_coord = new PCoord2D(n);

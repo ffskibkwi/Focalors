@@ -103,8 +103,7 @@ double& ImmersedBoundarySolver2D::get_u_value(Domain2DUniform* domain, int iix, 
     double global_y = py + domain->get_offset_y();
 
     // Helper lambda: try map a global position to a cell in given domain for u
-    auto try_map_u = [&](Domain2DUniform* d, double gx, double gy, double*& field_ptr,
-                         int& li, int& lj) -> bool {
+    auto try_map_u = [&](Domain2DUniform* d, double gx, double gy, double*& field_ptr, int& li, int& lj) -> bool {
         double hx = d->get_hx();
         double hy = d->get_hy();
 
@@ -167,8 +166,7 @@ double& ImmersedBoundarySolver2D::get_v_value(Domain2DUniform* domain, int iix, 
     double global_y = py + domain->get_offset_y();
 
     // Helper lambda: try map a global position to a cell in given domain for v
-    auto try_map_v = [&](Domain2DUniform* d, double gx, double gy, double*& field_ptr,
-                         int& li, int& lj) -> bool {
+    auto try_map_v = [&](Domain2DUniform* d, double gx, double gy, double*& field_ptr, int& li, int& lj) -> bool {
         double hx = d->get_hx();
         double hy = d->get_hy();
 

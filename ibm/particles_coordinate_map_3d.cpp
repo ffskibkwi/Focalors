@@ -2,6 +2,8 @@
 
 #include "particles_spawner.h"
 
+#include <cstring>
+
 void PCoordMap3D::add_sphere(int n, double r, double cx, double cy, double cz)
 {
     PCoord3D* p_coord = new PCoord3D(n);
