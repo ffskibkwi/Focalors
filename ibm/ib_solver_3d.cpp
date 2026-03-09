@@ -136,72 +136,78 @@ double ImmersedBoundarySolver3D::get_u_value(Domain3DUniform* domain, int iix, i
     double global_z = pz + domain->get_offset_z();
 
     // Find which domain contains this global position
-    for (auto* other_domain : u_var->geometry->domains)
+    // Check neighbors through adjacency
+    if (u_var->geometry->adjacency.count(domain))
     {
-        double other_offset_x = other_domain->get_offset_x();
-        double other_offset_y = other_domain->get_offset_y();
-        double other_offset_z = other_domain->get_offset_z();
-        double other_hx       = other_domain->get_hx();
-        double other_hy       = other_domain->get_hy();
-        double other_hz       = other_domain->get_hz();
-        int    other_nx       = other_domain->get_nx();
-        int    other_ny       = other_domain->get_ny();
-        int    other_nz       = other_domain->get_nz();
-
-        // Convert global to local coordinates
-        double local_x = global_x - other_offset_x;
-        double local_y = global_y - other_offset_y;
-        double local_z = global_z - other_offset_z;
-
-        // Check if within domain bounds (considering buffer regions)
-        if (local_x >= -other_hx && local_x <= other_nx * other_hx &&
-            local_y >= -0.5 * other_hy && local_y <= other_ny * other_hy + 0.5 * other_hy &&
-            local_z >= -0.5 * other_hz && local_z <= other_nz * other_hz + 0.5 * other_hz)
+        for (auto& loc_neighbor_pair : u_var->geometry->adjacency[domain])
         {
-            // Convert to grid indices for this domain
-            int local_iix = static_cast<int>(std::floor(local_x / other_hx));
-            int local_iiy = static_cast<int>(std::floor((local_y - 0.5 * other_hy) / other_hy));
-            int local_iiz = static_cast<int>(std::floor((local_z - 0.5 * other_hz) / other_hz));
+            auto* other_domain = loc_neighbor_pair.second;
 
-            auto other_ctx = get_domain_context(other_domain);
-            auto& other_u   = *u_var->field_map[other_domain];
+            double other_offset_x = other_domain->get_offset_x();
+            double other_offset_y = other_domain->get_offset_y();
+            double other_offset_z = other_domain->get_offset_z();
+            double other_hx       = other_domain->get_hx();
+            double other_hy       = other_domain->get_hy();
+            double other_hz       = other_domain->get_hz();
+            int    other_nx       = other_domain->get_nx();
+            int    other_ny       = other_domain->get_ny();
+            int    other_nz       = other_domain->get_nz();
 
-            // Check if valid indices for this domain
-            if (local_iix >= 0 && local_iix < other_u.get_nx() &&
-                local_iiy >= 0 && local_iiy < other_u.get_ny() &&
-                local_iiz >= 0 && local_iiz < other_u.get_nz())
+            // Convert global to local coordinates
+            double local_x = global_x - other_offset_x;
+            double local_y = global_y - other_offset_y;
+            double local_z = global_z - other_offset_z;
+
+            // Check if within domain bounds (considering buffer regions)
+            if (local_x >= -other_hx && local_x <= other_nx * other_hx &&
+                local_y >= -0.5 * other_hy && local_y <= other_ny * other_hy + 0.5 * other_hy &&
+                local_z >= -0.5 * other_hz && local_z <= other_nz * other_hz + 0.5 * other_hz)
             {
-                return other_ctx.get_u(local_iix, local_iiy, local_iiz);
-            }
-            // Check buffer regions
-            if (local_iix >= 0 && local_iix < other_u.get_nx())
-            {
-                if (local_iiy >= 0 && local_iiy < other_u.get_ny() &&
-                    ((local_iiz == -1) || (local_iiz == other_u.get_nz())))
+                // Convert to grid indices for this domain
+                int local_iix = static_cast<int>(std::floor(local_x / other_hx));
+                int local_iiy = static_cast<int>(std::floor((local_y - 0.5 * other_hy) / other_hy));
+                int local_iiz = static_cast<int>(std::floor((local_z - 0.5 * other_hz) / other_hz));
+
+                auto other_ctx = get_domain_context(other_domain);
+                auto& other_u   = *u_var->field_map[other_domain];
+
+                // Check if valid indices for this domain
+                if (local_iix >= 0 && local_iix < other_u.get_nx() &&
+                    local_iiy >= 0 && local_iiy < other_u.get_ny() &&
+                    local_iiz >= 0 && local_iiz < other_u.get_nz())
                 {
-                    if (local_iiz == -1)
-                    {
-                        auto& buffer = *u_var->buffer_map[other_domain][LocationType::ZNegative];
-                        return buffer(local_iix, local_iiy);
-                    }
-                    else
-                    {
-                        auto& buffer = *u_var->buffer_map[other_domain][LocationType::ZPositive];
-                        return buffer(local_iix, local_iiy);
-                    }
+                    return other_ctx.get_u(local_iix, local_iiy, local_iiz);
                 }
-                if (local_iiz >= 0 && local_iiz < other_u.get_nz() &&
-                    ((local_iiy == -1) || (local_iiy == other_u.get_ny())))
+                // Check buffer regions
+                if (local_iix >= 0 && local_iix < other_u.get_nx())
                 {
-                    if (local_iiy == -1)
+                    if (local_iiy >= 0 && local_iiy < other_u.get_ny() &&
+                        ((local_iiz == -1) || (local_iiz == other_u.get_nz())))
                     {
-                        auto& buffer = *u_var->buffer_map[other_domain][LocationType::YNegative];
-                        return buffer(local_iix, local_iiz);
+                        if (local_iiz == -1)
+                        {
+                            auto& buffer = *u_var->buffer_map[other_domain][LocationType::ZNegative];
+                            return buffer(local_iix, local_iiy);
+                        }
+                        else
+                        {
+                            auto& buffer = *u_var->buffer_map[other_domain][LocationType::ZPositive];
+                            return buffer(local_iix, local_iiy);
+                        }
                     }
-                    else
+                    if (local_iiz >= 0 && local_iiz < other_u.get_nz() &&
+                        ((local_iiy == -1) || (local_iiy == other_u.get_ny())))
                     {
-                        auto& buffer = *u_var->buffer_map[other_domain][LocationType::YPositive];
-                        return buffer(local_iix, local_iiz);
+                        if (local_iiy == -1)
+                        {
+                            auto& buffer = *u_var->buffer_map[other_domain][LocationType::YNegative];
+                            return buffer(local_iix, local_iiz);
+                        }
+                        else
+                        {
+                            auto& buffer = *u_var->buffer_map[other_domain][LocationType::YPositive];
+                            return buffer(local_iix, local_iiz);
+                        }
                     }
                 }
             }
@@ -234,72 +240,78 @@ double ImmersedBoundarySolver3D::get_v_value(Domain3DUniform* domain, int iix, i
     double global_z = pz + domain->get_offset_z();
 
     // Find which domain contains this global position
-    for (auto* other_domain : v_var->geometry->domains)
+    // Check neighbors through adjacency
+    if (v_var->geometry->adjacency.count(domain))
     {
-        double other_offset_x = other_domain->get_offset_x();
-        double other_offset_y = other_domain->get_offset_y();
-        double other_offset_z = other_domain->get_offset_z();
-        double other_hx       = other_domain->get_hx();
-        double other_hy       = other_domain->get_hy();
-        double other_hz       = other_domain->get_hz();
-        int    other_nx       = other_domain->get_nx();
-        int    other_ny       = other_domain->get_ny();
-        int    other_nz       = other_domain->get_nz();
-
-        // Convert global to local coordinates
-        double local_x = global_x - other_offset_x;
-        double local_y = global_y - other_offset_y;
-        double local_z = global_z - other_offset_z;
-
-        // Check if within domain bounds (considering buffer regions)
-        if (local_x >= -0.5 * other_hx && local_x <= other_nx * other_hx + 0.5 * other_hx &&
-            local_y >= -other_hy && local_y <= other_ny * other_hy &&
-            local_z >= -0.5 * other_hz && local_z <= other_nz * other_hz + 0.5 * other_hz)
+        for (auto& loc_neighbor_pair : v_var->geometry->adjacency[domain])
         {
-            // Convert to grid indices for this domain
-            int local_iix = static_cast<int>(std::floor((local_x - 0.5 * other_hx) / other_hx));
-            int local_iiy = static_cast<int>(std::floor(local_y / other_hy));
-            int local_iiz = static_cast<int>(std::floor((local_z - 0.5 * other_hz) / other_hz));
+            auto* other_domain = loc_neighbor_pair.second;
 
-            auto other_ctx = get_domain_context(other_domain);
-            auto& other_v   = *v_var->field_map[other_domain];
+            double other_offset_x = other_domain->get_offset_x();
+            double other_offset_y = other_domain->get_offset_y();
+            double other_offset_z = other_domain->get_offset_z();
+            double other_hx       = other_domain->get_hx();
+            double other_hy       = other_domain->get_hy();
+            double other_hz       = other_domain->get_hz();
+            int    other_nx       = other_domain->get_nx();
+            int    other_ny       = other_domain->get_ny();
+            int    other_nz       = other_domain->get_nz();
 
-            // Check if valid indices for this domain
-            if (local_iix >= 0 && local_iix < other_v.get_nx() &&
-                local_iiy >= 0 && local_iiy < other_v.get_ny() &&
-                local_iiz >= 0 && local_iiz < other_v.get_nz())
+            // Convert global to local coordinates
+            double local_x = global_x - other_offset_x;
+            double local_y = global_y - other_offset_y;
+            double local_z = global_z - other_offset_z;
+
+            // Check if within domain bounds (considering buffer regions)
+            if (local_x >= -0.5 * other_hx && local_x <= other_nx * other_hx + 0.5 * other_hx &&
+                local_y >= -other_hy && local_y <= other_ny * other_hy &&
+                local_z >= -0.5 * other_hz && local_z <= other_nz * other_hz + 0.5 * other_hz)
             {
-                return other_ctx.get_v(local_iix, local_iiy, local_iiz);
-            }
-            // Check buffer regions
-            if (local_iiy >= 0 && local_iiy < other_v.get_ny() &&
-                local_iiz >= 0 && local_iiz < other_v.get_nz() &&
-                ((local_iix == -1) || (local_iix == other_v.get_nx())))
-            {
-                if (local_iix == -1)
+                // Convert to grid indices for this domain
+                int local_iix = static_cast<int>(std::floor((local_x - 0.5 * other_hx) / other_hx));
+                int local_iiy = static_cast<int>(std::floor(local_y / other_hy));
+                int local_iiz = static_cast<int>(std::floor((local_z - 0.5 * other_hz) / other_hz));
+
+                auto other_ctx = get_domain_context(other_domain);
+                auto& other_v   = *v_var->field_map[other_domain];
+
+                // Check if valid indices for this domain
+                if (local_iix >= 0 && local_iix < other_v.get_nx() &&
+                    local_iiy >= 0 && local_iiy < other_v.get_ny() &&
+                    local_iiz >= 0 && local_iiz < other_v.get_nz())
                 {
-                    auto& buffer = *v_var->buffer_map[other_domain][LocationType::XNegative];
-                    return buffer(local_iiy, local_iiz);
+                    return other_ctx.get_v(local_iix, local_iiy, local_iiz);
                 }
-                else
+                // Check buffer regions
+                if (local_iiy >= 0 && local_iiy < other_v.get_ny() &&
+                    local_iiz >= 0 && local_iiz < other_v.get_nz() &&
+                    ((local_iix == -1) || (local_iix == other_v.get_nx())))
                 {
-                    auto& buffer = *v_var->buffer_map[other_domain][LocationType::XPositive];
-                    return buffer(local_iiy, local_iiz);
+                    if (local_iix == -1)
+                    {
+                        auto& buffer = *v_var->buffer_map[other_domain][LocationType::XNegative];
+                        return buffer(local_iiy, local_iiz);
+                    }
+                    else
+                    {
+                        auto& buffer = *v_var->buffer_map[other_domain][LocationType::XPositive];
+                        return buffer(local_iiy, local_iiz);
+                    }
                 }
-            }
-            if (local_iix >= 0 && local_iix < other_v.get_nx() &&
-                ((local_iiy == -1) || (local_iiy == other_v.get_ny()) ||
-                 (local_iiz == -1) || (local_iiz == other_v.get_nz())))
-            {
-                if (local_iiy == -1)
+                if (local_iix >= 0 && local_iix < other_v.get_nx() &&
+                    ((local_iiy == -1) || (local_iiy == other_v.get_ny()) ||
+                     (local_iiz == -1) || (local_iiz == other_v.get_nz())))
                 {
-                    auto& buffer = *v_var->buffer_map[other_domain][LocationType::ZNegative];
-                    return buffer(local_iix, local_iiy);
-                }
-                else if (local_iiy == other_v.get_ny())
-                {
-                    auto& buffer = *v_var->buffer_map[other_domain][LocationType::ZPositive];
-                    return buffer(local_iix, local_iiy);
+                    if (local_iiy == -1)
+                    {
+                        auto& buffer = *v_var->buffer_map[other_domain][LocationType::ZNegative];
+                        return buffer(local_iix, local_iiy);
+                    }
+                    else if (local_iiy == other_v.get_ny())
+                    {
+                        auto& buffer = *v_var->buffer_map[other_domain][LocationType::ZPositive];
+                        return buffer(local_iix, local_iiy);
+                    }
                 }
             }
         }
@@ -331,71 +343,77 @@ double ImmersedBoundarySolver3D::get_w_value(Domain3DUniform* domain, int iix, i
     double global_z = pz + domain->get_offset_z();
 
     // Find which domain contains this global position
-    for (auto* other_domain : w_var->geometry->domains)
+    // Check neighbors through adjacency
+    if (w_var->geometry->adjacency.count(domain))
     {
-        double other_offset_x = other_domain->get_offset_x();
-        double other_offset_y = other_domain->get_offset_y();
-        double other_offset_z = other_domain->get_offset_z();
-        double other_hx       = other_domain->get_hx();
-        double other_hy       = other_domain->get_hy();
-        double other_hz       = other_domain->get_hz();
-        int    other_nx       = other_domain->get_nx();
-        int    other_ny       = other_domain->get_ny();
-        int    other_nz       = other_domain->get_nz();
-
-        // Convert global to local coordinates
-        double local_x = global_x - other_offset_x;
-        double local_y = global_y - other_offset_y;
-        double local_z = global_z - other_offset_z;
-
-        // Check if within domain bounds (considering buffer regions)
-        if (local_x >= -0.5 * other_hx && local_x <= other_nx * other_hx + 0.5 * other_hx &&
-            local_y >= -0.5 * other_hy && local_y <= other_ny * other_hy + 0.5 * other_hy &&
-            local_z >= -other_hz && local_z <= other_nz * other_hz)
+        for (auto& loc_neighbor_pair : w_var->geometry->adjacency[domain])
         {
-            // Convert to grid indices for this domain
-            int local_iix = static_cast<int>(std::floor((local_x - 0.5 * other_hx) / other_hx));
-            int local_iiy = static_cast<int>(std::floor((local_y - 0.5 * other_hy) / other_hy));
-            int local_iiz = static_cast<int>(std::floor(local_z / other_hz));
+            auto* other_domain = loc_neighbor_pair.second;
 
-            auto other_ctx = get_domain_context(other_domain);
-            auto& other_w   = *w_var->field_map[other_domain];
+            double other_offset_x = other_domain->get_offset_x();
+            double other_offset_y = other_domain->get_offset_y();
+            double other_offset_z = other_domain->get_offset_z();
+            double other_hx       = other_domain->get_hx();
+            double other_hy       = other_domain->get_hy();
+            double other_hz       = other_domain->get_hz();
+            int    other_nx       = other_domain->get_nx();
+            int    other_ny       = other_domain->get_ny();
+            int    other_nz       = other_domain->get_nz();
 
-            // Check if valid indices for this domain
-            if (local_iix >= 0 && local_iix < other_w.get_nx() &&
-                local_iiy >= 0 && local_iiy < other_w.get_ny() &&
-                local_iiz >= 0 && local_iiz < other_w.get_nz())
+            // Convert global to local coordinates
+            double local_x = global_x - other_offset_x;
+            double local_y = global_y - other_offset_y;
+            double local_z = global_z - other_offset_z;
+
+            // Check if within domain bounds (considering buffer regions)
+            if (local_x >= -0.5 * other_hx && local_x <= other_nx * other_hx + 0.5 * other_hx &&
+                local_y >= -0.5 * other_hy && local_y <= other_ny * other_hy + 0.5 * other_hy &&
+                local_z >= -other_hz && local_z <= other_nz * other_hz)
             {
-                return other_ctx.get_w(local_iix, local_iiy, local_iiz);
-            }
-            // Check buffer regions
-            if (local_iix >= 0 && local_iix < other_w.get_nx() &&
-                local_iiy >= 0 && local_iiy < other_w.get_ny() &&
-                ((local_iiz == -1) || (local_iiz == other_w.get_nz())))
-            {
-                if (local_iiz == -1)
+                // Convert to grid indices for this domain
+                int local_iix = static_cast<int>(std::floor((local_x - 0.5 * other_hx) / other_hx));
+                int local_iiy = static_cast<int>(std::floor((local_y - 0.5 * other_hy) / other_hy));
+                int local_iiz = static_cast<int>(std::floor(local_z / other_hz));
+
+                auto other_ctx = get_domain_context(other_domain);
+                auto& other_w   = *w_var->field_map[other_domain];
+
+                // Check if valid indices for this domain
+                if (local_iix >= 0 && local_iix < other_w.get_nx() &&
+                    local_iiy >= 0 && local_iiy < other_w.get_ny() &&
+                    local_iiz >= 0 && local_iiz < other_w.get_nz())
                 {
-                    auto& buffer = *w_var->buffer_map[other_domain][LocationType::ZNegative];
-                    return buffer(local_iix, local_iiy);
+                    return other_ctx.get_w(local_iix, local_iiy, local_iiz);
                 }
-                else
+                // Check buffer regions
+                if (local_iix >= 0 && local_iix < other_w.get_nx() &&
+                    local_iiy >= 0 && local_iiy < other_w.get_ny() &&
+                    ((local_iiz == -1) || (local_iiz == other_w.get_nz())))
                 {
-                    auto& buffer = *w_var->buffer_map[other_domain][LocationType::ZPositive];
-                    return buffer(local_iix, local_iiy);
+                    if (local_iiz == -1)
+                    {
+                        auto& buffer = *w_var->buffer_map[other_domain][LocationType::ZNegative];
+                        return buffer(local_iix, local_iiy);
+                    }
+                    else
+                    {
+                        auto& buffer = *w_var->buffer_map[other_domain][LocationType::ZPositive];
+                        return buffer(local_iix, local_iiy);
+                    }
                 }
-            }
-            if (local_iix >= 0 && local_iix < other_w.get_nx() &&
-                ((local_iiy == -1) || (local_iiy == other_w.get_ny())))
-            {
-                if (local_iiy == -1)
+                if (local_iix >= 0 && local_iix < other_w.get_nx() &&
+                    ((local_iiy == -1) || (local_iiy == other_w.get_ny())))
                 {
-                    auto& buffer = *w_var->buffer_map[other_domain][LocationType::YNegative];
-                    return buffer(local_iix, local_iiz);
-                }
-                else
-                {
-                    auto& buffer = *w_var->buffer_map[other_domain][LocationType::YPositive];
-                    return buffer(local_iix, local_iiz);
+                    if (local_iiy == -1)
+                    {
+                        auto& buffer = *w_var->buffer_map[other_domain][LocationType::YNegative];
+                        return buffer(local_iix, local_iiz);
+                    }
+                    else
+                    {
+                        auto& buffer = *w_var->buffer_map[other_domain][LocationType::YPositive];
+                        return buffer(local_iix, local_iiz);
+                    }
                 }
             }
         }
