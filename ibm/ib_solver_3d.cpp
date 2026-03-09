@@ -22,6 +22,8 @@ ImmersedBoundarySolver3D::ImmersedBoundarySolver3D(Variable3D*                  
         auto& v = *v_var->field_map[domain];
         auto& w = *w_var->field_map[domain];
 
+        auto& u_buffer_x_neg = *u_var->buffer_map[domain][LocationType::XNegative];
+        auto& u_buffer_x_pos = *u_var->buffer_map[domain][LocationType::XPositive];
         auto& u_buffer_y_neg = *u_var->buffer_map[domain][LocationType::YNegative];
         auto& u_buffer_y_pos = *u_var->buffer_map[domain][LocationType::YPositive];
         auto& u_buffer_z_neg = *u_var->buffer_map[domain][LocationType::ZNegative];
@@ -29,6 +31,8 @@ ImmersedBoundarySolver3D::ImmersedBoundarySolver3D(Variable3D*                  
 
         auto& v_buffer_x_neg = *v_var->buffer_map[domain][LocationType::XNegative];
         auto& v_buffer_x_pos = *v_var->buffer_map[domain][LocationType::XPositive];
+        auto& v_buffer_y_neg = *v_var->buffer_map[domain][LocationType::YNegative];
+        auto& v_buffer_y_pos = *v_var->buffer_map[domain][LocationType::YPositive];
         auto& v_buffer_z_neg = *v_var->buffer_map[domain][LocationType::ZNegative];
         auto& v_buffer_z_pos = *v_var->buffer_map[domain][LocationType::ZPositive];
 
@@ -36,75 +40,139 @@ ImmersedBoundarySolver3D::ImmersedBoundarySolver3D(Variable3D*                  
         auto& w_buffer_x_pos = *w_var->buffer_map[domain][LocationType::XPositive];
         auto& w_buffer_y_neg = *w_var->buffer_map[domain][LocationType::YNegative];
         auto& w_buffer_y_pos = *w_var->buffer_map[domain][LocationType::YPositive];
+        auto& w_buffer_z_neg = *w_var->buffer_map[domain][LocationType::ZNegative];
+        auto& w_buffer_z_pos = *w_var->buffer_map[domain][LocationType::ZPositive];
 
-        return DomainContext{
-            domain,
-            [&](int i, int j, int k) -> double {
-                if (j == -1)
-                {
-                    return u_buffer_y_neg(i, k);
-                }
-                else if (j == u.get_ny())
-                {
-                    return u_buffer_y_pos(i, k);
-                }
-                else if (k == -1)
-                {
-                    return u_buffer_z_neg(i, j);
-                }
-                else if (k == u.get_nz())
-                {
-                    return u_buffer_z_pos(i, j);
-                }
-                else
-                {
-                    return u(i, j, k);
-                }
-            },
-            [&](int i, int j, int k) -> double {
-                if (i == -1)
-                {
-                    return v_buffer_x_neg(j, k);
-                }
-                else if (i == v.get_nx())
-                {
-                    return v_buffer_x_pos(j, k);
-                }
-                else if (k == -1)
-                {
-                    return v_buffer_z_neg(i, j);
-                }
-                else if (k == v.get_nz())
-                {
-                    return v_buffer_z_pos(i, j);
-                }
-                else
-                {
-                    return v(i, j, k);
-                }
-            },
-            [&](int i, int j, int k) -> double {
-                if (i == -1)
-                {
-                    return w_buffer_x_neg(i, j);
-                }
-                else if (i == w.get_nx())
-                {
-                    return w_buffer_x_pos(i, j);
-                }
-                else if (j == -1)
-                {
-                    return w_buffer_y_neg(i, k);
-                }
-                else if (j == w.get_ny())
-                {
-                    return w_buffer_y_pos(i, k);
-                }
-                else
-                {
-                    return w(i, j, k);
-                }
-            }};
+        return DomainContext {domain,
+                              [&](int i, int j, int k) -> double {
+                                  // u is x-face centered; allow i=-1/nx (x buffers)
+                                  if (i == -1)
+                                  {
+                                      j = std::clamp(j, 0, u.get_ny() - 1);
+                                      k = std::clamp(k, 0, u.get_nz() - 1);
+                                      return u_buffer_x_neg(j, k);
+                                  }
+                                  else if (i == u.get_nx())
+                                  {
+                                      j = std::clamp(j, 0, u.get_ny() - 1);
+                                      k = std::clamp(k, 0, u.get_nz() - 1);
+                                      return u_buffer_x_pos(j, k);
+                                  }
+                                  else if (j == -1)
+                                  {
+                                      i = std::clamp(i, 0, u.get_nx() - 1);
+                                      k = std::clamp(k, 0, u.get_nz() - 1);
+                                      return u_buffer_y_neg(i, k);
+                                  }
+                                  else if (j == u.get_ny())
+                                  {
+                                      i = std::clamp(i, 0, u.get_nx() - 1);
+                                      k = std::clamp(k, 0, u.get_nz() - 1);
+                                      return u_buffer_y_pos(i, k);
+                                  }
+                                  else if (k == -1)
+                                  {
+                                      i = std::clamp(i, 0, u.get_nx() - 1);
+                                      j = std::clamp(j, 0, u.get_ny() - 1);
+                                      return u_buffer_z_neg(i, j);
+                                  }
+                                  else if (k == u.get_nz())
+                                  {
+                                      i = std::clamp(i, 0, u.get_nx() - 1);
+                                      j = std::clamp(j, 0, u.get_ny() - 1);
+                                      return u_buffer_z_pos(i, j);
+                                  }
+                                  else
+                                  {
+                                      return u(i, j, k);
+                                  }
+                              },
+                              [&](int i, int j, int k) -> double {
+                                  // v is y-face centered; allow j=-1/ny (y buffers)
+                                  if (j == -1)
+                                  {
+                                      i = std::clamp(i, 0, v.get_nx() - 1);
+                                      k = std::clamp(k, 0, v.get_nz() - 1);
+                                      return v_buffer_y_neg(i, k);
+                                  }
+                                  else if (j == v.get_ny())
+                                  {
+                                      i = std::clamp(i, 0, v.get_nx() - 1);
+                                      k = std::clamp(k, 0, v.get_nz() - 1);
+                                      return v_buffer_y_pos(i, k);
+                                  }
+                                  else if (i == -1)
+                                  {
+                                      j = std::clamp(j, 0, v.get_ny() - 1);
+                                      k = std::clamp(k, 0, v.get_nz() - 1);
+                                      return v_buffer_x_neg(j, k);
+                                  }
+                                  else if (i == v.get_nx())
+                                  {
+                                      j = std::clamp(j, 0, v.get_ny() - 1);
+                                      k = std::clamp(k, 0, v.get_nz() - 1);
+                                      return v_buffer_x_pos(j, k);
+                                  }
+                                  else if (k == -1)
+                                  {
+                                      i = std::clamp(i, 0, v.get_nx() - 1);
+                                      j = std::clamp(j, 0, v.get_ny() - 1);
+                                      return v_buffer_z_neg(i, j);
+                                  }
+                                  else if (k == v.get_nz())
+                                  {
+                                      i = std::clamp(i, 0, v.get_nx() - 1);
+                                      j = std::clamp(j, 0, v.get_ny() - 1);
+                                      return v_buffer_z_pos(i, j);
+                                  }
+                                  else
+                                  {
+                                      return v(i, j, k);
+                                  }
+                              },
+                              [&](int i, int j, int k) -> double {
+                                  // w is z-face centered; allow k=-1/nz (z buffers)
+                                  if (k == -1)
+                                  {
+                                      i = std::clamp(i, 0, w.get_nx() - 1);
+                                      j = std::clamp(j, 0, w.get_ny() - 1);
+                                      return w_buffer_z_neg(i, j);
+                                  }
+                                  else if (k == w.get_nz())
+                                  {
+                                      i = std::clamp(i, 0, w.get_nx() - 1);
+                                      j = std::clamp(j, 0, w.get_ny() - 1);
+                                      return w_buffer_z_pos(i, j);
+                                  }
+                                  else if (i == -1)
+                                  {
+                                      j = std::clamp(j, 0, w.get_ny() - 1);
+                                      k = std::clamp(k, 0, w.get_nz() - 1);
+                                      return w_buffer_x_neg(j, k);
+                                  }
+                                  else if (i == w.get_nx())
+                                  {
+                                      j = std::clamp(j, 0, w.get_ny() - 1);
+                                      k = std::clamp(k, 0, w.get_nz() - 1);
+                                      return w_buffer_x_pos(j, k);
+                                  }
+                                  else if (j == -1)
+                                  {
+                                      i = std::clamp(i, 0, w.get_nx() - 1);
+                                      k = std::clamp(k, 0, w.get_nz() - 1);
+                                      return w_buffer_y_neg(i, k);
+                                  }
+                                  else if (j == w.get_ny())
+                                  {
+                                      i = std::clamp(i, 0, w.get_nx() - 1);
+                                      k = std::clamp(k, 0, w.get_nz() - 1);
+                                      return w_buffer_y_pos(i, k);
+                                  }
+                                  else
+                                  {
+                                      return w(i, j, k);
+                                  }
+                              }};
     };
 }
 
@@ -119,7 +187,8 @@ double ImmersedBoundarySolver3D::get_u_value(Domain3DUniform* domain, int iix, i
     auto& u = *u_var->field_map[domain];
 
     // Check if indices are within current domain bounds
-    if (iix >= 0 && iix < u.get_nx() && iiy >= 0 && iiy < u.get_ny() && iiz >= 0 && iiz < u.get_nz())
+    // DomainContext can handle boundary buffer layers: i/j/k in [-1, nx/ny/nz]
+    if (iix >= -1 && iix <= u.get_nx() && iiy >= -1 && iiy <= u.get_ny() && iiz >= -1 && iiz <= u.get_nz())
     {
         auto ctx = get_domain_context(domain);
         return ctx.get_u(iix, iiy, iiz);
@@ -159,56 +228,24 @@ double ImmersedBoundarySolver3D::get_u_value(Domain3DUniform* domain, int iix, i
             double local_z = global_z - other_offset_z;
 
             // Check if within domain bounds (considering buffer regions)
-            if (local_x >= -other_hx && local_x <= other_nx * other_hx &&
-                local_y >= -0.5 * other_hy && local_y <= other_ny * other_hy + 0.5 * other_hy &&
-                local_z >= -0.5 * other_hz && local_z <= other_nz * other_hz + 0.5 * other_hz)
+            if (local_x >= -other_hx && local_x <= other_nx * other_hx && local_y >= -0.5 * other_hy &&
+                local_y <= other_ny * other_hy + 0.5 * other_hy && local_z >= -0.5 * other_hz &&
+                local_z <= other_nz * other_hz + 0.5 * other_hz)
             {
                 // Convert to grid indices for this domain
                 int local_iix = static_cast<int>(std::floor(local_x / other_hx));
                 int local_iiy = static_cast<int>(std::floor((local_y - 0.5 * other_hy) / other_hy));
                 int local_iiz = static_cast<int>(std::floor((local_z - 0.5 * other_hz) / other_hz));
 
-                auto other_ctx = get_domain_context(other_domain);
+                auto  other_ctx = get_domain_context(other_domain);
                 auto& other_u   = *u_var->field_map[other_domain];
 
                 // Check if valid indices for this domain
-                if (local_iix >= 0 && local_iix < other_u.get_nx() &&
-                    local_iiy >= 0 && local_iiy < other_u.get_ny() &&
-                    local_iiz >= 0 && local_iiz < other_u.get_nz())
+                // DomainContext can handle boundary buffer layers: i/j/k in [-1, nx/ny/nz]
+                if (local_iix >= -1 && local_iix <= other_u.get_nx() && local_iiy >= -1 &&
+                    local_iiy <= other_u.get_ny() && local_iiz >= -1 && local_iiz <= other_u.get_nz())
                 {
                     return other_ctx.get_u(local_iix, local_iiy, local_iiz);
-                }
-                // Check buffer regions
-                if (local_iix >= 0 && local_iix < other_u.get_nx())
-                {
-                    if (local_iiy >= 0 && local_iiy < other_u.get_ny() &&
-                        ((local_iiz == -1) || (local_iiz == other_u.get_nz())))
-                    {
-                        if (local_iiz == -1)
-                        {
-                            auto& buffer = *u_var->buffer_map[other_domain][LocationType::ZNegative];
-                            return buffer(local_iix, local_iiy);
-                        }
-                        else
-                        {
-                            auto& buffer = *u_var->buffer_map[other_domain][LocationType::ZPositive];
-                            return buffer(local_iix, local_iiy);
-                        }
-                    }
-                    if (local_iiz >= 0 && local_iiz < other_u.get_nz() &&
-                        ((local_iiy == -1) || (local_iiy == other_u.get_ny())))
-                    {
-                        if (local_iiy == -1)
-                        {
-                            auto& buffer = *u_var->buffer_map[other_domain][LocationType::YNegative];
-                            return buffer(local_iix, local_iiz);
-                        }
-                        else
-                        {
-                            auto& buffer = *u_var->buffer_map[other_domain][LocationType::YPositive];
-                            return buffer(local_iix, local_iiz);
-                        }
-                    }
                 }
             }
         }
@@ -223,7 +260,8 @@ double ImmersedBoundarySolver3D::get_v_value(Domain3DUniform* domain, int iix, i
     auto& v = *v_var->field_map[domain];
 
     // Check if indices are within current domain bounds
-    if (iix >= 0 && iix < v.get_nx() && iiy >= 0 && iiy < v.get_ny() && iiz >= 0 && iiz < v.get_nz())
+    // DomainContext can handle boundary buffer layers: i/j/k in [-1, nx/ny/nz]
+    if (iix >= -1 && iix <= v.get_nx() && iiy >= -1 && iiy <= v.get_ny() && iiz >= -1 && iiz <= v.get_nz())
     {
         auto ctx = get_domain_context(domain);
         return ctx.get_v(iix, iiy, iiz);
@@ -263,55 +301,24 @@ double ImmersedBoundarySolver3D::get_v_value(Domain3DUniform* domain, int iix, i
             double local_z = global_z - other_offset_z;
 
             // Check if within domain bounds (considering buffer regions)
-            if (local_x >= -0.5 * other_hx && local_x <= other_nx * other_hx + 0.5 * other_hx &&
-                local_y >= -other_hy && local_y <= other_ny * other_hy &&
-                local_z >= -0.5 * other_hz && local_z <= other_nz * other_hz + 0.5 * other_hz)
+            if (local_x >= -0.5 * other_hx && local_x <= other_nx * other_hx + 0.5 * other_hx && local_y >= -other_hy &&
+                local_y <= other_ny * other_hy && local_z >= -0.5 * other_hz &&
+                local_z <= other_nz * other_hz + 0.5 * other_hz)
             {
                 // Convert to grid indices for this domain
                 int local_iix = static_cast<int>(std::floor((local_x - 0.5 * other_hx) / other_hx));
                 int local_iiy = static_cast<int>(std::floor(local_y / other_hy));
                 int local_iiz = static_cast<int>(std::floor((local_z - 0.5 * other_hz) / other_hz));
 
-                auto other_ctx = get_domain_context(other_domain);
+                auto  other_ctx = get_domain_context(other_domain);
                 auto& other_v   = *v_var->field_map[other_domain];
 
                 // Check if valid indices for this domain
-                if (local_iix >= 0 && local_iix < other_v.get_nx() &&
-                    local_iiy >= 0 && local_iiy < other_v.get_ny() &&
-                    local_iiz >= 0 && local_iiz < other_v.get_nz())
+                // DomainContext can handle boundary buffer layers: i/j/k in [-1, nx/ny/nz]
+                if (local_iix >= -1 && local_iix <= other_v.get_nx() && local_iiy >= -1 &&
+                    local_iiy <= other_v.get_ny() && local_iiz >= -1 && local_iiz <= other_v.get_nz())
                 {
                     return other_ctx.get_v(local_iix, local_iiy, local_iiz);
-                }
-                // Check buffer regions
-                if (local_iiy >= 0 && local_iiy < other_v.get_ny() &&
-                    local_iiz >= 0 && local_iiz < other_v.get_nz() &&
-                    ((local_iix == -1) || (local_iix == other_v.get_nx())))
-                {
-                    if (local_iix == -1)
-                    {
-                        auto& buffer = *v_var->buffer_map[other_domain][LocationType::XNegative];
-                        return buffer(local_iiy, local_iiz);
-                    }
-                    else
-                    {
-                        auto& buffer = *v_var->buffer_map[other_domain][LocationType::XPositive];
-                        return buffer(local_iiy, local_iiz);
-                    }
-                }
-                if (local_iix >= 0 && local_iix < other_v.get_nx() &&
-                    ((local_iiy == -1) || (local_iiy == other_v.get_ny()) ||
-                     (local_iiz == -1) || (local_iiz == other_v.get_nz())))
-                {
-                    if (local_iiy == -1)
-                    {
-                        auto& buffer = *v_var->buffer_map[other_domain][LocationType::ZNegative];
-                        return buffer(local_iix, local_iiy);
-                    }
-                    else if (local_iiy == other_v.get_ny())
-                    {
-                        auto& buffer = *v_var->buffer_map[other_domain][LocationType::ZPositive];
-                        return buffer(local_iix, local_iiy);
-                    }
                 }
             }
         }
@@ -326,7 +333,8 @@ double ImmersedBoundarySolver3D::get_w_value(Domain3DUniform* domain, int iix, i
     auto& w = *w_var->field_map[domain];
 
     // Check if indices are within current domain bounds
-    if (iix >= 0 && iix < w.get_nx() && iiy >= 0 && iiy < w.get_ny() && iiz >= 0 && iiz < w.get_nz())
+    // DomainContext can handle boundary buffer layers: i/j/k in [-1, nx/ny/nz]
+    if (iix >= -1 && iix <= w.get_nx() && iiy >= -1 && iiy <= w.get_ny() && iiz >= -1 && iiz <= w.get_nz())
     {
         auto ctx = get_domain_context(domain);
         return ctx.get_w(iix, iiy, iiz);
@@ -367,53 +375,23 @@ double ImmersedBoundarySolver3D::get_w_value(Domain3DUniform* domain, int iix, i
 
             // Check if within domain bounds (considering buffer regions)
             if (local_x >= -0.5 * other_hx && local_x <= other_nx * other_hx + 0.5 * other_hx &&
-                local_y >= -0.5 * other_hy && local_y <= other_ny * other_hy + 0.5 * other_hy &&
-                local_z >= -other_hz && local_z <= other_nz * other_hz)
+                local_y >= -0.5 * other_hy && local_y <= other_ny * other_hy + 0.5 * other_hy && local_z >= -other_hz &&
+                local_z <= other_nz * other_hz)
             {
                 // Convert to grid indices for this domain
                 int local_iix = static_cast<int>(std::floor((local_x - 0.5 * other_hx) / other_hx));
                 int local_iiy = static_cast<int>(std::floor((local_y - 0.5 * other_hy) / other_hy));
                 int local_iiz = static_cast<int>(std::floor(local_z / other_hz));
 
-                auto other_ctx = get_domain_context(other_domain);
+                auto  other_ctx = get_domain_context(other_domain);
                 auto& other_w   = *w_var->field_map[other_domain];
 
                 // Check if valid indices for this domain
-                if (local_iix >= 0 && local_iix < other_w.get_nx() &&
-                    local_iiy >= 0 && local_iiy < other_w.get_ny() &&
-                    local_iiz >= 0 && local_iiz < other_w.get_nz())
+                // DomainContext can handle boundary buffer layers: i/j/k in [-1, nx/ny/nz]
+                if (local_iix >= -1 && local_iix <= other_w.get_nx() && local_iiy >= -1 &&
+                    local_iiy <= other_w.get_ny() && local_iiz >= -1 && local_iiz <= other_w.get_nz())
                 {
                     return other_ctx.get_w(local_iix, local_iiy, local_iiz);
-                }
-                // Check buffer regions
-                if (local_iix >= 0 && local_iix < other_w.get_nx() &&
-                    local_iiy >= 0 && local_iiy < other_w.get_ny() &&
-                    ((local_iiz == -1) || (local_iiz == other_w.get_nz())))
-                {
-                    if (local_iiz == -1)
-                    {
-                        auto& buffer = *w_var->buffer_map[other_domain][LocationType::ZNegative];
-                        return buffer(local_iix, local_iiy);
-                    }
-                    else
-                    {
-                        auto& buffer = *w_var->buffer_map[other_domain][LocationType::ZPositive];
-                        return buffer(local_iix, local_iiy);
-                    }
-                }
-                if (local_iix >= 0 && local_iix < other_w.get_nx() &&
-                    ((local_iiy == -1) || (local_iiy == other_w.get_ny())))
-                {
-                    if (local_iiy == -1)
-                    {
-                        auto& buffer = *w_var->buffer_map[other_domain][LocationType::YNegative];
-                        return buffer(local_iix, local_iiz);
-                    }
-                    else
-                    {
-                        auto& buffer = *w_var->buffer_map[other_domain][LocationType::YPositive];
-                        return buffer(local_iix, local_iiz);
-                    }
                 }
             }
         }
@@ -429,7 +407,7 @@ void ImmersedBoundarySolver3D::u2F()
     for (auto* domain : u_var->geometry->domains)
     {
         auto& particles = *coord_map[domain];
-        auto& ib_data    = *ib_map[domain];
+        auto& ib_data   = *ib_map[domain];
 
         auto ctx = get_domain_context(domain);
 
@@ -483,9 +461,7 @@ void ImmersedBoundarySolver3D::u2F()
                             u_value = get_u_value(domain, iix, iiy, iiz);
                         }
 
-                        Uf[i] += u_value *
-                                   ib_delta(X[i] - xi, Y[i] - yi, Z[i] - zi, grid_h) *
-                                   grid_h * grid_h * grid_h;
+                        Uf[i] += u_value * ib_delta(X[i] - xi, Y[i] - yi, Z[i] - zi, grid_h) * grid_h * grid_h * grid_h;
                     }
                 }
             }
@@ -532,9 +508,7 @@ void ImmersedBoundarySolver3D::u2F()
                             v_value = get_v_value(domain, iix, iiy, iiz);
                         }
 
-                        Vf[i] += v_value *
-                                   ib_delta(X[i] - xi, Y[i] - yi, Z[i] - zi, grid_h) *
-                                   grid_h * grid_h * grid_h;
+                        Vf[i] += v_value * ib_delta(X[i] - xi, Y[i] - yi, Z[i] - zi, grid_h) * grid_h * grid_h * grid_h;
                     }
                 }
             }
@@ -581,9 +555,7 @@ void ImmersedBoundarySolver3D::u2F()
                             w_value = get_w_value(domain, iix, iiy, iiz);
                         }
 
-                        Wf[i] += w_value *
-                                   ib_delta(X[i] - xi, Y[i] - yi, Z[i] - zi, grid_h) *
-                                   grid_h * grid_h * grid_h;
+                        Wf[i] += w_value * ib_delta(X[i] - xi, Y[i] - yi, Z[i] - zi, grid_h) * grid_h * grid_h * grid_h;
                     }
                 }
             }
@@ -599,7 +571,7 @@ void ImmersedBoundarySolver3D::apply_ib_force()
     for (auto* domain : u_var->geometry->domains)
     {
         auto& particles = *coord_map[domain];
-        auto& ib_data    = *ib_map[domain];
+        auto& ib_data   = *ib_map[domain];
 
         EXPOSE_PCOORD3D_BOUND(&particles)
         EXPOSE_PIB3D(&ib_data)
@@ -622,9 +594,8 @@ void ImmersedBoundarySolver3D::apply_ib_force()
 
                     for (int ib = 0; ib < particles.cur_n; ib++)
                     {
-                        double ib_force = Fx[ib] *
-                                         ib_delta(xx - X[ib], yy - Y[ib], zz - Z[ib], grid_h) * ib_h *
-                                         ib_h * grid_h;
+                        double ib_force =
+                            Fx[ib] * ib_delta(xx - X[ib], yy - Y[ib], zz - Z[ib], grid_h) * ib_h * ib_h * grid_h;
 
                         u_recv(i, j, k) += ib_force;
                     }
@@ -646,9 +617,8 @@ void ImmersedBoundarySolver3D::apply_ib_force()
 
                     for (int ib = 0; ib < particles.cur_n; ib++)
                     {
-                        double ib_force = Fy[ib] *
-                                         ib_delta(xx - X[ib], yy - Y[ib], zz - Z[ib], grid_h) * ib_h *
-                                         ib_h * grid_h;
+                        double ib_force =
+                            Fy[ib] * ib_delta(xx - X[ib], yy - Y[ib], zz - Z[ib], grid_h) * ib_h * ib_h * grid_h;
 
                         v_recv(i, j, k) += ib_force;
                     }
@@ -670,9 +640,8 @@ void ImmersedBoundarySolver3D::apply_ib_force()
 
                     for (int ib = 0; ib < particles.cur_n; ib++)
                     {
-                        double ib_force = Fz[ib] *
-                                         ib_delta(xx - X[ib], yy - Y[ib], zz - Z[ib], grid_h) * ib_h *
-                                         ib_h * grid_h;
+                        double ib_force =
+                            Fz[ib] * ib_delta(xx - X[ib], yy - Y[ib], zz - Z[ib], grid_h) * ib_h * ib_h * grid_h;
 
                         w_recv(i, j, k) += ib_force;
                     }

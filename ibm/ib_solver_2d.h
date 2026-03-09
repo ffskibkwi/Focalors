@@ -48,7 +48,7 @@ private:
     // Context helper to access field and buffer for a given domain
     struct DomainContext
     {
-        Domain2DUniform* domain;
+        Domain2DUniform*                domain;
         std::function<double(int, int)> get_u;
         std::function<double(int, int)> get_v;
     };

@@ -19,41 +19,71 @@ ImmersedBoundarySolver2D::ImmersedBoundarySolver2D(Variable2D*                  
         auto& u = *u_var->field_map[domain];
         auto& v = *v_var->field_map[domain];
 
+        auto* u_buffer_x_neg = u_var->buffer_map[domain][LocationType::XNegative];
+        auto* u_buffer_x_pos = u_var->buffer_map[domain][LocationType::XPositive];
         auto* u_buffer_y_neg = u_var->buffer_map[domain][LocationType::YNegative];
         auto* u_buffer_y_pos = u_var->buffer_map[domain][LocationType::YPositive];
+
         auto* v_buffer_x_neg = v_var->buffer_map[domain][LocationType::XNegative];
         auto* v_buffer_x_pos = v_var->buffer_map[domain][LocationType::XPositive];
+        auto* v_buffer_y_neg = v_var->buffer_map[domain][LocationType::YNegative];
+        auto* v_buffer_y_pos = v_var->buffer_map[domain][LocationType::YPositive];
 
-        return DomainContext{
-            domain,
-            [&](int i, int j) -> double {
-                if (j == -1)
-                {
-                    return u_buffer_y_neg[i];
-                }
-                else if (j == u.get_ny())
-                {
-                    return u_buffer_y_pos[i];
-                }
-                else
-                {
-                    return u(i, j);
-                }
-            },
-            [&](int i, int j) -> double {
-                if (i == -1)
-                {
-                    return v_buffer_x_neg[j];
-                }
-                else if (i == v.get_nx())
-                {
-                    return v_buffer_x_pos[j];
-                }
-                else
-                {
-                    return v(i, j);
-                }
-            }};
+        return DomainContext {domain,
+                              [&](int i, int j) -> double {
+                                  // u is x-face centered; allow i=-1/nx (x buffers) and j=-1/ny (y buffers)
+                                  if (i == -1)
+                                  {
+                                      j = std::clamp(j, 0, u.get_ny() - 1);
+                                      return u_buffer_x_neg[j];
+                                  }
+                                  else if (i == u.get_nx())
+                                  {
+                                      j = std::clamp(j, 0, u.get_ny() - 1);
+                                      return u_buffer_x_pos[j];
+                                  }
+                                  else if (j == -1)
+                                  {
+                                      i = std::clamp(i, 0, u.get_nx() - 1);
+                                      return u_buffer_y_neg[i];
+                                  }
+                                  else if (j == u.get_ny())
+                                  {
+                                      i = std::clamp(i, 0, u.get_nx() - 1);
+                                      return u_buffer_y_pos[i];
+                                  }
+                                  else
+                                  {
+                                      return u(i, j);
+                                  }
+                              },
+                              [&](int i, int j) -> double {
+                                  // v is y-face centered; allow j=-1/ny (y buffers) and i=-1/nx (x buffers)
+                                  if (j == -1)
+                                  {
+                                      i = std::clamp(i, 0, v.get_nx() - 1);
+                                      return v_buffer_y_neg[i];
+                                  }
+                                  else if (j == v.get_ny())
+                                  {
+                                      i = std::clamp(i, 0, v.get_nx() - 1);
+                                      return v_buffer_y_pos[i];
+                                  }
+                                  else if (i == -1)
+                                  {
+                                      j = std::clamp(j, 0, v.get_ny() - 1);
+                                      return v_buffer_x_neg[j];
+                                  }
+                                  else if (i == v.get_nx())
+                                  {
+                                      j = std::clamp(j, 0, v.get_ny() - 1);
+                                      return v_buffer_x_pos[j];
+                                  }
+                                  else
+                                  {
+                                      return v(i, j);
+                                  }
+                              }};
     };
 }
 
@@ -65,11 +95,12 @@ void ImmersedBoundarySolver2D::solve()
 
 double ImmersedBoundarySolver2D::get_u_value(Domain2DUniform* domain, int iix, int iiy)
 {
-    auto ctx = get_domain_context(domain);
-    auto& u = *u_var->field_map[domain];
+    auto  ctx = get_domain_context(domain);
+    auto& u   = *u_var->field_map[domain];
 
     // Check if indices are within current domain bounds
-    if (iix >= 0 && iix < u.get_nx() && iiy >= 0 && iiy < u.get_ny())
+    // DomainContext can handle boundary buffer layers: i in [-1,nx], j in [-1,ny]
+    if (iix >= -1 && iix <= u.get_nx() && iiy >= -1 && iiy <= u.get_ny())
     {
         return ctx.get_u(iix, iiy);
     }
@@ -102,34 +133,22 @@ double ImmersedBoundarySolver2D::get_u_value(Domain2DUniform* domain, int iix, i
             double local_y = global_y - other_offset_y;
 
             // Check if within domain bounds (considering buffer regions)
-            if (local_x >= -other_hx && local_x <= other_nx * other_hx &&
-                local_y >= -0.5 * other_hy && local_y <= other_ny * other_hy + 0.5 * other_hy)
+            if (local_x >= -other_hx && local_x <= other_nx * other_hx && local_y >= -0.5 * other_hy &&
+                local_y <= other_ny * other_hy + 0.5 * other_hy)
             {
                 // Convert to grid indices for this domain
                 int local_iix = static_cast<int>(std::floor(local_x / other_hx));
                 int local_iiy = static_cast<int>(std::floor((local_y - 0.5 * other_hy) / other_hy));
 
-                auto other_ctx = get_domain_context(other_domain);
+                auto  other_ctx = get_domain_context(other_domain);
                 auto& other_u   = *u_var->field_map[other_domain];
 
                 // Check if valid indices for this domain
-                if (local_iix >= 0 && local_iix < other_u.get_nx() && local_iiy >= 0 && local_iiy < other_u.get_ny())
+                // DomainContext can handle boundary buffer layers: i in [-1,nx], j in [-1,ny]
+                if (local_iix >= -1 && local_iix <= other_u.get_nx() && local_iiy >= -1 &&
+                    local_iiy <= other_u.get_ny())
                 {
                     return other_ctx.get_u(local_iix, local_iiy);
-                }
-                // Check buffer regions
-                if (local_iix >= 0 && local_iix < other_u.get_nx())
-                {
-                    if (local_iiy == -1)
-                    {
-                        auto* buffer = u_var->buffer_map[other_domain][LocationType::YNegative];
-                        return buffer[local_iix];
-                    }
-                    else if (local_iiy == other_u.get_ny())
-                    {
-                        auto* buffer = u_var->buffer_map[other_domain][LocationType::YPositive];
-                        return buffer[local_iix];
-                    }
                 }
             }
         }
@@ -141,11 +160,12 @@ double ImmersedBoundarySolver2D::get_u_value(Domain2DUniform* domain, int iix, i
 
 double ImmersedBoundarySolver2D::get_v_value(Domain2DUniform* domain, int iix, int iiy)
 {
-    auto ctx = get_domain_context(domain);
-    auto& v = *v_var->field_map[domain];
+    auto  ctx = get_domain_context(domain);
+    auto& v   = *v_var->field_map[domain];
 
     // Check if indices are within current domain bounds
-    if (iix >= 0 && iix < v.get_nx() && iiy >= 0 && iiy < v.get_ny())
+    // DomainContext can handle boundary buffer layers: i in [-1,nx], j in [-1,ny]
+    if (iix >= -1 && iix <= v.get_nx() && iiy >= -1 && iiy <= v.get_ny())
     {
         return ctx.get_v(iix, iiy);
     }
@@ -178,34 +198,22 @@ double ImmersedBoundarySolver2D::get_v_value(Domain2DUniform* domain, int iix, i
             double local_y = global_y - other_offset_y;
 
             // Check if within domain bounds (considering buffer regions)
-            if (local_x >= -0.5 * other_hx && local_x <= other_nx * other_hx + 0.5 * other_hx &&
-                local_y >= -other_hy && local_y <= other_ny * other_hy)
+            if (local_x >= -0.5 * other_hx && local_x <= other_nx * other_hx + 0.5 * other_hx && local_y >= -other_hy &&
+                local_y <= other_ny * other_hy)
             {
                 // Convert to grid indices for this domain
                 int local_iix = static_cast<int>(std::floor((local_x - 0.5 * other_hx) / other_hx));
                 int local_iiy = static_cast<int>(std::floor(local_y / other_hy));
 
-                auto other_ctx = get_domain_context(other_domain);
+                auto  other_ctx = get_domain_context(other_domain);
                 auto& other_v   = *v_var->field_map[other_domain];
 
                 // Check if valid indices for this domain
-                if (local_iix >= 0 && local_iix < other_v.get_nx() && local_iiy >= 0 && local_iiy < other_v.get_ny())
+                // DomainContext can handle boundary buffer layers: i in [-1,nx], j in [-1,ny]
+                if (local_iix >= -1 && local_iix <= other_v.get_nx() && local_iiy >= -1 &&
+                    local_iiy <= other_v.get_ny())
                 {
                     return other_ctx.get_v(local_iix, local_iiy);
-                }
-                // Check buffer regions
-                if (local_iiy >= 0 && local_iiy < other_v.get_ny())
-                {
-                    if (local_iix == -1)
-                    {
-                        auto* buffer = v_var->buffer_map[other_domain][LocationType::XNegative];
-                        return buffer[local_iiy];
-                    }
-                    else if (local_iix == other_v.get_nx())
-                    {
-                        auto* buffer = v_var->buffer_map[other_domain][LocationType::XPositive];
-                        return buffer[local_iiy];
-                    }
                 }
             }
         }
@@ -221,7 +229,7 @@ void ImmersedBoundarySolver2D::u2F()
     for (auto* domain : u_var->geometry->domains)
     {
         auto& particles = *coord_map[domain];
-        auto& ib_data    = *ib_map[domain];
+        auto& ib_data   = *ib_map[domain];
 
         auto ctx = get_domain_context(domain);
 
@@ -310,7 +318,7 @@ void ImmersedBoundarySolver2D::apply_ib_force()
     for (auto* domain : u_var->geometry->domains)
     {
         auto& particles = *coord_map[domain];
-        auto& ib_data    = *ib_map[domain];
+        auto& ib_data   = *ib_map[domain];
 
         EXPOSE_PCOORD2D_BOUND(&particles)
         EXPOSE_PIB2D(&ib_data)
