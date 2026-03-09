@@ -407,7 +407,7 @@ void ImmersedBoundarySolver3D::calc_ib_force()
         EXPOSE_PIB3D(ib_data)
 
         OPENMP_PARALLEL_FOR()
-        for (int i = 0; i < particles.cur_n; i++)
+        for (int i = 0; i < particles->cur_n; i++)
         {
             int ix = std::floor(X[i] / grid_h);
             int iy = std::floor(Y[i] / grid_h);
@@ -509,18 +509,18 @@ void ImmersedBoundarySolver3D::apply_ib_force()
         auto& v_recv = *v_var->field_map[domain];
         auto& w_recv = *w_var->field_map[domain];
 
-        if (particles.cur_n == 0)
+        if (particles->cur_n == 0)
         {
             continue;
         }
 
         // 使用 PCoord 中缓存的全局 bounding box（2h 支持域索引允许跨越 domain，不 clamp）
-        double min_X = particles.min_X;
-        double max_X = particles.max_X;
-        double min_Y = particles.min_Y;
-        double max_Y = particles.max_Y;
-        double min_Z = particles.min_Z;
-        double max_Z = particles.max_Z;
+        double min_X = particles->min_X;
+        double max_X = particles->max_X;
+        double min_Y = particles->min_Y;
+        double max_Y = particles->max_Y;
+        double min_Z = particles->min_Z;
+        double max_Z = particles->max_Z;
 
         int min_ix_u = static_cast<int>(std::floor(min_X / grid_h)) - 1;
         int max_ix_u = static_cast<int>(std::floor(max_X / grid_h)) + 2;
@@ -555,7 +555,7 @@ void ImmersedBoundarySolver3D::apply_ib_force()
                     double yy = j * grid_h + 0.5 * grid_h;
                     double zz = k * grid_h + 0.5 * grid_h;
 
-                    for (int ib = 0; ib < particles.cur_n; ib++)
+                    for (int ib = 0; ib < particles->cur_n; ib++)
                     {
                         double ib_force =
                             Fx[ib] * ib_delta(xx - X[ib], yy - Y[ib], zz - Z[ib], grid_h) * ib_h * ib_h * grid_h;
@@ -578,7 +578,7 @@ void ImmersedBoundarySolver3D::apply_ib_force()
                     double yy = j * grid_h;
                     double zz = k * grid_h + 0.5 * grid_h;
 
-                    for (int ib = 0; ib < particles.cur_n; ib++)
+                    for (int ib = 0; ib < particles->cur_n; ib++)
                     {
                         double ib_force =
                             Fy[ib] * ib_delta(xx - X[ib], yy - Y[ib], zz - Z[ib], grid_h) * ib_h * ib_h * grid_h;
@@ -601,7 +601,7 @@ void ImmersedBoundarySolver3D::apply_ib_force()
                     double yy = j * grid_h + 0.5 * grid_h;
                     double zz = k * grid_h;
 
-                    for (int ib = 0; ib < particles.cur_n; ib++)
+                    for (int ib = 0; ib < particles->cur_n; ib++)
                     {
                         double ib_force =
                             Fz[ib] * ib_delta(xx - X[ib], yy - Y[ib], zz - Z[ib], grid_h) * ib_h * ib_h * grid_h;

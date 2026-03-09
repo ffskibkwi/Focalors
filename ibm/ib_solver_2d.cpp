@@ -231,7 +231,7 @@ void ImmersedBoundarySolver2D::calc_ib_force()
         EXPOSE_PIB2D(ib_data)
 
         OPENMP_PARALLEL_FOR()
-        for (int i = 0; i < particles.cur_n; i++)
+        for (int i = 0; i < particles->cur_n; i++)
         {
             // Convert particle position to grid indices (local coordinates)
             int ix = std::floor(X[i] / grid_h);
@@ -294,16 +294,16 @@ void ImmersedBoundarySolver2D::apply_ib_force()
         auto& u_recv = *u_var->field_map[domain];
         auto& v_recv = *v_var->field_map[domain];
 
-        if (particles.cur_n == 0)
+        if (particles->cur_n == 0)
         {
             continue;
         }
 
         // 使用 PCoord 中缓存的全局 bounding box（2h 支持域索引允许跨越 domain，不 clamp）
-        double min_X = particles.min_X;
-        double max_X = particles.max_X;
-        double min_Y = particles.min_Y;
-        double max_Y = particles.max_Y;
+        double min_X = particles->min_X;
+        double max_X = particles->max_X;
+        double min_Y = particles->min_Y;
+        double max_Y = particles->max_Y;
 
         int min_ix_u = static_cast<int>(std::floor(min_X / grid_h)) - 1;
         int max_ix_u = static_cast<int>(std::floor(max_X / grid_h)) + 2;
@@ -324,7 +324,7 @@ void ImmersedBoundarySolver2D::apply_ib_force()
                 double xx = i * grid_h;
                 double yy = j * grid_h + 0.5 * grid_h;
 
-                for (int ib = 0; ib < particles.cur_n; ib++)
+                for (int ib = 0; ib < particles->cur_n; ib++)
                 {
                     double ib_force = Fx[ib] * ib_delta(xx - X[ib], yy - Y[ib], grid_h) * ib_h * grid_h;
                     get_u_value(domain, i, j) += ib_force;
@@ -341,7 +341,7 @@ void ImmersedBoundarySolver2D::apply_ib_force()
                 double xx = i * grid_h + 0.5 * grid_h;
                 double yy = j * grid_h;
 
-                for (int ib = 0; ib < particles.cur_n; ib++)
+                for (int ib = 0; ib < particles->cur_n; ib++)
                 {
                     double ib_force = Fy[ib] * ib_delta(xx - X[ib], yy - Y[ib], grid_h) * ib_h * grid_h;
                     get_v_value(domain, i, j) += ib_force;
