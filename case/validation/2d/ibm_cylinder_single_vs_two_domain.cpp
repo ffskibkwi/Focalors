@@ -270,6 +270,9 @@ int main(int /*argc*/, char* /*argv*/[])
     geo_multi.connect(&d_left, LocationType::XPositive, &d_right);
     geo_multi.set_global_spatial_step(hx, hy);
 
+    // Set the axis to automatically compute offsets
+    geo_multi.axis(&d_left, LocationType::XNegative);
+
     Variable2D u_multi("u_multi"), v_multi("v_multi");
     u_multi.set_geometry(geo_multi);
     v_multi.set_geometry(geo_multi);

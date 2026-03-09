@@ -372,6 +372,18 @@ int main(int /*argc*/, char* /*argv*/[])
     geo_multi.connect(&d_left, LocationType::XPositive, &d_right);
     geo_multi.set_global_spatial_step(hx, hy, hz);
 
+    // Set the axis to automatically compute offsets
+    geo_multi.axis(&d_left, LocationType::XNegative);
+
+    // Debug: verify domain offsets after setup
+    std::cout << "[DEBUG] After setup:\n";
+    std::cout << "    Left domain: offset=(" << d_left.get_offset_x() << "," << d_left.get_offset_y()
+              << "," << d_left.get_offset_z() << "), bounds=[" << d_left.get_offset_x() << ","
+              << d_left.get_offset_x() + d_left.get_lx() << "]\n";
+    std::cout << "    Right domain: offset=(" << d_right.get_offset_x() << "," << d_right.get_offset_y()
+              << "," << d_right.get_offset_z() << "), bounds=[" << d_right.get_offset_x() << ","
+              << d_right.get_offset_x() + d_right.get_lx() << "]\n";
+
     Variable3D u_multi("u_multi"), v_multi("v_multi"), w_multi("w_multi");
     u_multi.set_geometry(geo_multi);
     v_multi.set_geometry(geo_multi);
