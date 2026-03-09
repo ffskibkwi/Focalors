@@ -94,7 +94,6 @@ int main(int argc, char* argv[])
     // Parameter setup
     ParallelPlateChannel2DCase case_param(argc, argv);
     case_param.read_paras();
-    case_param.record_paras();
 
     double h  = case_param.h;
     double Lx = case_param.Lx;
@@ -175,6 +174,10 @@ int main(int argc, char* argv[])
     int pv_output_step =
         case_param.pv_output_step > 0 ? case_param.pv_output_step : std::max(1, time_cfg.num_iterations / 10);
     int final_step_to_save = case_param.step_to_save > 0 ? case_param.step_to_save : time_cfg.num_iterations;
+
+    case_param.max_step     = time_cfg.num_iterations;
+    case_param.step_to_save = final_step_to_save;
+    case_param.record_paras();
 
     // Grid construction - Split into two domains D1 (XNegative) and D2 (XPositive)
     int nx_total = static_cast<int>(Lx / h);

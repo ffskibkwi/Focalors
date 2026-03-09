@@ -96,11 +96,6 @@ int main(int argc, char* argv[])
     // 参数读取与物理配置
     CrossShapedChannel2DCase case_param(argc, argv);
     case_param.read_paras();
-    const bool should_record_paras = case_param.record_paras();
-    if (should_record_paras)
-    {
-        case_param.paras_record.record("mhd_grid", std::string("mac"));
-    }
 
     Geometry2D geo;
     double     h = case_param.h;
@@ -207,9 +202,19 @@ int main(int argc, char* argv[])
     std::cout << "  diffusion_limited: " << std::boolalpha << time_step_selection.diffusion_limited << std::noboolalpha
               << std::endl;
 
+    // 计算循环输出步数间隔 pv_output_step（如果未指定则使用 num_iterations/10）
+    int pv_output_step = case_param.pv_output_step > 0 ? case_param.pv_output_step : time_cfg.num_iterations / 10;
+    // 计算最终保存步数（如果未指定则使用 num_iterations）
+    int final_step_to_save = case_param.step_to_save > 0 ? case_param.step_to_save : time_cfg.num_iterations;
+
+    case_param.max_step     = time_cfg.num_iterations;
+    case_param.step_to_save = final_step_to_save;
+
+    const bool should_record_paras = case_param.record_paras();
     if (should_record_paras)
     {
-        case_param.paras_record.record("dt", time_cfg.dt)
+        case_param.paras_record.record("mhd_grid", std::string("mac"))
+            .record("dt", time_cfg.dt)
             .record("dt_convective", time_step_selection.convective_dt)
             .record("dt_diffusion_limit", time_step_selection.diffusion_dt_limit)
             .record("viscosity_upper_bound_raw", time_step_selection.viscosity_upper_bound_raw)
@@ -217,11 +222,6 @@ int main(int argc, char* argv[])
             .record("viscosity_upper_bound", time_step_selection.viscosity_upper_bound_effective)
             .record("dt_diffusion_limited", time_step_selection.diffusion_limited ? 1 : 0);
     }
-
-    // 计算循环输出步数间隔 pv_output_step（如果未指定则使用 num_iterations/10）
-    int pv_output_step = case_param.pv_output_step > 0 ? case_param.pv_output_step : time_cfg.num_iterations / 10;
-    // 计算最终保存步数（如果未指定则使用 num_iterations）
-    int final_step_to_save = case_param.step_to_save > 0 ? case_param.step_to_save : time_cfg.num_iterations;
 
     double lx2 = case_param.lx_2;
     double ly2 = case_param.ly_2;

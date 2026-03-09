@@ -88,12 +88,16 @@ public:
 
     virtual void read_paras()
     {
+        const bool has_step_to_save = para_map.find("step_to_save") != para_map.end();
+        const bool has_max_step     = para_map.find("max_step") != para_map.end();
+
         IO::read_string(para_map, "savepoint_root_to_read", savepoint_root_to_read);
         IO::read_number(para_map, "step_to_read", step_to_read);
         IO::read_number(para_map, "step_to_save", step_to_save);
         IO::read_number(para_map, "max_step", max_step);
 
-        step_to_save = step_to_save == -1 ? max_step : step_to_save;
+        if (!has_step_to_save && has_max_step)
+            step_to_save = max_step;
     }
 
     virtual bool record_paras()

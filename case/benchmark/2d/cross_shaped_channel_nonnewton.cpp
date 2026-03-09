@@ -41,7 +41,6 @@ int main(int argc, char* argv[])
     // 参数读取与物理配置
     CrossShapedChannel2DCase case_param(argc, argv);
     case_param.read_paras();
-    case_param.record_paras();
 
     Geometry2D geo;
     double     h = case_param.h;
@@ -125,6 +124,10 @@ int main(int argc, char* argv[])
     int pv_output_step = case_param.pv_output_step > 0 ? case_param.pv_output_step : time_cfg.num_iterations / 10;
     // 计算最终保存步数（如果未指定则使用 num_iterations）
     int final_step_to_save = case_param.step_to_save > 0 ? case_param.step_to_save : time_cfg.num_iterations;
+
+    case_param.max_step     = time_cfg.num_iterations;
+    case_param.step_to_save = final_step_to_save;
+    case_param.record_paras();
 
     double lx2 = case_param.lx_2;
     double ly2 = case_param.ly_2;
