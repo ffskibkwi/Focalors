@@ -90,9 +90,9 @@ public:
 
         // Domain split: find the grid index closest to cylinder center x
         int split_idx = static_cast<int>(std::round(cylinder_center_x / H));
-        nx_left        = split_idx;
-        nx_right       = nx_total - split_idx;
-        split_x        = split_idx * H;
+        nx_left       = split_idx;
+        nx_right      = nx_total - split_idx;
+        split_x       = split_idx * H;
 
         // Update cylinder center to match actual split position (slight adjustment)
         cylinder_center_x = split_x;
@@ -129,9 +129,9 @@ public:
     }
 
     // Grid parameters
-    double H         = 1.0 / 64.0;
-    int    nx_total  = 1024;
-    int    ny_total  = 1024;
+    double H        = 1.0 / 64.0;
+    int    nx_total = 512;
+    int    ny_total = 512;
     double Lx = 16.0, Ly = 16.0;
 
     // Domain split
@@ -250,8 +250,8 @@ int main(int argc, char* argv[])
     u.has_boundary_value_map[&d_left][LocationType::XNegative] = true;
     for (int j = 0; j < u_left.get_ny(); ++j)
     {
-        double y_norm                                             = (j + 0.5) / static_cast<double>(u_left.get_ny());
-        double u_val                                              = 6.0 * case_param.feature_fluid_velocity * y_norm * (1.0 - y_norm);
+        double y_norm = (j + 0.5) / static_cast<double>(u_left.get_ny());
+        double u_val  = 6.0 * case_param.feature_fluid_velocity * y_norm * (1.0 - y_norm);
         u.boundary_value_map[&d_left][LocationType::XNegative][j] = u_val;
     }
     set_dirichlet(v, &d_left, LocationType::XNegative, 0.0);
@@ -281,8 +281,8 @@ int main(int argc, char* argv[])
 
     // IBM setup
     PCoordMap2D coord_map;
-    coord_map.add_cylinder(case_param.Nib, case_param.cylinder_radius, case_param.cylinder_center_x,
-                           case_param.cylinder_center_y);
+    coord_map.add_cylinder(
+        case_param.Nib, case_param.cylinder_radius, case_param.cylinder_center_x, case_param.cylinder_center_y);
     coord_map.generate_map(&geo);
 
     auto coord_map_raw = coord_map.get_map();
