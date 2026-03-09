@@ -97,19 +97,46 @@ static void compare_velocity_fields(const Variable2D& u1,
     }
 }
 
-// 采样并输出几个点的速度值，用于验证 IBM solver 工作正常
-static void sample_and_print_velocity(const Variable2D& u, const Variable2D& v, const std::string& label)
+// 生成圆柱边界上的采样点
+static std::vector<std::tuple<double, double>>
+generate_cylinder_surface_points(double cx, double cy, double r, int n_points)
 {
-    std::cout << "[" << label << "] Velocity samples:\n";
-    std::vector<std::tuple<double, double>> sample_points = {
-        {0.5, 0.5},   // Center
-        {0.3, 0.5},   // Left of center
-        {0.7, 0.5},   // Right of center
-        {0.5, 0.3},   // Below center
-        {0.5, 0.7},   // Above center
-        {0.25, 0.25}, // Corner
-        {0.75, 0.75}, // Opposite corner
-    };
+    std::vector<std::tuple<double, double>> points;
+    for (int i = 0; i < n_points; i++)
+    {
+        double theta = 2.0 * M_PI * i / n_points;
+        double x     = cx + r * std::cos(theta);
+        double y     = cy + r * std::sin(theta);
+        points.push_back({x, y});
+    }
+    return points;
+}
+
+// 打印几何信息
+static void print_geometry_info(const Geometry2D& geo, const std::string& label)
+{
+    std::cout << "[" << label << "] Geometry info:\n";
+    std::cout << "    Domain count: " << geo.domains.size() << "\n";
+    for (auto* d : geo.domains)
+    {
+        std::cout << "    Domain '" << d->name << "':\n";
+        std::cout << "        Offset: (" << d->get_offset_x() << "," << d->get_offset_y() << ")\n";
+        std::cout << "        Size: (" << d->get_lx() << "," << d->get_ly() << ")\n";
+        std::cout << "        Grid: (" << d->get_nx() << "," << d->get_ny() << ")\n";
+        std::cout << "        Spacing: (" << d->get_hx() << "," << d->get_hy() << ")\n";
+    }
+}
+
+// 采样并输出圆柱边界上的速度值
+static void sample_and_print_velocity(const Variable2D&  u,
+                                      const Variable2D&  v,
+                                      const std::string& label,
+                                      double             cylinder_cx,
+                                      double             cylinder_cy,
+                                      double             cylinder_r)
+{
+    std::cout << "[" << label << "] Velocity samples on cylinder surface (r=" << cylinder_r << "):\n";
+    auto sample_points = generate_cylinder_surface_points(cylinder_cx, cylinder_cy, cylinder_r, 10);
 
     for (const auto& [x, y] : sample_points)
     {
