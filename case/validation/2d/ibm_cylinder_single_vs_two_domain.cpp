@@ -97,19 +97,45 @@ static void compare_velocity_fields(const Variable2D& u1,
     }
 }
 
-// 采样并输出几个点的速度值，用于验证 IBM solver 工作正常
-static void sample_and_print_velocity(const Variable2D& u, const Variable2D& v, const std::string& label)
+// 生成圆柱边界上的采样点
+static std::vector<std::tuple<double, double>> generate_cylinder_surface_points(double cx, double cy, double r, int n_points)
 {
-    std::cout << "[" << label << "] Velocity samples:\n";
-    std::vector<std::tuple<double, double>> sample_points = {
-        {0.5, 0.5},    // Center
-        {0.3, 0.5},    // Left of center
-        {0.7, 0.5},    // Right of center
-        {0.5, 0.3},    // Below center
-        {0.5, 0.7},    // Above center
-        {0.25, 0.25}, // Corner
-        {0.75, 0.75}, // Opposite corner
-    };
+    std::vector<std::tuple<double, double>> points;
+    for (int i = 0; i < n_points; i++)
+    {
+        double theta = 2.0 * M_PI * i / n_points;
+        double x = cx + r * std::cos(theta);
+        double y = cy + r * std::sin(theta);
+        points.push_back({x, y});
+    }
+    return points;
+}
+
+// 打印几何信息
+static void print_geometry_info(const Geometry2D& geo, const std::string& label)
+{
+    std::cout << "[" << label << "] Geometry info:\n";
+    std::cout << "    Domain count: " << geo.domains.size() << "\n";
+    for (auto* d : geo.domains)
+    {
+        std::cout << "    Domain '" << d->name << "':\n";
+        std::cout << "        Offset: (" << d->get_offset_x() << "," << d->get_offset_y() << ")\n";
+        std::cout << "        Size: (" << d->get_lx() << "," << d->get_ly() << ")\n";
+        std::cout << "        Grid: (" << d->get_nx() << "," << d->get_ny() << ")\n";
+        std::cout << "        Spacing: (" << d->get_hx() << "," << d->get_hy() << ")\n";
+    }
+}
+
+// 采样并输出圆柱边界上的速度值
+static void sample_and_print_velocity(const Variable2D& u,
+                                      const Variable2D& v,
+                                      const std::string& label,
+                                      double cylinder_cx,
+                                      double cylinder_cy,
+                                      double cylinder_r)
+{
+    std::cout << "[" << label << "] Velocity samples on cylinder surface (r=" << cylinder_r << "):\n";
+    auto sample_points = generate_cylinder_surface_points(cylinder_cx, cylinder_cy, cylinder_r, 10);
 
     for (const auto& [x, y] : sample_points)
     {
@@ -253,12 +279,26 @@ int main(int /*argc*/, char* /*argv*/[])
     const double hx = LX / NX_TOTAL;
     const double hy = LY / NY_TOTAL;
 
+    // IBM 粒子：在整个正方形中间放一个圆柱
+    const double cx = 0.5 * LX;
+    const double cy = 0.5 * LY;
+    const double r  = 0.15 * LX;
+
+    std::cout << "=== IBM 2D Cylinder Validation ===\n";
+    std::cout << "Computational domain: [" << 0 << "," << LX << "] x [" << 0 << "," << LY << "]\n";
+    std::cout << "Grid size: " << NX_TOTAL << " x " << NY_TOTAL << "\n";
+    std::cout << "Grid spacing: (" << hx << "," << hy << ")\n";
+    std::cout << "IBM cylinder: center=(" << cx << "," << cy << "), radius=" << r << "\n";
+    std::cout << "Number of IBM particles: 200\n\n";
+
     // ------------------ 情况 1：单个 domain ------------------
     Geometry2D geo_single;
 
     Domain2DUniform d_single(NX_TOTAL, NY_TOTAL, LX, LY, "Single");
     geo_single.add_domain(&d_single);
     geo_single.set_global_spatial_step(hx, hy);
+
+    print_geometry_info(geo_single, "Case 1: Single Domain");
 
     Variable2D u_single("u_single"), v_single("v_single");
     u_single.set_geometry(geo_single);
@@ -270,11 +310,6 @@ int main(int /*argc*/, char* /*argv*/[])
 
     init_velocity_sin(u_single, v_single);
 
-    // IBM 粒子：在整个正方形中间放一个圆柱
-    const double cx = 0.5 * LX;
-    const double cy = 0.5 * LY;
-    const double r  = 0.15 * LX;
-
     PCoordMap2D coord_map_single;
     coord_map_single.add_cylinder(200, r, cx, cy);
     coord_map_single.generate_map(&geo_single);
@@ -285,12 +320,12 @@ int main(int /*argc*/, char* /*argv*/[])
     ibm_single.set_parameters(coord_map_single.get_h(), hx);
 
     // Sample before IBM solve
-    sample_and_print_velocity(u_single, v_single, "Single Domain (Before IBM)");
+    sample_and_print_velocity(u_single, v_single, "Case 1 (Before IBM)", cx, cy, r);
 
     ibm_single.solve();
 
     // Sample after IBM solve
-    sample_and_print_velocity(u_single, v_single, "Single Domain (After IBM)");
+    sample_and_print_velocity(u_single, v_single, "Case 1 (After IBM)", cx, cy, r);
 
     // ------------------ 情况 2：两个 domain 拼接 ------------------
     Geometry2D geo_multi;
@@ -304,6 +339,8 @@ int main(int /*argc*/, char* /*argv*/[])
 
     // Set the axis to automatically compute offsets
     geo_multi.axis(&d_left, LocationType::XNegative);
+
+    print_geometry_info(geo_multi, "Case 2: Multi Domain");
 
     Variable2D u_multi("u_multi"), v_multi("v_multi");
     u_multi.set_geometry(geo_multi);
@@ -330,12 +367,12 @@ int main(int /*argc*/, char* /*argv*/[])
     ibm_multi.set_parameters(coord_map_multi.get_h(), hx);
 
     // Sample before IBM solve
-    sample_and_print_velocity(u_multi, v_multi, "Multi Domain (Before IBM)");
+    sample_and_print_velocity(u_multi, v_multi, "Case 2 (Before IBM)", cx, cy, r);
 
     ibm_multi.solve();
 
     // Sample after IBM solve
-    sample_and_print_velocity(u_multi, v_multi, "Multi Domain (After IBM)");
+    sample_and_print_velocity(u_multi, v_multi, "Case 2 (After IBM)", cx, cy, r);
 
     // 为了在同一个几何/域索引下比较，把 multi 的结果复制到 single 几何布局下。
     // 这里简化处理：geo_multi 和 geo_single 在物理空间完全重合，只是划分不同；
