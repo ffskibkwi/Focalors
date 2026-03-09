@@ -31,10 +31,12 @@ file(GLOB_RECURSE SOLVER_HEADER_FILES
     "${CMAKE_SOURCE_DIR}/poisson_base/pe/*.h"   "${CMAKE_SOURCE_DIR}/poisson_base/pe/*.hpp"
     "${CMAKE_SOURCE_DIR}/poisson_base/instrumentor/*.h" "${CMAKE_SOURCE_DIR}/poisson_base/instrumentor/*.hpp"
     "${CMAKE_SOURCE_DIR}/ns/*.h"   "${CMAKE_SOURCE_DIR}/ns/*.hpp"
+    "${CMAKE_SOURCE_DIR}/ibm/*.h"   "${CMAKE_SOURCE_DIR}/ibm/*.hpp"
     "${CMAKE_SOURCE_DIR}/io/*.h"   "${CMAKE_SOURCE_DIR}/io/*.hpp"
 )
 file(GLOB_RECURSE SOLVER_SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/poisson_base/base/*.cpp"
+    "${CMAKE_SOURCE_DIR}/ibm/*.cpp"
     "${CMAKE_SOURCE_DIR}/poisson_base/io/*.cpp"
     "${CMAKE_SOURCE_DIR}/poisson_base/pe/*.cpp"
     "${CMAKE_SOURCE_DIR}/poisson_base/instrumentor/*.cpp"
