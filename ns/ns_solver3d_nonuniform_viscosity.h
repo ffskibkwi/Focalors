@@ -6,6 +6,7 @@
 // Journal of Fluid Mechanics. 2007;592:23-49. doi:10.1017/S0022112007008269
 class NSSolver3DNonUniVisc : public ConcatNSSolver3D
 {
+public:
     NSSolver3DNonUniVisc(Variable3D*            in_u_var,
                          Variable3D*            in_v_var,
                          Variable3D*            in_w_var,
