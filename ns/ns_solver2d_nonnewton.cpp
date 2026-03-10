@@ -4,8 +4,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <iostream>
-#include <sstream>
 #include <vector>
 
 /** @brief Minimum shear rate threshold to prevent singularity in power-law model */
@@ -31,22 +29,6 @@ namespace
         int              j         = 0;
     };
 
-    struct SharedCornerFieldSyncStats
-    {
-        std::size_t duplicated_node_count  = 0;
-        std::size_t duplicated_entry_count = 0;
-        double      mean_spread_before     = 0.0;
-        double      max_spread_before      = 0.0;
-        std::string max_spread_trace;
-        // Track how often the local top-right corner (nx, ny) appears in shared-node groups.
-        // This corner is special because viscosity_update() intentionally skips it.
-        std::size_t top_right_entry_count       = 0;
-        std::size_t top_right_duplicated_nodes  = 0;
-        std::size_t top_right_singleton_entries = 0;
-        double      max_top_right_spread_before = 0.0;
-        std::string max_top_right_spread_trace;
-    };
-
     struct SharedNodeKeyHash
     {
         std::size_t operator()(const SharedNodeKey& key) const
@@ -57,62 +39,16 @@ namespace
         }
     };
 
-    /** @brief Format all duplicated values stored at the same physical corner node. */
-    std::string build_shared_node_trace(const SharedNodeKey&                       key,
-                                        const std::vector<SharedCornerFieldEntry>& node_values)
-    {
-        std::ostringstream oss;
-        oss << "global=(" << key.first << ", " << key.second << ")";
-
-        for (const auto& node_value : node_values)
-        {
-            oss << " " << node_value.domain->name << "(" << node_value.i << ", " << node_value.j
-                << ")=" << *node_value.value_ptr;
-        }
-
-        return oss.str();
-    }
-
-    /** @brief Print detailed sync statistics only for early startup and sparse checkpoints. */
-    bool should_log_shared_corner_sync_step(long long step) { return step <= 5 || step % 1000 == 0; }
-
-    /** @brief Emit the shared-boundary spread diagnostics for one corner field. */
-    void log_shared_corner_sync_stats(const char* field_name, long long step, const SharedCornerFieldSyncStats& stats)
-    {
-        if (!should_log_shared_corner_sync_step(step))
-            return;
-
-        std::cout << "Shared Boundary Sync [" << field_name << "] step " << step << ":" << std::endl;
-        std::cout << "  duplicated_nodes: " << stats.duplicated_node_count << std::endl;
-        std::cout << "  duplicated_entries: " << stats.duplicated_entry_count << std::endl;
-        std::cout << "  mean_spread_before: " << stats.mean_spread_before << std::endl;
-        std::cout << "  max_spread_before: " << stats.max_spread_before << std::endl;
-        if (!stats.max_spread_trace.empty())
-            std::cout << "  worst_node_before: " << stats.max_spread_trace << std::endl;
-
-        std::cout << "  traced_top_right_entries: " << stats.top_right_entry_count << std::endl;
-        std::cout << "  top_right_duplicated_nodes: " << stats.top_right_duplicated_nodes << std::endl;
-        std::cout << "  top_right_singleton_entries: " << stats.top_right_singleton_entries << std::endl;
-        std::cout << "  max_top_right_spread_before: " << stats.max_top_right_spread_before << std::endl;
-        if (!stats.max_top_right_spread_trace.empty())
-            std::cout << "  worst_top_right_node_before: " << stats.max_top_right_spread_trace << std::endl;
-    }
 
     /**
      * @brief Average duplicated corner-field values on all shared interfaces.
-     *
-     * The grouping key is the integer global node index reconstructed from the
-     * domain offset and the local corner index. The extra top-right counters are
-     * diagnostic only: they tell us whether the special local corner (nx, ny)
-     * found a matching physical node or remained isolated.
      */
-    SharedCornerFieldSyncStats shared_corner_field_average_update(
+    void shared_corner_field_average_update(
         const std::vector<Domain2DUniform*>& domains,
         const CornerFieldMap&                corner_field_map,
         const std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, PDEBoundaryType>>&
             boundary_type_map)
     {
-        SharedCornerFieldSyncStats                                                                stats;
         std::unordered_map<SharedNodeKey, std::vector<SharedCornerFieldEntry>, SharedNodeKeyHash> shared_node_map;
 
         for (auto& domain : domains)
@@ -164,75 +100,37 @@ namespace
 
         for (auto& entry : shared_node_map)
         {
-            auto&       node_values           = entry.second;
-            std::size_t top_right_entry_count = 0;
-            for (const auto& node_value : node_values)
-            {
-                if (node_value.i == node_value.domain->get_nx() && node_value.j == node_value.domain->get_ny())
-                    top_right_entry_count++;
-            }
-
-            stats.top_right_entry_count += top_right_entry_count;
+            auto& node_values = entry.second;
 
             if (node_values.size() < 2)
-            {
-                stats.top_right_singleton_entries += top_right_entry_count;
                 continue;
-            }
 
             double avg_val = 0.0;
-            double min_val = *node_values.front().value_ptr;
-            double max_val = min_val;
             for (const auto& node_value : node_values)
-            {
-                const double node_val = *node_value.value_ptr;
-                avg_val += node_val;
-                min_val = std::min(min_val, node_val);
-                max_val = std::max(max_val, node_val);
-            }
+                avg_val += *node_value.value_ptr;
 
             avg_val /= static_cast<double>(node_values.size());
-
-            const double spread_before = max_val - min_val;
-            stats.duplicated_node_count++;
-            stats.duplicated_entry_count += node_values.size();
-            stats.mean_spread_before += spread_before;
-            if (spread_before > stats.max_spread_before)
-            {
-                stats.max_spread_before = spread_before;
-                stats.max_spread_trace  = build_shared_node_trace(entry.first, node_values);
-            }
-
-            if (top_right_entry_count > 0)
-            {
-                stats.top_right_duplicated_nodes++;
-                if (spread_before > stats.max_top_right_spread_before)
-                {
-                    stats.max_top_right_spread_before = spread_before;
-                    stats.max_top_right_spread_trace  = build_shared_node_trace(entry.first, node_values);
-                }
-            }
 
             for (const auto& node_value : node_values)
                 *node_value.value_ptr = avg_val;
         }
-
-        if (stats.duplicated_node_count > 0)
-            stats.mean_spread_before /= static_cast<double>(stats.duplicated_node_count);
-
-        return stats;
     }
 
     double calc_viscosity_by_model(double gamma_dot, const PhysicsConfig& physics_cfg)
     {
-        double mu_val = physics_cfg.nu;
+        double mu_val    = physics_cfg.nu;
+        double gamma_use = gamma_dot;
+
+        // Recover physical shear rate only for dimensionless viscosity mode.
+        if (physics_cfg.use_dimensionless_viscosity)
+            gamma_use *= physics_cfg.gamma_ref;
 
         if (physics_cfg.model_type == 1) // Power Law
         {
             if (physics_cfg.n < 1.0)
-                gamma_dot = std::max(gamma_dot, GAMMA_DOT_MIN); // protect against zero when exponent negative
+                gamma_use = std::max(gamma_use, GAMMA_DOT_MIN); // protect against zero when exponent negative
 
-            mu_val = physics_cfg.k * std::pow(gamma_dot, physics_cfg.n - 1.0);
+            mu_val = physics_cfg.k * std::pow(gamma_use, physics_cfg.n - 1.0);
 
             // Enforce limits
             mu_val = std::max(physics_cfg.mu_min, std::min(mu_val, physics_cfg.mu_max));
@@ -240,7 +138,7 @@ namespace
         else if (physics_cfg.model_type == 2) // Carreau
         {
             mu_val = physics_cfg.mu_inf + (physics_cfg.mu_0 - physics_cfg.mu_inf) *
-                                              std::pow(1.0 + std::pow(physics_cfg.lambda * gamma_dot, physics_cfg.a),
+                                              std::pow(1.0 + std::pow(physics_cfg.lambda * gamma_use, physics_cfg.a),
                                                        (physics_cfg.n - 1.0) / physics_cfg.a);
 
             // Enforce limits
@@ -248,7 +146,7 @@ namespace
         }
         else if (physics_cfg.model_type == 3) // Casson
         {
-            const double gamma_safe = std::max(gamma_dot, GAMMA_DOT_MIN);
+            const double gamma_safe = std::max(gamma_use, GAMMA_DOT_MIN);
             const double sqrt_mu    = std::sqrt(std::max(physics_cfg.casson_mu, 0.0));
             const double sqrt_term  = std::sqrt(std::max(physics_cfg.casson_tau0, 0.0) / gamma_safe);
             mu_val                  = (sqrt_mu + sqrt_term) * (sqrt_mu + sqrt_term);
@@ -422,7 +320,7 @@ void ConcatNSSolver2D::viscosity_update()
             else if (i_idx == 0)
                 return (-3 * get_u(0, j_idx) + 4 * get_u(1, j_idx) - get_u(2, j_idx)) /
                        (2.0 * hx); // Forward difference at 2 order accuaracy
-            else           // i_idx == nx
+            else                   // i_idx == nx
                 return (3 * get_u(nx, j_idx) - 4 * get_u(nx - 1, j_idx) + get_u(nx - 2, j_idx)) /
                        (2.0 * hx); // Backward difference at 2 order accuaracy
         };
@@ -434,7 +332,7 @@ void ConcatNSSolver2D::viscosity_update()
             else if (j_idx == 0)
                 return (-3 * get_v(i_idx, 0) + 4 * get_v(i_idx, 1) - get_v(i_idx, 2)) /
                        (2.0 * hy); // Forward difference at 2 order accuaracy
-            else           // j_idx == ny
+            else                   // j_idx == ny
                 return (3 * get_v(i_idx, ny) - 4 * get_v(i_idx, ny - 1) + get_v(i_idx, ny - 2)) /
                        (2.0 * hy); // Backward difference at 2 order accuaracy
         };
@@ -528,14 +426,9 @@ void ConcatNSSolver2D::mu_shared_boundary_field_update()
     if (mu_var->position_type != VariablePositionType::Corner)
         throw std::runtime_error("ConcatNSSolver2D::mu_shared_boundary_field_update: mu must be a corner field");
 
-    static long long sync_step = 0;
-    ++sync_step;
-
     // mu is stored redundantly on corner nodes along shared interfaces. Collapse
     // those duplicates before stress reconstruction so every physical node has one value.
-    const SharedCornerFieldSyncStats sync_stats =
-        shared_corner_field_average_update(domains, mu_field_map, u_var->boundary_type_map);
-    log_shared_corner_sync_stats("mu", sync_step, sync_stats);
+    shared_corner_field_average_update(domains, mu_field_map, u_var->boundary_type_map);
 }
 
 void ConcatNSSolver2D::tau_xy_shared_boundary_field_update()
@@ -546,14 +439,9 @@ void ConcatNSSolver2D::tau_xy_shared_boundary_field_update()
         throw std::runtime_error(
             "ConcatNSSolver2D::tau_xy_shared_boundary_field_update: tau_xy must be a corner field");
 
-    static long long sync_step = 0;
-    ++sync_step;
-
     // tau_xy uses the same corner-node layout as mu, so shared-interface nodes
     // must also be averaged before they enter the predictor div(tau) stencil.
-    const SharedCornerFieldSyncStats sync_stats =
-        shared_corner_field_average_update(domains, tau_xy_field_map, u_var->boundary_type_map);
-    log_shared_corner_sync_stats("tau_xy", sync_step, sync_stats);
+    shared_corner_field_average_update(domains, tau_xy_field_map, u_var->boundary_type_map);
 }
 
 void ConcatNSSolver2D::stress_buffer_update()

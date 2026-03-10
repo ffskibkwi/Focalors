@@ -55,6 +55,11 @@ public:
         IO::read_number(para_map, "mu_max_pl", mu_max_pl);
         IO::read_number(para_map, "mu_ref", mu_ref);
         IO::read_bool(para_map, "use_dimensionless_viscosity", use_dimensionless_viscosity);
+        if (!IO::read_number(para_map, "gamma_ref", gamma_ref))
+        {
+            const double ref_length = (half_height > 0.0) ? half_height : 1.0;
+            gamma_ref               = use_dimensionless_viscosity ? (U0 / ref_length) : 1.0;
+        }
 
         IO::read_number(para_map, "dp_dx", dp_dx);
 
@@ -102,6 +107,7 @@ public:
             .record("mu_max_pl", mu_max_pl)
             .record("mu_ref", mu_ref)
             .record("use_dimensionless_viscosity", use_dimensionless_viscosity ? 1 : 0)
+            .record("gamma_ref", gamma_ref)
             .record("dp_dx", dp_dx)
             .record("convergence_tol", convergence_tol)
             .record("converged_hits", converged_hits);
@@ -144,6 +150,7 @@ public:
     double mu_max_pl                  = 0.056;
     double mu_ref                     = POWERLAW_ETA_C;
     bool   use_dimensionless_viscosity = true;
+    double gamma_ref                   = 1.0;
 
     double dp_dx = -1.0;
 

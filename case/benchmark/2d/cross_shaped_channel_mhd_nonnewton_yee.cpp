@@ -74,6 +74,7 @@ int main(int argc, char* argv[])
 
     // Set Non-Newtonian parameters based on model type
     physics_cfg.set_model_type(case_param.model_type);
+    physics_cfg.set_gamma_ref(case_param.gamma_ref);
     if (case_param.model_type == 1) // Power Law
     {
         physics_cfg.set_power_law_dimensionless(case_param.k_pl,
@@ -88,6 +89,7 @@ int main(int argc, char* argv[])
         std::cout << "  k_pl: " << case_param.k_pl << std::endl;
         std::cout << "  Re: " << case_param.Re << std::endl;
         std::cout << "  mu_ref: " << case_param.mu_ref << std::endl;
+        std::cout << "  gamma_ref: " << case_param.gamma_ref << std::endl;
         std::cout << "  use_dimensionless_viscosity: " << case_param.use_dimensionless_viscosity << std::endl;
         std::cout << "  n:     " << case_param.n_index << std::endl;
         std::cout << "  mu_min_pl: " << case_param.mu_min_pl << std::endl;
@@ -111,6 +113,7 @@ int main(int argc, char* argv[])
         std::cout << "  lambda:         " << case_param.lambda << std::endl;
         std::cout << "  Re:             " << case_param.Re << std::endl;
         std::cout << "  mu_ref:         " << case_param.mu_ref << std::endl;
+        std::cout << "  gamma_ref:      " << case_param.gamma_ref << std::endl;
         std::cout << "  use_dimensionless_viscosity: " << case_param.use_dimensionless_viscosity << std::endl;
         std::cout << "  a:      " << case_param.a << std::endl;
         std::cout << "  n:      " << case_param.n_index << std::endl;
@@ -131,6 +134,7 @@ int main(int argc, char* argv[])
         std::cout << "  casson_tau0:    " << case_param.casson_tau0 << std::endl;
         std::cout << "  Re:             " << case_param.Re << std::endl;
         std::cout << "  mu_ref:         " << case_param.mu_ref << std::endl;
+        std::cout << "  gamma_ref:      " << case_param.gamma_ref << std::endl;
         std::cout << "  use_dimensionless_viscosity: " << case_param.use_dimensionless_viscosity << std::endl;
     }
     else

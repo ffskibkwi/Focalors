@@ -112,6 +112,7 @@ int main(int argc, char* argv[])
     physics_cfg.set_Ha(case_param.Ha);
     physics_cfg.set_magnetic_field(case_param.Bx, case_param.By, case_param.Bz);
     physics_cfg.set_model_type(case_param.model_type);
+    physics_cfg.set_gamma_ref(case_param.gamma_ref);
     if (case_param.model_type == 1)
     {
         physics_cfg.set_power_law_dimensionless(case_param.k_pl,
@@ -133,6 +134,7 @@ int main(int argc, char* argv[])
     std::cout << "  Geometry: Lx=" << lx << ", Ly=" << ly << ", h_ref=" << h_ref << std::endl;
     std::cout << "  Model: n=" << case_param.n_index << ", Ha=" << case_param.Ha << ", Re=" << case_param.Re
               << std::endl;
+    std::cout << "  gamma_ref=" << case_param.gamma_ref << std::endl;
     std::cout << "  MHD enable=" << enable_mhd << ", B=(" << case_param.Bx << "," << case_param.By << ","
               << case_param.Bz << ")" << std::endl;
 

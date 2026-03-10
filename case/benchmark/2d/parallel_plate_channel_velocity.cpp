@@ -108,6 +108,7 @@ int main(int argc, char* argv[])
     PhysicsConfig& physics_cfg = PhysicsConfig::Get();
     physics_cfg.set_Re(case_param.Re);
     physics_cfg.set_model_type(case_param.model_type);
+    physics_cfg.set_gamma_ref(case_param.gamma_ref);
 
     if (case_param.model_type == 1) // Power Law
     {
@@ -122,6 +123,7 @@ int main(int argc, char* argv[])
         std::cout << "  k_pl:      " << case_param.k_pl << std::endl;
         std::cout << "  Re:        " << case_param.Re << std::endl;
         std::cout << "  mu_ref:    " << case_param.mu_ref << std::endl;
+        std::cout << "  gamma_ref: " << case_param.gamma_ref << std::endl;
         std::cout << "  use_dimensionless_viscosity: " << case_param.use_dimensionless_viscosity << std::endl;
         std::cout << "  n:         " << case_param.n_index << std::endl;
         std::cout << "  mu_min_pl: " << case_param.mu_min_pl << " (use default if -1)" << std::endl;
@@ -145,6 +147,7 @@ int main(int argc, char* argv[])
         std::cout << "  lambda:         " << case_param.lambda << std::endl;
         std::cout << "  Re:             " << case_param.Re << std::endl;
         std::cout << "  mu_ref:         " << case_param.mu_ref << std::endl;
+        std::cout << "  gamma_ref:      " << case_param.gamma_ref << std::endl;
         std::cout << "  use_dimensionless_viscosity: " << case_param.use_dimensionless_viscosity << std::endl;
         std::cout << "  a:      " << case_param.a << std::endl;
         std::cout << "  n:      " << case_param.n_index << std::endl;
@@ -163,6 +166,7 @@ int main(int argc, char* argv[])
         std::cout << "  casson_tau0:    " << case_param.casson_tau0 << std::endl;
         std::cout << "  Re:             " << case_param.Re << std::endl;
         std::cout << "  mu_ref:         " << case_param.mu_ref << std::endl;
+        std::cout << "  gamma_ref:      " << case_param.gamma_ref << std::endl;
         std::cout << "  use_dimensionless_viscosity: " << case_param.use_dimensionless_viscosity << std::endl;
     }
     else
