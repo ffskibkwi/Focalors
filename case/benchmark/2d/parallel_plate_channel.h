@@ -70,6 +70,11 @@ public:
             mu_ref = (model_type == 2) ? CARREAU_ETA_C : ((model_type == 3) ? CASSON_ETA_C : POWERLAW_ETA_C);
         }
         IO::read_bool(para_map, "use_dimensionless_viscosity", use_dimensionless_viscosity);
+        if (!IO::read_number(para_map, "gamma_ref", gamma_ref))
+        {
+            const double half_gap = (Ly > 0.0) ? (0.5 * Ly) : 1.0;
+            gamma_ref             = use_dimensionless_viscosity ? (U0 / half_gap) : 1.0;
+        }
 
         // Analytical Solution Parameters
         IO::read_number(para_map, "dp_dx", dp_dx);
@@ -104,6 +109,7 @@ public:
             .record("mu_max_pl", mu_max_pl)
             .record("mu_ref", mu_ref)
             .record("use_dimensionless_viscosity", use_dimensionless_viscosity ? 1 : 0)
+            .record("gamma_ref", gamma_ref)
             .record("dp_dx", dp_dx);
 
         return true;
@@ -147,6 +153,7 @@ public:
     double mu_max_pl = 0.056;   // Power-law viscosity upper limit (paper)
     double mu_ref    = POWERLAW_ETA_C;
     bool   use_dimensionless_viscosity = true;
+    double gamma_ref                   = 1.0;
 
     // Analytical Solution Parameters
     double dp_dx =
