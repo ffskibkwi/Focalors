@@ -307,14 +307,15 @@ int main(int argc, char* argv[])
 
     // IBM setup: sphere at T-junction center (using non-dimensional coordinates)
     // Note: A2 starts at x=20*H/d, y=0, z=0 after normalization
-    double sphere_radius   = Height / 3.0 / mixing_channel_hydraulic_diameter;  // Radius = H/3 (non-dimensional)
-    double sphere_center_x = 21.0 * Height / mixing_channel_hydraulic_diameter; // Center of A2 domain (21*H from origin)
-    double sphere_center_y = 0.5 * Height / mixing_channel_hydraulic_diameter;  // T-junction y coordinate (within A2)
-    double sphere_center_z = 0.5 * Height / mixing_channel_hydraulic_diameter;   // Center in z direction
+    double sphere_radius = Height / 3.0 / mixing_channel_hydraulic_diameter; // Radius = H/3 (non-dimensional)
+    double sphere_center_x =
+        21.0 * Height / mixing_channel_hydraulic_diameter;                     // Center of A2 domain (21*H from origin)
+    double sphere_center_y = 0.5 * Height / mixing_channel_hydraulic_diameter; // T-junction y coordinate (within A2)
+    double sphere_center_z = 0.5 * Height / mixing_channel_hydraulic_diameter; // Center in z direction
     int    Nib             = static_cast<int>(std::round(2.0 * M_PI * sphere_radius / hx));
 
-    std::cout << "IBM sphere (non-dim): center = (" << sphere_center_x << ", " << sphere_center_y << ", " << sphere_center_z
-              << "), radius = " << sphere_radius << ", Nib = " << Nib << std::endl;
+    std::cout << "IBM sphere (non-dim): center = (" << sphere_center_x << ", " << sphere_center_y << ", "
+              << sphere_center_z << "), radius = " << sphere_radius << ", Nib = " << Nib << std::endl;
 
     PCoordMap3D coord_map;
     coord_map.add_sphere(Nib, sphere_radius, sphere_center_x, sphere_center_y, sphere_center_z);
@@ -362,7 +363,7 @@ int main(int argc, char* argv[])
     ConcatPoissonSolver3D p_solver(&p);
     ConcatNSSolver3D      ns_solver(&u, &v, &w, &p, &p_solver);
     ScalarSolver3D        solver_c(&u, &v, &w, &c, nr, c_scheme);
-    PhysicalPESolver3D    ppe_solver(&u, &v, &w, &p, &p_solver, density);
+    PhysicalPESolver3D    ppe_solver(&u, &v, &w, &p, &p_solver, 1.0);
 
     VTKWriter vtk_writer;
     vtk_writer.add_vector_as_cell_data(&u, &v, &w, "velocity");
