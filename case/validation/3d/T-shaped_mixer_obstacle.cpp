@@ -144,7 +144,7 @@ int main(int argc, char* argv[])
     EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
     {
         std::stringstream ss;
-        ss << "./result/T-shaped_mixer_concentration/";
+        ss << "./result/T-shaped_mixer_obstacle/";
         ss << "Re";
         ss << std::to_string((int)Re);
         env_cfg.debugOutputDir = ss.str();
