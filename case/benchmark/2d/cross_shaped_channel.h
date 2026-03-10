@@ -14,10 +14,10 @@ public:
     static constexpr double POWERLAW_ETA_C = 0.00604;
     static constexpr double CARREAU_ETA_C  = 0.00596;
     static constexpr double CASSON_ETA_C   = 0.00514;
-    static constexpr double POWERLAW_N      = 0.708;
-    static constexpr double CARREAU_N       = 0.3568;
-    static constexpr double CASSON_MU       = 0.00276;
-    static constexpr double CASSON_TAU0     = 0.0108;
+    static constexpr double POWERLAW_N     = 0.708;
+    static constexpr double CARREAU_N      = 0.3568;
+    static constexpr double CASSON_MU      = 0.00276;
+    static constexpr double CASSON_TAU0    = 0.0108;
 
     CrossShapedChannel2DCase(int argc, char* argv[])
         : CaseBase(argc, argv)
@@ -81,6 +81,10 @@ public:
             mu_ref = (model_type == 2) ? CARREAU_ETA_C : ((model_type == 3) ? CASSON_ETA_C : POWERLAW_ETA_C);
         }
         IO::read_bool(para_map, "use_dimensionless_viscosity", use_dimensionless_viscosity);
+        if (!IO::read_number(para_map, "gamma_ref", gamma_ref))
+        {
+            gamma_ref = use_dimensionless_viscosity ? (U0 / ((lx_2 > 0.0) ? lx_2 : 1.0)) : 1.0;
+        }
     }
 
     bool record_paras() override
@@ -120,6 +124,7 @@ public:
             .record("mu_min_pl", mu_min_pl)
             .record("mu_max_pl", mu_max_pl)
             .record("mu_ref", mu_ref)
+            .record("gamma_ref", gamma_ref)
             .record("use_dimensionless_viscosity", use_dimensionless_viscosity ? 1 : 0);
 
         return true;
@@ -141,11 +146,11 @@ public:
     double U0 = 1.0;
 
     // MHD Parameters
-    double Ha = 10.0; // Hartmann number
-    double B0 = 1.0;  // Magnetic field magnitude
-    double sigma = 0.0; // Effective conductivity (for record only)
-    double Bx = 0.0;  // Magnetic field x-component
-    double By = 1.0;  // Magnetic field y-component
+    double Ha    = 10.0; // Hartmann number
+    double B0    = 1.0;  // Magnetic field magnitude
+    double sigma = 0.0;  // Effective conductivity (for record only)
+    double Bx    = 0.0;  // Magnetic field x-component
+    double By    = 1.0;  // Magnetic field y-component
 
     // Time Stepping
     double dt_factor      = 0.1;   // dt = dt_factor * h
@@ -158,19 +163,20 @@ public:
     int    gmres_max_iter = 1000;
 
     // Non-Newtonian Model Parameters
-    int    model_type = 1;       // 0: Newtonian, 1: Power Law (paper default), 2: Carreau, 3: Casson
-    double n_index    = POWERLAW_N; // Power-law index (paper)
-    double mu_0       = 0.056;   // Zero-shear viscosity (Bird/Carreau)
-    double mu_inf     = 0.00345; // Infinite-shear viscosity (Bird/Carreau)
-    double lambda     = 3.313;   // Relaxation time (paper Bird-Carreau)
-    double a          = 2.0;     // Carreau model parameter
-    double casson_mu  = CASSON_MU;
+    int    model_type  = 1;          // 0: Newtonian, 1: Power Law (paper default), 2: Carreau, 3: Casson
+    double n_index     = POWERLAW_N; // Power-law index (paper)
+    double mu_0        = 0.056;      // Zero-shear viscosity (Bird/Carreau)
+    double mu_inf      = 0.00345;    // Infinite-shear viscosity (Bird/Carreau)
+    double lambda      = 3.313;      // Relaxation time (paper Bird-Carreau)
+    double a           = 2.0;        // Carreau model parameter
+    double casson_mu   = CASSON_MU;
     double casson_tau0 = CASSON_TAU0;
 
     // Non-Newtonian parameters actually used by config setters
-    double k_pl      = 0.017;   // Power-law consistency index (paper)
-    double mu_min_pl = 0.00345; // Power-Law viscosity lower limit
-    double mu_max_pl = 0.056;   // Power-Law viscosity upper limit
-    double mu_ref    = POWERLAW_ETA_C;
+    double k_pl                        = 0.017;   // Power-law consistency index (paper)
+    double mu_min_pl                   = 0.00345; // Power-Law viscosity lower limit
+    double mu_max_pl                   = 0.056;   // Power-Law viscosity upper limit
+    double mu_ref                      = POWERLAW_ETA_C;
+    double gamma_ref                   = 1.0;
     bool   use_dimensionless_viscosity = true;
 };

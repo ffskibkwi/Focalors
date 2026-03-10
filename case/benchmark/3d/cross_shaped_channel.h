@@ -100,6 +100,10 @@ public:
             mu_ref = (model_type == 2) ? CARREAU_ETA_C : ((model_type == 3) ? CASSON_ETA_C : POWERLAW_ETA_C);
         }
         IO::read_bool(para_map, "use_dimensionless_viscosity", use_dimensionless_viscosity);
+        if (!IO::read_number(para_map, "gamma_ref", gamma_ref))
+        {
+            gamma_ref = use_dimensionless_viscosity ? (U0 / ((lx_2 > 0.0) ? lx_2 : 1.0)) : 1.0;
+        }
 
         // MHD extension slots
         IO::read_number(para_map, "Ha", Ha);
@@ -112,6 +116,7 @@ public:
     void init_nonnewton_config(PhysicsConfig& physics_cfg) const
     {
         physics_cfg.set_model_type(model_type);
+        physics_cfg.set_gamma_ref(gamma_ref);
         if (model_type == 1)
         {
             physics_cfg.set_power_law_dimensionless(
@@ -178,6 +183,7 @@ public:
             .record("mu_min_pl", mu_min_pl)
             .record("mu_max_pl", mu_max_pl)
             .record("mu_ref", mu_ref)
+            .record("gamma_ref", gamma_ref)
             .record("use_dimensionless_viscosity", use_dimensionless_viscosity ? 1 : 0)
             .record("Ha", Ha)
             .record("Bx", Bx)
@@ -274,6 +280,7 @@ public:
     double mu_min_pl                   = 0.00345;
     double mu_max_pl                   = 0.056;
     double mu_ref                      = POWERLAW_ETA_C;
+    double gamma_ref                   = 1.0;
     bool   use_dimensionless_viscosity = true;
 
     // MHD extension slots

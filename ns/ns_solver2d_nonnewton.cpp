@@ -225,14 +225,19 @@ namespace
 
     double calc_viscosity_by_model(double gamma_dot, const PhysicsConfig& physics_cfg)
     {
-        double mu_val = physics_cfg.nu;
+        double mu_val    = physics_cfg.nu;
+        double gamma_use = gamma_dot;
+
+        // Recover physical shear rate only for dimensionless viscosity mode.
+        if (physics_cfg.use_dimensionless_viscosity)
+            gamma_use *= physics_cfg.gamma_ref;
 
         if (physics_cfg.model_type == 1) // Power Law
         {
             if (physics_cfg.n < 1.0)
-                gamma_dot = std::max(gamma_dot, GAMMA_DOT_MIN); // protect against zero when exponent negative
+                gamma_use = std::max(gamma_use, GAMMA_DOT_MIN); // protect against zero when exponent negative
 
-            mu_val = physics_cfg.k * std::pow(gamma_dot, physics_cfg.n - 1.0);
+            mu_val = physics_cfg.k * std::pow(gamma_use, physics_cfg.n - 1.0);
 
             // Enforce limits
             mu_val = std::max(physics_cfg.mu_min, std::min(mu_val, physics_cfg.mu_max));
@@ -240,7 +245,7 @@ namespace
         else if (physics_cfg.model_type == 2) // Carreau
         {
             mu_val = physics_cfg.mu_inf + (physics_cfg.mu_0 - physics_cfg.mu_inf) *
-                                              std::pow(1.0 + std::pow(physics_cfg.lambda * gamma_dot, physics_cfg.a),
+                                              std::pow(1.0 + std::pow(physics_cfg.lambda * gamma_use, physics_cfg.a),
                                                        (physics_cfg.n - 1.0) / physics_cfg.a);
 
             // Enforce limits
@@ -248,7 +253,7 @@ namespace
         }
         else if (physics_cfg.model_type == 3) // Casson
         {
-            const double gamma_safe = std::max(gamma_dot, GAMMA_DOT_MIN);
+            const double gamma_safe = std::max(gamma_use, GAMMA_DOT_MIN);
             const double sqrt_mu    = std::sqrt(std::max(physics_cfg.casson_mu, 0.0));
             const double sqrt_term  = std::sqrt(std::max(physics_cfg.casson_tau0, 0.0) / gamma_safe);
             mu_val                  = (sqrt_mu + sqrt_term) * (sqrt_mu + sqrt_term);
@@ -422,7 +427,7 @@ void ConcatNSSolver2D::viscosity_update()
             else if (i_idx == 0)
                 return (-3 * get_u(0, j_idx) + 4 * get_u(1, j_idx) - get_u(2, j_idx)) /
                        (2.0 * hx); // Forward difference at 2 order accuaracy
-            else           // i_idx == nx
+            else                   // i_idx == nx
                 return (3 * get_u(nx, j_idx) - 4 * get_u(nx - 1, j_idx) + get_u(nx - 2, j_idx)) /
                        (2.0 * hx); // Backward difference at 2 order accuaracy
         };
@@ -434,7 +439,7 @@ void ConcatNSSolver2D::viscosity_update()
             else if (j_idx == 0)
                 return (-3 * get_v(i_idx, 0) + 4 * get_v(i_idx, 1) - get_v(i_idx, 2)) /
                        (2.0 * hy); // Forward difference at 2 order accuaracy
-            else           // j_idx == ny
+            else                   // j_idx == ny
                 return (3 * get_v(i_idx, ny) - 4 * get_v(i_idx, ny - 1) + get_v(i_idx, ny - 2)) /
                        (2.0 * hy); // Backward difference at 2 order accuaracy
         };
