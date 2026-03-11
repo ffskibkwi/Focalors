@@ -98,7 +98,7 @@ int main(int argc, char* argv[])
     double Re           = std::stod(argv[1]);
     bool   has_obstacle = std::stoi(argv[2]);
 
-    double dt = hx / 10.0;
+    double dt = hx / 20.0;
 
     double density                           = 1e3;
     double dynamic_viscosity_1               = 26.46e-3;
@@ -413,10 +413,10 @@ int main(int argc, char* argv[])
             p_inlet /= ny1 * nz1 + ny3 * nz3;
 
             double p_outlet = 0.0;
-            for (int i = 0; i < nx2; i++)
-                for (int k = 0; k < nz2; k++)
-                    p_outlet += p_A2(i, ny2 - 1, k);
-            p_inlet /= nx2 * nz2;
+            for (int i = 0; i < nx4; i++)
+                for (int k = 0; k < nz4; k++)
+                    p_outlet += p_A4(i, ny4 - 1, k);
+            p_inlet /= nx4 * nz4;
 
             double pressure_drop = p_inlet - p_outlet;
             pressure_drop_file.stream << pressure_drop << std::endl;
