@@ -282,11 +282,10 @@ int main(int argc, char* argv[])
     add_random_number(w_A3, -0.01, 0.01, 42);
     add_random_number(w_A4, -0.01, 0.01, 42);
 
-
     // IBM setup (only when has_obstacle = 1)
     std::unordered_map<Domain3DUniform*, PCoord3D*> coord_map_raw;
-    IBSolver3D*       ibm_solver      = nullptr;
-    IBSolverScalar3D* ibm_solver_c   = nullptr;
+    IBSolver3D*                                     ibm_solver   = nullptr;
+    IBSolverScalar3D*                               ibm_solver_c = nullptr;
 
     if (has_obstacle)
     {
@@ -347,7 +346,8 @@ int main(int argc, char* argv[])
     ConcatPoissonSolver3D p_solver(&p);
     ConcatNSSolver3D      ns_solver(&u, &v, &w, &p, &p_solver);
     ScalarSolver3D        solver_c(&u, &v, &w, &c, diffusion_coefficient, c_scheme);
-    // PhysicalPESolver3D    ppe_solver(&u, &v, &w, &p, &p_solver, density);  // TODO: Enable when IBM boundary handling is supported
+    // PhysicalPESolver3D    ppe_solver(&u, &v, &w, &p, &p_solver, density);  // TODO: Enable when IBM boundary handling
+    // is supported
 
     VTKWriter vtk_writer;
     vtk_writer.add_vector_as_cell_data(&u, &v, &w, "velocity");
