@@ -125,6 +125,8 @@ int main(int argc, char* argv[])
         ss << "./result/T-shaped_mixer_obstacle/";
         ss << "Re";
         ss << std::to_string((int)Re);
+        ss << "ob";
+        ss << std::to_string((int)has_obstacle);
         env_cfg.debugOutputDir = ss.str();
     }
 
