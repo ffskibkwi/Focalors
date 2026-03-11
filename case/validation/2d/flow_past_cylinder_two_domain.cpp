@@ -62,7 +62,6 @@ public:
         IO::read_number(para_map, "cylinder_center_x", cylinder_center_x);
         IO::read_number(para_map, "cylinder_center_y", cylinder_center_y);
         IO::read_number(para_map, "cylinder_radius", cylinder_radius);
-        IO::read_number(para_map, "Nib", Nib);
 
         // Physics parameters
         IO::read_number(para_map, "feature_fluid_velocity", feature_fluid_velocity);
@@ -81,12 +80,6 @@ public:
 
         dynamic_viscosity   = fluid_density * feature_fluid_velocity * cylinder_radius * 2.0 / Reynolds_number;
         kinematic_viscosity = dynamic_viscosity / fluid_density;
-
-        // Calculate Nib if not specified
-        if (Nib <= 0)
-        {
-            Nib = static_cast<int>(std::round(2.0 * M_PI * cylinder_radius / H));
-        }
 
         // Domain split: find the grid index closest to cylinder center x
         int split_idx = static_cast<int>(std::round(cylinder_center_x / H));
@@ -114,7 +107,6 @@ public:
             .record("cylinder_center_x", cylinder_center_x)
             .record("cylinder_center_y", cylinder_center_y)
             .record("cylinder_radius", cylinder_radius)
-            .record("Nib", Nib)
             .record("feature_fluid_velocity", feature_fluid_velocity)
             .record("fluid_density", fluid_density)
             .record("Reynolds_number", Reynolds_number)
@@ -148,7 +140,6 @@ public:
     double cylinder_center_x = 1.85;
     double cylinder_center_y = 3.2;
     double cylinder_radius   = 0.15;
-    int    Nib               = 0; // Will be calculated
 
     // Physics parameters
     double feature_fluid_velocity = 1.0;
@@ -197,7 +188,6 @@ int main(int argc, char* argv[])
     std::cout << "Right domain: " << case_param.nx_right << " grid points\n";
     std::cout << "Cylinder center: (" << case_param.cylinder_center_x << ", " << case_param.cylinder_center_y << ")\n";
     std::cout << "Cylinder radius: " << case_param.cylinder_radius << "\n";
-    std::cout << "IBM particles: " << case_param.Nib << "\n";
     std::cout << "Reynolds number: " << case_param.Reynolds_number << "\n";
     std::cout << "Time step: " << case_param.time_step << "\n";
     std::cout << "Max steps: " << case_param.max_step << "\n\n";
@@ -281,8 +271,7 @@ int main(int argc, char* argv[])
 
     // IBM setup
     PCoordMap2D coord_map;
-    coord_map.add_cylinder(
-        case_param.Nib, case_param.cylinder_radius, case_param.cylinder_center_x, case_param.cylinder_center_y);
+    coord_map.add_cylinder(hx, case_param.cylinder_radius, case_param.cylinder_center_x, case_param.cylinder_center_y);
     coord_map.generate_map(&geo);
 
     auto coord_map_raw = coord_map.get_map();

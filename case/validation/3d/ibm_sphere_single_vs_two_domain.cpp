@@ -332,7 +332,7 @@ int main(int /*argc*/, char* /*argv*/[])
     init_velocity_sin(u_single, v_single, w_single);
 
     PCoordMap3D coord_map_single;
-    coord_map_single.add_sphere(400, r, cx, cy, cz);
+    coord_map_single.add_sphere(hx, r, cx, cy, cz);
     coord_map_single.generate_map(&geo_single);
 
     auto coord_map_single_raw = coord_map_single.get_map();
@@ -383,7 +383,7 @@ int main(int /*argc*/, char* /*argv*/[])
     init_velocity_sin(u_multi, v_multi, w_multi);
 
     PCoordMap3D coord_map_multi;
-    coord_map_multi.add_sphere(400, r, cx, cy, cz);
+    coord_map_multi.add_sphere(hx, r, cx, cy, cz);
     coord_map_multi.generate_map(&geo_multi);
 
     auto coord_map_multi_raw = coord_map_multi.get_map();
