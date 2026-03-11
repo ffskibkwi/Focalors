@@ -105,6 +105,7 @@ int main(int argc, char* argv[])
     double dynamic_viscosity_2               = 1e-3;
     double mixing_channel_hydraulic_diameter = Height;
     double inlet_velocity                    = Re * dynamic_viscosity_2 / (density * mixing_channel_hydraulic_diameter);
+    double kinematic_viscosity               = dynamic_viscosity_2 / density;
 
     double diffusion_coefficient = 3.23e-10;
 
@@ -124,6 +125,8 @@ int main(int argc, char* argv[])
         ss << "./result/T-shaped_mixer_obstacle/";
         ss << "Re";
         ss << std::to_string((int)Re);
+        ss << "ob";
+        ss << std::to_string((int)has_obstacle);
         env_cfg.debugOutputDir = ss.str();
     }
 
@@ -132,7 +135,7 @@ int main(int argc, char* argv[])
     time_cfg.num_iterations       = 2e5;
 
     PhysicsConfig& physics_cfg = PhysicsConfig::Get();
-    physics_cfg.set_nu(dynamic_viscosity_2);
+    physics_cfg.set_nu(kinematic_viscosity);
 
     Domain3DUniform A1(nx1, ny1, nz1, lx1, ly1, lz1, "A1");
     Domain3DUniform A2(nx2, ny2, nz2, lx2, ly2, lz2, "A2");
@@ -267,10 +270,10 @@ int main(int argc, char* argv[])
     w.set_boundary_type(&A4, LocationType::YNegative, PDEBoundaryType::Neumann);
     c.set_boundary_type(&A4, LocationType::YNegative, PDEBoundaryType::Neumann);
 
-    add_random_number(u_A1, -0.01, 0.01, 42);
-    add_random_number(u_A2, -0.01, 0.01, 42);
-    add_random_number(u_A3, -0.01, 0.01, 42);
-    add_random_number(u_A4, -0.01, 0.01, 42);
+    add_random_number(u_A1, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
+    add_random_number(u_A2, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
+    add_random_number(u_A3, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
+    add_random_number(u_A4, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
 
     add_random_number(v_A1, -0.01, 0.01, 42);
     add_random_number(v_A2, -0.01, 0.01, 42);
@@ -392,6 +395,10 @@ int main(int argc, char* argv[])
 
         if (iter % static_cast<int>(5e2) == 0)
         {
+            env_cfg.track_pe_solve_detail_time = false;
+
+            std::cout << "PPE begin" << std::endl;
+
             ppe_solver.solve();
 
             CSVHandler pressure_drop_file(env_cfg.debugOutputDir + "/pressure_drop");
@@ -413,6 +420,8 @@ int main(int argc, char* argv[])
 
             double pressure_drop = p_inlet - p_outlet;
             pressure_drop_file.stream << pressure_drop << std::endl;
+
+            std::cout << "PPE end" << std::endl;
         }
 
         solver_c.solve();
