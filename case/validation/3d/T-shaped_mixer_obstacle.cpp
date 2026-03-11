@@ -284,7 +284,7 @@ int main(int argc, char* argv[])
 
 
     // IBM setup (only when has_obstacle = 1)
-    std::map<Domain3DUniform*, PCoord3D*> coord_map_raw;
+    std::unordered_map<Domain3DUniform*, PCoord3D*> coord_map_raw;
     IBSolver3D*       ibm_solver      = nullptr;
     IBSolverScalar3D* ibm_solver_c   = nullptr;
 
