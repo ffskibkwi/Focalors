@@ -111,6 +111,7 @@ int main(int argc, char* argv[])
 
     std::cout << "mixing_channel_hydraulic_diameter = " << mixing_channel_hydraulic_diameter << std::endl;
     std::cout << "inlet_velocity = " << inlet_velocity << std::endl;
+    std::cout << "has_obstacle = " << has_obstacle << std::endl;
 
     std::cout << "convection trem CFL = " << dt / hx << std::endl;
 
@@ -371,12 +372,41 @@ int main(int argc, char* argv[])
         // NS solve
         ns_solver.solve();
 
+        // Debug: check velocity
+        if (iter % 10 == 0)
+        {
+            double u_max = 0, v_max = 0, w_max = 0;
+            for (int i = 0; i < nx1; i++)
+                for (int j = 0; j < ny1; j++)
+                    for (int k = 0; k < nz1; k++)
+                    {
+                        u_max = std::max(u_max, std::abs(u_A1(i,j,k)));
+                        v_max = std::max(v_max, std::abs(v_A1(i,j,k)));
+                        w_max = std::max(w_max, std::abs(w_A1(i,j,k)));
+                    }
+            std::cout << "iter " << iter << ": u_max=" << u_max << ", v_max=" << v_max << ", w_max=" << w_max;
+        }
+
         // IBM solve for velocity (if obstacle exists)
         if (has_obstacle && ibm_solver != nullptr)
             ibm_solver->solve();
 
         // Concentration solve
         solver_c.solve();
+
+        // Debug: check concentration after solve
+        if (iter % 10 == 0)
+        {
+            double c_min = 1e100, c_max = -1e100;
+            for (int i = 0; i < nx1; i++)
+                for (int j = 0; j < ny1; j++)
+                    for (int k = 0; k < nz1; k++)
+                    {
+                        c_min = std::min(c_min, c_A1(i,j,k));
+                        c_max = std::max(c_max, c_A1(i,j,k));
+                    }
+            std::cout << ", c_min=" << c_min << ", c_max=" << c_max << std::endl;
+        }
 
         // IBM concentration solve (if obstacle exists)
         if (has_obstacle && ibm_solver_c != nullptr)
