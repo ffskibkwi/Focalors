@@ -364,6 +364,7 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = true;
         }
 
+        std::cout << "--------------------------------" << std::endl;
         ns_solver.euler_conv_diff_inner();
         ns_solver.euler_conv_diff_outer();
 
@@ -424,6 +425,7 @@ int main(int argc, char* argv[])
             std::cout << "PPE end" << std::endl;
         }
 
+        std::cout << "--------------------------------" << std::endl;
         solver_c.solve();
         if (has_obstacle)
             ibm_solver_c.solve();
