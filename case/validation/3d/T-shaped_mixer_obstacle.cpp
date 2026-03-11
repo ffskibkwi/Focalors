@@ -390,7 +390,8 @@ int main(int argc, char* argv[])
         ns_solver.nondiag_shared_boundary_update();
         ns_solver.diag_shared_boundary_update();
 
-        if (iter % static_cast<int>(5e2) == 0)
+        // Physical pressure solver - only when no obstacle (IBM not supported yet)
+        if (!has_obstacle && iter % static_cast<int>(5e2) == 0)
         {
             ppe_solver.solve();
 
