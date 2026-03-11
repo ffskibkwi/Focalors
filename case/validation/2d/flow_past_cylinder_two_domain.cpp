@@ -271,7 +271,7 @@ int main(int argc, char* argv[])
 
     // IBM setup
     PCoordMap2D coord_map;
-    coord_map.add_cylinder(hx, case_param.cylinder_radius, case_param.cylinder_center_x, case_param.cylinder_center_y);
+    coord_map.add_cylinder(h, case_param.cylinder_radius, case_param.cylinder_center_x, case_param.cylinder_center_y);
     coord_map.generate_map(&geo);
 
     auto coord_map_raw = coord_map.get_map();
