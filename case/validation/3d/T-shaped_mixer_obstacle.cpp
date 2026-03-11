@@ -11,7 +11,7 @@
 #include "io/csv_handler.h"
 #include "io/stat.h"
 #include "io/vtk_writer.h"
-#include "ns/ns_solver3d_nonuniform_viscosity.h"
+#include "ns/ns_solver3d.h"
 #include "ns/scalar_solver3d.h"
 #include "pe/concat/concat_solver3d.h"
 
@@ -345,7 +345,7 @@ int main(int argc, char* argv[])
     }
 
     ConcatPoissonSolver3D p_solver(&p);
-    NSSolver3DNonUniVisc  ns_solver(&u, &v, &w, &p, &p_solver, &c, dynamic_viscosity_1, dynamic_viscosity_2);
+    ConcatNSSolver3D      ns_solver(&u, &v, &w, &p, &p_solver);
     ScalarSolver3D        solver_c(&u, &v, &w, &c, diffusion_coefficient, c_scheme);
     // PhysicalPESolver3D    ppe_solver(&u, &v, &w, &p, &p_solver, density);  // TODO: Enable when IBM boundary handling is supported
 
