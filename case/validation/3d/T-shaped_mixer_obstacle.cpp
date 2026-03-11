@@ -11,7 +11,8 @@
 #include "io/csv_handler.h"
 #include "io/stat.h"
 #include "io/vtk_writer.h"
-#include "ns/ns_solver3d.h"
+#include "ns/ns_solver3d_nonuniform_viscosity.h"
+#include "ns/physical_pe_solver3d.h"
 #include "ns/scalar_solver3d.h"
 #include "pe/concat/concat_solver3d.h"
 
@@ -65,7 +66,7 @@ int main(int argc, char* argv[])
     double ly1 = Height;
     double lz1 = Height;
 
-    double lx2 = 2.0 * Height;
+    double lx2 = Height;
     double ly2 = Height;
     double lz2 = Height;
 
@@ -73,7 +74,7 @@ int main(int argc, char* argv[])
     double ly3 = ly1; // symmetry
     double lz3 = lz1; // symmetry
 
-    double lx4 = 2.0 * Height;
+    double lx4 = Height;
     double ly4 = 40.0 * Height;
     double lz4 = Height;
 
@@ -111,7 +112,6 @@ int main(int argc, char* argv[])
 
     std::cout << "mixing_channel_hydraulic_diameter = " << mixing_channel_hydraulic_diameter << std::endl;
     std::cout << "inlet_velocity = " << inlet_velocity << std::endl;
-    std::cout << "has_obstacle = " << has_obstacle << std::endl;
 
     std::cout << "convection trem CFL = " << dt / hx << std::endl;
 
@@ -282,72 +282,64 @@ int main(int argc, char* argv[])
     add_random_number(w_A3, -0.01, 0.01, 42);
     add_random_number(w_A4, -0.01, 0.01, 42);
 
-    // IBM setup (only when has_obstacle = 1)
-    std::unordered_map<Domain3DUniform*, PCoord3D*> coord_map_raw;
-    IBSolver3D*                                     ibm_solver   = nullptr;
-    IBSolverScalar3D*                               ibm_solver_c = nullptr;
+    // IBM setup: sphere at T-junction center
+    // Note: A2 starts at x=20*H/d, y=0, z=0
+    double sphere_radius   = Height / 3.0;  // Radius = H/3
+    double sphere_center_x = 20.5 * Height; // Center of A2 domain (21*H from origin)
+    double sphere_center_y = 0.5 * Height;  // T-junction y coordinate (within A2)
+    double sphere_center_z = 0.5 * Height;  // Center in z direction
+    int    Nib             = static_cast<int>(std::round(2.0 * M_PI * sphere_radius / hx));
 
-    if (has_obstacle)
+    std::cout << "IBM sphere (non-dim): center = (" << sphere_center_x << ", " << sphere_center_y << ", "
+              << sphere_center_z << "), radius = " << sphere_radius << ", Nib = " << Nib << std::endl;
+
+    PCoordMap3D coord_map;
+    coord_map.add_sphere(Nib, sphere_radius, sphere_center_x, sphere_center_y, sphere_center_z);
+    coord_map.generate_map(&geo);
+
+    auto coord_map_raw = coord_map.get_map();
+
+    // Velocity IBM solver
+    IBSolver3D ibm_solver(&u, &v, &w, coord_map_raw);
+    ibm_solver.set_parameters(coord_map.get_h(), hx);
+
+    // Concentration IBM solver
+    IBSolverScalar3D ibm_solver_c(&c, coord_map_raw);
+    ibm_solver_c.set_parameters(coord_map.get_h(), hx);
+
+    // Initialize IBM particle velocities to zero (solid sphere)
+    for (auto& kv : coord_map_raw)
     {
-        // Note: A2 starts at x=20*H/d, y=0, z=0
-        double sphere_radius   = Height / 3.0;  // Radius = H/3
-        double sphere_center_x = 20.5 * Height; // Center of A2 domain (21*H from origin)
-        double sphere_center_y = 0.5 * Height;  // T-junction y coordinate (within A2)
-        double sphere_center_z = 0.5 * Height;  // Center in z direction
-        int    Nib             = static_cast<int>(std::round(2.0 * M_PI * sphere_radius / hx));
+        auto* p_coord = kv.second;
+        auto* ib_data = ibm_solver.get_ib_data(kv.first);
 
-        std::cout << "IBM sphere (non-dim): center = (" << sphere_center_x << ", " << sphere_center_y << ", "
-                  << sphere_center_z << "), radius = " << sphere_radius << ", Nib = " << Nib << std::endl;
+        EXPOSE_PCOORD3D(p_coord)
+        EXPOSE_PIB3D(ib_data)
 
-        PCoordMap3D coord_map;
-        coord_map.add_sphere(Nib, sphere_radius, sphere_center_x, sphere_center_y, sphere_center_z);
-        coord_map.generate_map(&geo);
-
-        coord_map_raw = coord_map.get_map();
-
-        // Velocity IBM solver
-        ibm_solver = new IBSolver3D(&u, &v, &w, coord_map_raw);
-        ibm_solver->set_parameters(coord_map.get_h(), hx);
-
-        // Concentration IBM solver
-        ibm_solver_c = new IBSolverScalar3D(&c, coord_map_raw);
-        ibm_solver_c->set_parameters(coord_map.get_h(), hx);
-
-        // Initialize IBM particle velocities to zero (solid sphere)
-        for (auto& kv : coord_map_raw)
+        for (int i = 0; i < p_coord->cur_n; i++)
         {
-            auto* p_coord = kv.second;
-            auto* ib_data = ibm_solver->get_ib_data(kv.first);
-
-            EXPOSE_PCOORD3D(p_coord)
-            EXPOSE_PIB3D(ib_data)
-
-            for (int i = 0; i < p_coord->cur_n; i++)
-            {
-                Up[i] = 0.0;
-                Vp[i] = 0.0;
-                Wp[i] = 0.0;
-            }
+            Up[i] = 0.0;
+            Vp[i] = 0.0;
+            Wp[i] = 0.0;
         }
+    }
 
-        // Initialize IBM concentration particles (no source/sink, just interpolation)
-        for (auto& kv : coord_map_raw)
+    // Initialize IBM concentration particles (no source/sink, just interpolation)
+    for (auto& kv : coord_map_raw)
+    {
+        auto* p_coord   = kv.second;
+        auto* ib_data_c = ibm_solver_c.get_ib_data(kv.first);
+        EXPOSE_PIBSCALAR(ib_data_c)
+        for (int i = 0; i < p_coord->cur_n; i++)
         {
-            auto* p_coord   = kv.second;
-            auto* ib_data_c = ibm_solver_c->get_ib_data(kv.first);
-            EXPOSE_PIBSCALAR(ib_data_c)
-            for (int i = 0; i < p_coord->cur_n; i++)
-            {
-                Sp[i] = 0.0; // No prescribed concentration value
-            }
+            Sp[i] = 0.0; // No prescribed concentration value
         }
     }
 
     ConcatPoissonSolver3D p_solver(&p);
-    ConcatNSSolver3D      ns_solver(&u, &v, &w, &p, &p_solver);
+    NSSolver3DNonUniVisc  ns_solver(&u, &v, &w, &p, &p_solver, &c, dynamic_viscosity_1, dynamic_viscosity_2);
     ScalarSolver3D        solver_c(&u, &v, &w, &c, diffusion_coefficient, c_scheme);
-    // PhysicalPESolver3D    ppe_solver(&u, &v, &w, &p, &p_solver, density);  // TODO: Enable when IBM boundary handling
-    // is supported
+    PhysicalPESolver3D    ppe_solver(&u, &v, &w, &p, &p_solver, density);
 
     VTKWriter vtk_writer;
     vtk_writer.add_vector_as_cell_data(&u, &v, &w, "velocity");
@@ -369,63 +361,63 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = true;
         }
 
-        // Debug: check velocity before NS solve
-        if (iter <= 1)
+        ns_solver.euler_conv_diff_inner();
+        ns_solver.euler_conv_diff_outer();
+
+        if (has_obstacle)
+            ibm_solver.solve();
+
+        ns_solver.phys_boundary_update();
+        ns_solver.nondiag_shared_boundary_update();
+        ns_solver.diag_shared_boundary_update();
+
+        // divu
+        ns_solver.velocity_div_inner();
+        ns_solver.velocity_div_outer();
+
+        // PE
+        ns_solver.normalize_pressure();
+        p_solver.solve();
+
+        // update buffer for p
+        ns_solver.pressure_buffer_update();
+
+        // p grad
+        ns_solver.add_pressure_gradient();
+
+        // Boundary update
+        ns_solver.phys_boundary_update();
+        ns_solver.nondiag_shared_boundary_update();
+        ns_solver.diag_shared_boundary_update();
+
+        if (iter % static_cast<int>(5e2) == 0)
         {
-            double u_max = 0;
-            for (int i = 0; i < nx1; i++)
-                for (int j = 0; j < ny1; j++)
-                    for (int k = 0; k < nz1; k++)
-                        u_max = std::max(u_max, std::abs(u_A1(i,j,k)));
-            std::cout << "DEBUG iter " << iter << " BEFORE ns_solver: u_max=" << u_max << std::endl;
+            ppe_solver.solve();
+
+            CSVHandler pressure_drop_file(env_cfg.debugOutputDir + "/pressure_drop");
+
+            double p_inlet = 0.0;
+            for (int j = 0; j < ny1; j++)
+                for (int k = 0; k < nz1; k++)
+                    p_inlet += p_A1(0, j, k);
+            for (int j = 0; j < ny3; j++)
+                for (int k = 0; k < nz3; k++)
+                    p_inlet += p_A3(nx3 - 1, j, k);
+            p_inlet /= ny1 * nz1 + ny3 * nz3;
+
+            double p_outlet = 0.0;
+            for (int i = 0; i < nx2; i++)
+                for (int k = 0; k < nz2; k++)
+                    p_outlet += p_A2(i, ny2 - 1, k);
+            p_inlet /= nx2 * nz2;
+
+            double pressure_drop = p_inlet - p_outlet;
+            pressure_drop_file.stream << pressure_drop << std::endl;
         }
 
-        // NS solve
-        ns_solver.solve();
-
-        // Debug: check velocity after NS solve
-        if (iter <= 1)
-        {
-            double u_max = 0;
-            for (int i = 0; i < nx1; i++)
-                for (int j = 0; j < ny1; j++)
-                    for (int k = 0; k < nz1; k++)
-                        u_max = std::max(u_max, std::abs(u_A1(i,j,k)));
-            std::cout << "DEBUG iter " << iter << " AFTER ns_solver: u_max=" << u_max << std::endl;
-        }
-
-        // IBM solve for velocity (if obstacle exists)
-        if (has_obstacle && ibm_solver != nullptr)
-            ibm_solver->solve();
-
-        // Debug: check velocity before concentration solve
-        if (iter <= 1)
-        {
-            double u_max = 0;
-            for (int i = 0; i < nx1; i++)
-                for (int j = 0; j < ny1; j++)
-                    for (int k = 0; k < nz1; k++)
-                        u_max = std::max(u_max, std::abs(u_A1(i,j,k)));
-            std::cout << "DEBUG iter " << iter << " BEFORE solver_c: u_max=" << u_max << std::endl;
-        }
-
-        // Concentration solve
         solver_c.solve();
-
-        // Debug: check velocity after concentration solve
-        if (iter <= 1)
-        {
-            double u_max = 0;
-            for (int i = 0; i < nx1; i++)
-                for (int j = 0; j < ny1; j++)
-                    for (int k = 0; k < nz1; k++)
-                        u_max = std::max(u_max, std::abs(u_A1(i,j,k)));
-            std::cout << "DEBUG iter " << iter << " AFTER solver_c: u_max=" << u_max << std::endl;
-        }
-
-        // IBM concentration solve (if obstacle exists)
-        if (has_obstacle && ibm_solver_c != nullptr)
-            ibm_solver_c->solve();
+        if (has_obstacle)
+            ibm_solver_c.solve();
 
         if (iter % 100 == 0)
         {
@@ -459,10 +451,4 @@ int main(int argc, char* argv[])
     }
 
     std::cout << "Finished" << std::endl;
-
-    // Cleanup IBM solvers
-    if (ibm_solver != nullptr)
-        delete ibm_solver;
-    if (ibm_solver_c != nullptr)
-        delete ibm_solver_c;
 }
