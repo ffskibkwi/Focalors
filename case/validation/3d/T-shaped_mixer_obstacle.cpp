@@ -65,7 +65,7 @@ int main(int argc, char* argv[])
     double ly1 = Height;
     double lz1 = Height;
 
-    double lx2 = Height;
+    double lx2 = 2.0 * Height;
     double ly2 = Height;
     double lz2 = Height;
 
@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
     double ly3 = ly1; // symmetry
     double lz3 = lz1; // symmetry
 
-    double lx4 = Height;
+    double lx4 = 2.0 * Height;
     double ly4 = 40.0 * Height;
     double lz4 = Height;
 
@@ -369,51 +369,8 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = true;
         }
 
-        // Debug: check velocity before NS solve
-        if (iter <= 2)
-        {
-            double u_max = 0, u_sum = 0;
-            for (int i = 0; i < nx1; i++)
-                for (int j = 0; j < ny1; j++)
-                    for (int k = 0; k < nz1; k++)
-                    {
-                        u_max = std::max(u_max, std::abs(u_A1(i,j,k)));
-                        u_sum += u_A1(i,j,k);
-                    }
-            std::cout << "iter " << iter << " BEFORE ns_solver: u_max=" << u_max << ", u_sum=" << u_sum << std::endl;
-        }
-
         // NS solve
         ns_solver.solve();
-
-        // Debug: check velocity after NS solve
-        if (iter <= 2)
-        {
-            double u_max = 0, u_sum = 0;
-            for (int i = 0; i < nx1; i++)
-                for (int j = 0; j < ny1; j++)
-                    for (int k = 0; k < nz1; k++)
-                    {
-                        u_max = std::max(u_max, std::abs(u_A1(i,j,k)));
-                        u_sum += u_A1(i,j,k);
-                    }
-            std::cout << "iter " << iter << " AFTER ns_solver: u_max=" << u_max << ", u_sum=" << u_sum << std::endl;
-        }
-
-        // Debug: check velocity (every 10 iterations)
-        if (iter % 10 == 0)
-        {
-            double u_max = 0, v_max = 0, w_max = 0;
-            for (int i = 0; i < nx1; i++)
-                for (int j = 0; j < ny1; j++)
-                    for (int k = 0; k < nz1; k++)
-                    {
-                        u_max = std::max(u_max, std::abs(u_A1(i,j,k)));
-                        v_max = std::max(v_max, std::abs(v_A1(i,j,k)));
-                        w_max = std::max(w_max, std::abs(w_A1(i,j,k)));
-                    }
-            std::cout << "iter " << iter << ": u_max=" << u_max << ", v_max=" << v_max << ", w_max=" << w_max;
-        }
 
         // IBM solve for velocity (if obstacle exists)
         if (has_obstacle && ibm_solver != nullptr)
@@ -421,20 +378,6 @@ int main(int argc, char* argv[])
 
         // Concentration solve
         solver_c.solve();
-
-        // Debug: check concentration after solve
-        if (iter % 10 == 0)
-        {
-            double c_min = 1e100, c_max = -1e100;
-            for (int i = 0; i < nx1; i++)
-                for (int j = 0; j < ny1; j++)
-                    for (int k = 0; k < nz1; k++)
-                    {
-                        c_min = std::min(c_min, c_A1(i,j,k));
-                        c_max = std::max(c_max, c_A1(i,j,k));
-                    }
-            std::cout << ", c_min=" << c_min << ", c_max=" << c_max << std::endl;
-        }
 
         // IBM concentration solve (if obstacle exists)
         if (has_obstacle && ibm_solver_c != nullptr)
