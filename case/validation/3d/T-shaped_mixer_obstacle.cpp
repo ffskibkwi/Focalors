@@ -369,15 +369,59 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = true;
         }
 
+        // Debug: check velocity before NS solve
+        if (iter <= 1)
+        {
+            double u_max = 0;
+            for (int i = 0; i < nx1; i++)
+                for (int j = 0; j < ny1; j++)
+                    for (int k = 0; k < nz1; k++)
+                        u_max = std::max(u_max, std::abs(u_A1(i,j,k)));
+            std::cout << "DEBUG iter " << iter << " BEFORE ns_solver: u_max=" << u_max << std::endl;
+        }
+
         // NS solve
         ns_solver.solve();
+
+        // Debug: check velocity after NS solve
+        if (iter <= 1)
+        {
+            double u_max = 0;
+            for (int i = 0; i < nx1; i++)
+                for (int j = 0; j < ny1; j++)
+                    for (int k = 0; k < nz1; k++)
+                        u_max = std::max(u_max, std::abs(u_A1(i,j,k)));
+            std::cout << "DEBUG iter " << iter << " AFTER ns_solver: u_max=" << u_max << std::endl;
+        }
 
         // IBM solve for velocity (if obstacle exists)
         if (has_obstacle && ibm_solver != nullptr)
             ibm_solver->solve();
 
+        // Debug: check velocity before concentration solve
+        if (iter <= 1)
+        {
+            double u_max = 0;
+            for (int i = 0; i < nx1; i++)
+                for (int j = 0; j < ny1; j++)
+                    for (int k = 0; k < nz1; k++)
+                        u_max = std::max(u_max, std::abs(u_A1(i,j,k)));
+            std::cout << "DEBUG iter " << iter << " BEFORE solver_c: u_max=" << u_max << std::endl;
+        }
+
         // Concentration solve
         solver_c.solve();
+
+        // Debug: check velocity after concentration solve
+        if (iter <= 1)
+        {
+            double u_max = 0;
+            for (int i = 0; i < nx1; i++)
+                for (int j = 0; j < ny1; j++)
+                    for (int k = 0; k < nz1; k++)
+                        u_max = std::max(u_max, std::abs(u_A1(i,j,k)));
+            std::cout << "DEBUG iter " << iter << " AFTER solver_c: u_max=" << u_max << std::endl;
+        }
 
         // IBM concentration solve (if obstacle exists)
         if (has_obstacle && ibm_solver_c != nullptr)

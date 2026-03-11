@@ -116,33 +116,6 @@ void ConcatNSSolver3D::solve()
 
 void ConcatNSSolver3D::euler_conv_diff_inner()
 {
-    // Debug: check for NaN/Inf in velocity fields before computation
-    static int debug_count = 0;
-    if (debug_count < 3)
-    {
-        for (auto& domain : domains)
-        {
-            field3& u = *u_field_map[domain];
-            double u_max = 0, u_min = 0;
-            for (int i = 0; i < u.get_nx(); i++)
-                for (int j = 0; j < u.get_ny(); j++)
-                    for (int k = 0; k < u.get_nz(); k++)
-                    {
-                        u_max = std::max(u_max, u(i,j,k));
-                        u_min = std::min(u_min, u(i,j,k));
-                        if (std::isnan(u(i,j,k)) || std::isinf(u(i,j,k)))
-                        {
-                            std::cout << "DEBUG: NaN/Inf detected in u before euler_conv_diff_inner! "
-                                      << "domain=" << domain->name << ", i=" << i << ", j=" << j << ", k=" << k 
-                                      << ", u=" << u(i,j,k) << std::endl;
-                        }
-                    }
-            std::cout << "DEBUG euler_conv_diff_inner domain " << domain->name 
-                      << ": u_max=" << u_max << ", u_min=" << u_min << std::endl;
-        }
-        debug_count++;
-    }
-
     for (auto& domain : domains)
     {
         field3& u = *u_field_map[domain];
