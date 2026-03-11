@@ -395,6 +395,10 @@ int main(int argc, char* argv[])
 
         if (iter % static_cast<int>(5e2) == 0)
         {
+            env_cfg.track_pe_solve_detail_time = false;
+
+            std::cout << "PPE begin" << std::endl;
+
             ppe_solver.solve();
 
             CSVHandler pressure_drop_file(env_cfg.debugOutputDir + "/pressure_drop");
@@ -416,6 +420,8 @@ int main(int argc, char* argv[])
 
             double pressure_drop = p_inlet - p_outlet;
             pressure_drop_file.stream << pressure_drop << std::endl;
+
+            std::cout << "PPE end" << std::endl;
         }
 
         solver_c.solve();
