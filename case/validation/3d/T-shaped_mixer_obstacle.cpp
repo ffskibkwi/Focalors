@@ -132,7 +132,7 @@ int main(int argc, char* argv[])
 
     TimeAdvancingConfig& time_cfg = TimeAdvancingConfig::Get();
     time_cfg.dt                   = dt;
-    time_cfg.num_iterations       = 2e5;
+    time_cfg.num_iterations       = 4e5;
 
     PhysicsConfig& physics_cfg = PhysicsConfig::Get();
     physics_cfg.set_nu(kinematic_viscosity);
