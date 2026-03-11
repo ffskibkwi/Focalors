@@ -281,57 +281,65 @@ int main(int argc, char* argv[])
     add_random_number(w_A3, -0.01, 0.01, 42);
     add_random_number(w_A4, -0.01, 0.01, 42);
 
-    // IBM setup: sphere at T-junction center
-    // Note: A2 starts at x=20*H/d, y=0, z=0
-    double sphere_radius   = Height / 3.0;  // Radius = H/3
-    double sphere_center_x = 20.5 * Height; // Center of A2 domain (21*H from origin)
-    double sphere_center_y = 0.5 * Height;  // T-junction y coordinate (within A2)
-    double sphere_center_z = 0.5 * Height;  // Center in z direction
-    int    Nib             = static_cast<int>(std::round(2.0 * M_PI * sphere_radius / hx));
 
-    std::cout << "IBM sphere (non-dim): center = (" << sphere_center_x << ", " << sphere_center_y << ", "
-              << sphere_center_z << "), radius = " << sphere_radius << ", Nib = " << Nib << std::endl;
+    // IBM setup (only when has_obstacle = 1)
+    std::map<Domain3DUniform*, PCoord3D*> coord_map_raw;
+    IBSolver3D*       ibm_solver      = nullptr;
+    IBSolverScalar3D* ibm_solver_c   = nullptr;
 
-    PCoordMap3D coord_map;
-    coord_map.add_sphere(Nib, sphere_radius, sphere_center_x, sphere_center_y, sphere_center_z);
-    coord_map.generate_map(&geo);
-
-    auto coord_map_raw = coord_map.get_map();
-
-    // Velocity IBM solver
-    IBSolver3D ibm_solver(&u, &v, &w, coord_map_raw);
-    ibm_solver.set_parameters(coord_map.get_h(), hx);
-
-    // Concentration IBM solver
-    IBSolverScalar3D ibm_solver_c(&c, coord_map_raw);
-    ibm_solver_c.set_parameters(coord_map.get_h(), hx);
-
-    // Initialize IBM particle velocities to zero (solid sphere)
-    for (auto& kv : coord_map_raw)
+    if (has_obstacle)
     {
-        auto* p_coord = kv.second;
-        auto* ib_data = ibm_solver.get_ib_data(kv.first);
+        // Note: A2 starts at x=20*H/d, y=0, z=0
+        double sphere_radius   = Height / 3.0;  // Radius = H/3
+        double sphere_center_x = 20.5 * Height; // Center of A2 domain (21*H from origin)
+        double sphere_center_y = 0.5 * Height;  // T-junction y coordinate (within A2)
+        double sphere_center_z = 0.5 * Height;  // Center in z direction
+        int    Nib             = static_cast<int>(std::round(2.0 * M_PI * sphere_radius / hx));
 
-        EXPOSE_PCOORD3D(p_coord)
-        EXPOSE_PIB3D(ib_data)
+        std::cout << "IBM sphere (non-dim): center = (" << sphere_center_x << ", " << sphere_center_y << ", "
+                  << sphere_center_z << "), radius = " << sphere_radius << ", Nib = " << Nib << std::endl;
 
-        for (int i = 0; i < p_coord->cur_n; i++)
+        PCoordMap3D coord_map;
+        coord_map.add_sphere(Nib, sphere_radius, sphere_center_x, sphere_center_y, sphere_center_z);
+        coord_map.generate_map(&geo);
+
+        coord_map_raw = coord_map.get_map();
+
+        // Velocity IBM solver
+        ibm_solver = new IBSolver3D(&u, &v, &w, coord_map_raw);
+        ibm_solver->set_parameters(coord_map.get_h(), hx);
+
+        // Concentration IBM solver
+        ibm_solver_c = new IBSolverScalar3D(&c, coord_map_raw);
+        ibm_solver_c->set_parameters(coord_map.get_h(), hx);
+
+        // Initialize IBM particle velocities to zero (solid sphere)
+        for (auto& kv : coord_map_raw)
         {
-            Up[i] = 0.0;
-            Vp[i] = 0.0;
-            Wp[i] = 0.0;
+            auto* p_coord = kv.second;
+            auto* ib_data = ibm_solver->get_ib_data(kv.first);
+
+            EXPOSE_PCOORD3D(p_coord)
+            EXPOSE_PIB3D(ib_data)
+
+            for (int i = 0; i < p_coord->cur_n; i++)
+            {
+                Up[i] = 0.0;
+                Vp[i] = 0.0;
+                Wp[i] = 0.0;
+            }
         }
-    }
 
-    // Initialize IBM concentration particles (no source/sink, just interpolation)
-    for (auto& kv : coord_map_raw)
-    {
-        auto* p_coord   = kv.second;
-        auto* ib_data_c = ibm_solver_c.get_ib_data(kv.first);
-        EXPOSE_PIBSCALAR(ib_data_c)
-        for (int i = 0; i < p_coord->cur_n; i++)
+        // Initialize IBM concentration particles (no source/sink, just interpolation)
+        for (auto& kv : coord_map_raw)
         {
-            Sp[i] = 0.0; // No prescribed concentration value
+            auto* p_coord   = kv.second;
+            auto* ib_data_c = ibm_solver_c->get_ib_data(kv.first);
+            EXPOSE_PIBSCALAR(ib_data_c)
+            for (int i = 0; i < p_coord->cur_n; i++)
+            {
+                Sp[i] = 0.0; // No prescribed concentration value
+            }
         }
     }
 
@@ -364,15 +372,15 @@ int main(int argc, char* argv[])
         ns_solver.solve();
 
         // IBM solve for velocity (if obstacle exists)
-        if (has_obstacle)
-            ibm_solver.solve();
+        if (has_obstacle && ibm_solver != nullptr)
+            ibm_solver->solve();
 
         // Concentration solve
         solver_c.solve();
 
         // IBM concentration solve (if obstacle exists)
-        if (has_obstacle)
-            ibm_solver_c.solve();
+        if (has_obstacle && ibm_solver_c != nullptr)
+            ibm_solver_c->solve();
 
         if (iter % 100 == 0)
         {
@@ -406,4 +414,10 @@ int main(int argc, char* argv[])
     }
 
     std::cout << "Finished" << std::endl;
+
+    // Cleanup IBM solvers
+    if (ibm_solver != nullptr)
+        delete ibm_solver;
+    if (ibm_solver_c != nullptr)
+        delete ibm_solver_c;
 }
