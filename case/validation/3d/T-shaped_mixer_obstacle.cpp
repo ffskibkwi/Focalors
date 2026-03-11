@@ -267,10 +267,10 @@ int main(int argc, char* argv[])
     w.set_boundary_type(&A4, LocationType::YNegative, PDEBoundaryType::Neumann);
     c.set_boundary_type(&A4, LocationType::YNegative, PDEBoundaryType::Neumann);
 
-    add_random_number(u_A1, -0.01, 0.01, 42);
-    add_random_number(u_A2, -0.01, 0.01, 42);
-    add_random_number(u_A3, -0.01, 0.01, 42);
-    add_random_number(u_A4, -0.01, 0.01, 42);
+    add_random_number(u_A1, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
+    add_random_number(u_A2, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
+    add_random_number(u_A3, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
+    add_random_number(u_A4, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
 
     add_random_number(v_A1, -0.01, 0.01, 42);
     add_random_number(v_A2, -0.01, 0.01, 42);
