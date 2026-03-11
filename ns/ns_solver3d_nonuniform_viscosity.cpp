@@ -1,6 +1,8 @@
 #include "ns_solver3d_nonuniform_viscosity.h"
 
 #include "boundary_3d_utils.h"
+#include <iomanip>
+#include <iostream>
 
 void NSSolver3DNonUniVisc::euler_conv_diff_inner()
 {
@@ -24,7 +26,7 @@ void NSSolver3DNonUniVisc::euler_conv_diff_inner()
         double hz = domain->hz;
 
         // u (interior only; boundaries handled in euler_conv_diff_outer)
-        OPENMP_PARALLEL_FOR()
+        // OPENMP_PARALLEL_FOR()
         for (int i = 1; i < nx - 1; i++)
         {
             for (int j = 1; j < ny - 1; j++)
@@ -47,13 +49,36 @@ void NSSolver3DNonUniVisc::euler_conv_diff_inner()
                     double diffuse_y = mu * nu / hy / hy * (u(i, j + 1, k) - 2.0 * u(i, j, k) + u(i, j - 1, k));
                     double diffuse_z = mu * nu / hz / hz * (u(i, j, k + 1) - 2.0 * u(i, j, k) + u(i, j, k - 1));
 
+                    double u_old    = u(i, j, k);
                     u_temp(i, j, k) = u(i, j, k) - dt * (conv_x + conv_y + conv_z - diffuse_x - diffuse_y - diffuse_z);
+
+                    // Debug output at specific points
+                    if (i == nx / 2 && j == ny / 2 && k == nz / 2)
+                    {
+                        std::cout << "[U-CENTER] i=" << i << " j=" << j << " k=" << k
+                                  << " u_old=" << std::setprecision(10) << u_old << " u_new=" << u_temp(i, j, k)
+                                  << " conv_x=" << conv_x << " conv_y=" << conv_y << " conv_z=" << conv_z
+                                  << " diff_x=" << diffuse_x << " diff_y=" << diffuse_y << " diff_z=" << diffuse_z
+                                  << " mu=" << mu << " c_avg=" << c_avg << std::endl;
+                    }
+                    if (i == 1 && j == ny / 2 && k == nz / 2)
+                    {
+                        std::cout << "[U-XMIN] i=" << i << " j=" << j << " k=" << k
+                                  << " u_old=" << std::setprecision(10) << u_old << " u_new=" << u_temp(i, j, k)
+                                  << std::endl;
+                    }
+                    if (i == nx - 2 && j == ny / 2 && k == nz / 2)
+                    {
+                        std::cout << "[U-XMAX] i=" << i << " j=" << j << " k=" << k
+                                  << " u_old=" << std::setprecision(10) << u_old << " u_new=" << u_temp(i, j, k)
+                                  << std::endl;
+                    }
                 }
             }
         }
 
         // v
-        OPENMP_PARALLEL_FOR()
+        // OPENMP_PARALLEL_FOR()
         for (int i = 1; i < nx - 1; i++)
         {
             for (int j = 1; j < ny - 1; j++)
@@ -76,13 +101,36 @@ void NSSolver3DNonUniVisc::euler_conv_diff_inner()
                     double diffuse_y = mu * nu / hy / hy * (v(i, j + 1, k) - 2.0 * v(i, j, k) + v(i, j - 1, k));
                     double diffuse_z = mu * nu / hz / hz * (v(i, j, k + 1) - 2.0 * v(i, j, k) + v(i, j, k - 1));
 
+                    double v_old    = v(i, j, k);
                     v_temp(i, j, k) = v(i, j, k) - dt * (conv_x + conv_y + conv_z - diffuse_x - diffuse_y - diffuse_z);
+
+                    // Debug output at specific points
+                    if (i == nx / 2 && j == ny / 2 && k == nz / 2)
+                    {
+                        std::cout << "[V-CENTER] i=" << i << " j=" << j << " k=" << k
+                                  << " v_old=" << std::setprecision(10) << v_old << " v_new=" << v_temp(i, j, k)
+                                  << " conv_x=" << conv_x << " conv_y=" << conv_y << " conv_z=" << conv_z
+                                  << " diff_x=" << diffuse_x << " diff_y=" << diffuse_y << " diff_z=" << diffuse_z
+                                  << " mu=" << mu << " c_avg=" << c_avg << std::endl;
+                    }
+                    if (i == nx / 2 && j == 1 && k == nz / 2)
+                    {
+                        std::cout << "[V-YMIN] i=" << i << " j=" << j << " k=" << k
+                                  << " v_old=" << std::setprecision(10) << v_old << " v_new=" << v_temp(i, j, k)
+                                  << std::endl;
+                    }
+                    if (i == nx / 2 && j == ny - 2 && k == nz / 2)
+                    {
+                        std::cout << "[V-YMAX] i=" << i << " j=" << j << " k=" << k
+                                  << " v_old=" << std::setprecision(10) << v_old << " v_new=" << v_temp(i, j, k)
+                                  << std::endl;
+                    }
                 }
             }
         }
 
         // w
-        OPENMP_PARALLEL_FOR()
+        // OPENMP_PARALLEL_FOR()
         for (int i = 1; i < nx - 1; i++)
         {
             for (int j = 1; j < ny - 1; j++)
@@ -105,7 +153,30 @@ void NSSolver3DNonUniVisc::euler_conv_diff_inner()
                     double diffuse_y = mu * nu / hy / hy * (w(i, j + 1, k) - 2.0 * w(i, j, k) + w(i, j - 1, k));
                     double diffuse_z = mu * nu / hz / hz * (w(i, j, k + 1) - 2.0 * w(i, j, k) + w(i, j, k - 1));
 
+                    double w_old    = w(i, j, k);
                     w_temp(i, j, k) = w(i, j, k) - dt * (conv_x + conv_y + conv_z - diffuse_x - diffuse_y - diffuse_z);
+
+                    // Debug output at specific points
+                    if (i == nx / 2 && j == ny / 2 && k == nz / 2)
+                    {
+                        std::cout << "[W-CENTER] i=" << i << " j=" << j << " k=" << k
+                                  << " w_old=" << std::setprecision(10) << w_old << " w_new=" << w_temp(i, j, k)
+                                  << " conv_x=" << conv_x << " conv_y=" << conv_y << " conv_z=" << conv_z
+                                  << " diff_x=" << diffuse_x << " diff_y=" << diffuse_y << " diff_z=" << diffuse_z
+                                  << " mu=" << mu << " c_avg=" << c_avg << std::endl;
+                    }
+                    if (i == nx / 2 && j == ny / 2 && k == 1)
+                    {
+                        std::cout << "[W-ZMIN] i=" << i << " j=" << j << " k=" << k
+                                  << " w_old=" << std::setprecision(10) << w_old << " w_new=" << w_temp(i, j, k)
+                                  << std::endl;
+                    }
+                    if (i == nx / 2 && j == ny / 2 && k == nz - 2)
+                    {
+                        std::cout << "[W-ZMAX] i=" << i << " j=" << j << " k=" << k
+                                  << " w_old=" << std::setprecision(10) << w_old << " w_new=" << w_temp(i, j, k)
+                                  << std::endl;
+                    }
                 }
             }
         }
@@ -277,7 +348,7 @@ void NSSolver3DNonUniVisc::euler_conv_diff_outer()
             w_temp(i, j, k) = w_ijk - dt * (conv_x + conv_y + conv_z - diffuse_x - diffuse_y - diffuse_z);
         };
 
-        OPENMP_PARALLEL_FOR()
+        // OPENMP_PARALLEL_FOR()
         for (int j = 0; j < ny; j++)
         {
             for (int k = 0; k < nz; k++)
@@ -292,7 +363,7 @@ void NSSolver3DNonUniVisc::euler_conv_diff_outer()
             }
         }
 
-        OPENMP_PARALLEL_FOR()
+        // OPENMP_PARALLEL_FOR()
         for (int i = 0; i < nx; i++)
         {
             for (int k = 0; k < nz; k++)
@@ -307,7 +378,7 @@ void NSSolver3DNonUniVisc::euler_conv_diff_outer()
             }
         }
 
-        OPENMP_PARALLEL_FOR()
+        // OPENMP_PARALLEL_FOR()
         for (int i = 0; i < nx; i++)
         {
             for (int j = 0; j < ny; j++)

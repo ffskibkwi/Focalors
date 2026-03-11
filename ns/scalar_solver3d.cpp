@@ -2,6 +2,8 @@
 
 #include "base/config.h"
 #include "boundary_3d_utils.h"
+#include <iostream>
+#include <iomanip>
 
 ScalarSolver3D::ScalarSolver3D(Variable3D*          in_u_var,
                                Variable3D*          in_v_var,
@@ -141,7 +143,48 @@ void ScalarSolver3D::conv_cd2nd_diff_cd2nd_inner()
                     double diffuse_y = nr / hy / hy * (s_jp1 - 2.0 * s_ijk + s_jm1);
                     double diffuse_z = nr / hz / hz * (s_kp1 - 2.0 * s_ijk + s_km1);
 
+                    double s_old = s(i, j, k);
                     s_temp(i, j, k) = s(i, j, k) - dt * (conv_x + conv_y + conv_z - diffuse_x - diffuse_y - diffuse_z);
+
+                    // Debug output at specific points
+                    if (i == nx / 2 && j == ny / 2 && k == nz / 2)
+                    {
+                        std::cout << "[S-CENTER] i=" << i << " j=" << j << " k=" << k
+                                  << " s_old=" << std::setprecision(10) << s_old << " s_new=" << s_temp(i, j, k)
+                                  << " conv_x=" << conv_x << " conv_y=" << conv_y << " conv_z=" << conv_z
+                                  << " diff_x=" << diffuse_x << " diff_y=" << diffuse_y << " diff_z=" << diffuse_z
+                                  << " u=" << u_ijk << " v=" << v_ijk << " w=" << w_ijk << std::endl;
+                    }
+                    if (i == 1 && j == ny / 2 && k == nz / 2)
+                    {
+                        std::cout << "[S-XMIN] i=" << i << " j=" << j << " k=" << k
+                                  << " s_old=" << std::setprecision(10) << s_old << " s_new=" << s_temp(i, j, k) << std::endl;
+                    }
+                    if (i == nx - 2 && j == ny / 2 && k == nz / 2)
+                    {
+                        std::cout << "[S-XMAX] i=" << i << " j=" << j << " k=" << k
+                                  << " s_old=" << std::setprecision(10) << s_old << " s_new=" << s_temp(i, j, k) << std::endl;
+                    }
+                    if (i == nx / 2 && j == 1 && k == nz / 2)
+                    {
+                        std::cout << "[S-YMIN] i=" << i << " j=" << j << " k=" << k
+                                  << " s_old=" << std::setprecision(10) << s_old << " s_new=" << s_temp(i, j, k) << std::endl;
+                    }
+                    if (i == nx / 2 && j == ny - 2 && k == nz / 2)
+                    {
+                        std::cout << "[S-YMAX] i=" << i << " j=" << j << " k=" << k
+                                  << " s_old=" << std::setprecision(10) << s_old << " s_new=" << s_temp(i, j, k) << std::endl;
+                    }
+                    if (i == nx / 2 && j == ny / 2 && k == 1)
+                    {
+                        std::cout << "[S-ZMIN] i=" << i << " j=" << j << " k=" << k
+                                  << " s_old=" << std::setprecision(10) << s_old << " s_new=" << s_temp(i, j, k) << std::endl;
+                    }
+                    if (i == nx / 2 && j == ny / 2 && k == nz - 2)
+                    {
+                        std::cout << "[S-ZMAX] i=" << i << " j=" << j << " k=" << k
+                                  << " s_old=" << std::setprecision(10) << s_old << " s_new=" << s_temp(i, j, k) << std::endl;
+                    }
                 }
             }
         }
