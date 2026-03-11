@@ -105,6 +105,7 @@ int main(int argc, char* argv[])
     double dynamic_viscosity_2               = 1e-3;
     double mixing_channel_hydraulic_diameter = Height;
     double inlet_velocity                    = Re * dynamic_viscosity_2 / (density * mixing_channel_hydraulic_diameter);
+    double kinematic_viscosity               = dynamic_viscosity_2 / density;
 
     double diffusion_coefficient = 3.23e-10;
 
@@ -132,7 +133,7 @@ int main(int argc, char* argv[])
     time_cfg.num_iterations       = 2e5;
 
     PhysicsConfig& physics_cfg = PhysicsConfig::Get();
-    physics_cfg.set_nu(dynamic_viscosity_2);
+    physics_cfg.set_nu(kinematic_viscosity);
 
     Domain3DUniform A1(nx1, ny1, nz1, lx1, ly1, lz1, "A1");
     Domain3DUniform A2(nx2, ny2, nz2, lx2, ly2, lz2, "A2");
