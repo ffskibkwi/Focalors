@@ -369,10 +369,38 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = true;
         }
 
+        // Debug: check velocity before NS solve
+        if (iter <= 2)
+        {
+            double u_max = 0, u_sum = 0;
+            for (int i = 0; i < nx1; i++)
+                for (int j = 0; j < ny1; j++)
+                    for (int k = 0; k < nz1; k++)
+                    {
+                        u_max = std::max(u_max, std::abs(u_A1(i,j,k)));
+                        u_sum += u_A1(i,j,k);
+                    }
+            std::cout << "iter " << iter << " BEFORE ns_solver: u_max=" << u_max << ", u_sum=" << u_sum << std::endl;
+        }
+
         // NS solve
         ns_solver.solve();
 
-        // Debug: check velocity
+        // Debug: check velocity after NS solve
+        if (iter <= 2)
+        {
+            double u_max = 0, u_sum = 0;
+            for (int i = 0; i < nx1; i++)
+                for (int j = 0; j < ny1; j++)
+                    for (int k = 0; k < nz1; k++)
+                    {
+                        u_max = std::max(u_max, std::abs(u_A1(i,j,k)));
+                        u_sum += u_A1(i,j,k);
+                    }
+            std::cout << "iter " << iter << " AFTER ns_solver: u_max=" << u_max << ", u_sum=" << u_sum << std::endl;
+        }
+
+        // Debug: check velocity (every 10 iterations)
         if (iter % 10 == 0)
         {
             double u_max = 0, v_max = 0, w_max = 0;
