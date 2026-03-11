@@ -15,7 +15,7 @@ public:
             delete kv.second;
     }
 
-    void add_cylinder(int n, double r, double cx, double cy);
+    void add_cylinder(double grid_h, double r, double cx, double cy);
 
     void generate_map(Geometry2D* geo);
 

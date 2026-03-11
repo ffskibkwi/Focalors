@@ -15,7 +15,7 @@ public:
             delete kv.second;
     }
 
-    void add_sphere(int n, double r, double cx, double cy, double cz);
+    void add_sphere(double grid_h, double r, double cx, double cy, double cz);
 
     void generate_map(Geometry3D* geo);
 

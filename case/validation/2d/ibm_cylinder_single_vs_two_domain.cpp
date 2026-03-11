@@ -312,7 +312,7 @@ int main(int /*argc*/, char* /*argv*/[])
     init_velocity_sin(u_single, v_single);
 
     PCoordMap2D coord_map_single;
-    coord_map_single.add_cylinder(200, r, cx, cy);
+    coord_map_single.add_cylinder(hx, r, cx, cy);
     coord_map_single.generate_map(&geo_single);
 
     auto coord_map_single_raw = coord_map_single.get_map();
@@ -359,7 +359,7 @@ int main(int /*argc*/, char* /*argv*/[])
 
     // 同样的圆柱（同一个物理位置），但几何拆成两个 domain
     PCoordMap2D coord_map_multi;
-    coord_map_multi.add_cylinder(200, r, cx, cy);
+    coord_map_multi.add_cylinder(hx, r, cx, cy);
     coord_map_multi.generate_map(&geo_multi);
 
     auto coord_map_multi_raw = coord_map_multi.get_map();

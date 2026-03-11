@@ -4,8 +4,9 @@
 
 #include <cstring>
 
-void PCoordMap2D::add_cylinder(int n, double r, double cx, double cy)
+void PCoordMap2D::add_cylinder(double grid_h, double r, double cx, double cy)
 {
+    double    n       = std::round(2 * r * M_PI / grid_h);
     PCoord2D* p_coord = new PCoord2D(n);
     collections.push_back(p_coord);
 
@@ -58,10 +59,14 @@ void PCoordMap2D::generate_map(Geometry2D* geo)
         // Calculate bounding box
         for (size_t i = 0; i < X_list[domain_idx].size(); i++)
         {
-            if (X[i] < p_coord->min_X) p_coord->min_X = X[i];
-            if (X[i] > p_coord->max_X) p_coord->max_X = X[i];
-            if (Y[i] < p_coord->min_Y) p_coord->min_Y = Y[i];
-            if (Y[i] > p_coord->max_Y) p_coord->max_Y = Y[i];
+            if (X[i] < p_coord->min_X)
+                p_coord->min_X = X[i];
+            if (X[i] > p_coord->max_X)
+                p_coord->max_X = X[i];
+            if (Y[i] < p_coord->min_Y)
+                p_coord->min_Y = Y[i];
+            if (Y[i] > p_coord->max_Y)
+                p_coord->max_Y = Y[i];
         }
     }
 }

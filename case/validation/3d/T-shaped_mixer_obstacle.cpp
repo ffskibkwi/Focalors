@@ -291,13 +291,12 @@ int main(int argc, char* argv[])
     double sphere_center_x = 20.5 * Height; // Center of A2 domain (21*H from origin)
     double sphere_center_y = 0.5 * Height;  // T-junction y coordinate (within A2)
     double sphere_center_z = 0.5 * Height;  // Center in z direction
-    int    Nib             = static_cast<int>(std::round(2.0 * M_PI * sphere_radius / hx));
 
     std::cout << "IBM sphere (non-dim): center = (" << sphere_center_x << ", " << sphere_center_y << ", "
-              << sphere_center_z << "), radius = " << sphere_radius << ", Nib = " << Nib << std::endl;
+              << sphere_center_z << "), radius = " << sphere_radius << std::endl;
 
     PCoordMap3D coord_map;
-    coord_map.add_sphere(Nib, sphere_radius, sphere_center_x, sphere_center_y, sphere_center_z);
+    coord_map.add_sphere(hx, sphere_radius, sphere_center_x, sphere_center_y, sphere_center_z);
     coord_map.generate_map(&geo);
 
     auto coord_map_raw = coord_map.get_map();

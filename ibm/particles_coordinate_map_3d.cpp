@@ -4,8 +4,10 @@
 
 #include <cstring>
 
-void PCoordMap3D::add_sphere(int n, double r, double cx, double cy, double cz)
+void PCoordMap3D::add_sphere(double grid_h, double r, double cx, double cy, double cz)
 {
+    double n = M_PI / 3.0 * (12.0 * r * r / grid_h / grid_h + 1.0);
+
     PCoord3D* p_coord = new PCoord3D(n);
     collections.push_back(p_coord);
 
@@ -62,12 +64,18 @@ void PCoordMap3D::generate_map(Geometry3D* geo)
         // Calculate bounding box
         for (size_t i = 0; i < X_list[domain_idx].size(); i++)
         {
-            if (X[i] < p_coord->min_X) p_coord->min_X = X[i];
-            if (X[i] > p_coord->max_X) p_coord->max_X = X[i];
-            if (Y[i] < p_coord->min_Y) p_coord->min_Y = Y[i];
-            if (Y[i] > p_coord->max_Y) p_coord->max_Y = Y[i];
-            if (Z[i] < p_coord->min_Z) p_coord->min_Z = Z[i];
-            if (Z[i] > p_coord->max_Z) p_coord->max_Z = Z[i];
+            if (X[i] < p_coord->min_X)
+                p_coord->min_X = X[i];
+            if (X[i] > p_coord->max_X)
+                p_coord->max_X = X[i];
+            if (Y[i] < p_coord->min_Y)
+                p_coord->min_Y = Y[i];
+            if (Y[i] > p_coord->max_Y)
+                p_coord->max_Y = Y[i];
+            if (Z[i] < p_coord->min_Z)
+                p_coord->min_Z = Z[i];
+            if (Z[i] > p_coord->max_Z)
+                p_coord->max_Z = Z[i];
         }
     }
 }
