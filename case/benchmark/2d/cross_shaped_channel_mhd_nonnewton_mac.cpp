@@ -433,31 +433,27 @@ int main(int argc, char* argv[])
         phi.has_boundary_value_map[&A5][LocationType::YPositive] = true;
     }
 
-    // Inlet profiles for symmetry validation (Poiseuille, nondimensional amplitude = 1.0)
+    // Uniform inlet velocity to match the paper setup (nondimensional amplitude = 1.0)
 
     u.set_boundary_type(&A1, LocationType::XNegative, PDEBoundaryType::Dirichlet);
     u.set_boundary_value(&A1, LocationType::XNegative, 0.0); // ← 添加这行来分配内存
     u.has_boundary_value_map[&A1][LocationType::XNegative] = true;
     set_dirichlet_zero(v, &A1, LocationType::XNegative);
-    // A1 XNegative: u(y_norm) = +6*y_norm*(1-y_norm)
+    // A1 XNegative: u = +1.0
     for (int j = 0; j < u_A1.get_ny(); ++j)
     {
-        double y_norm                                         = (j + 0.5) / static_cast<double>(u_A1.get_ny());
-        double u_val                                          = 6.0 * y_norm * (1.0 - y_norm);
-        u.boundary_value_map[&A1][LocationType::XNegative][j] = u_val;
+        u.boundary_value_map[&A1][LocationType::XNegative][j] = 1.0;
     }
     set_dirichlet_zero(v, &A1, LocationType::XNegative);
 
-    // A3 XPositive: u(y_norm) = -6*y_norm*(1-y_norm)
+    // A3 XPositive: u = -1.0
     u.set_boundary_type(&A3, LocationType::XPositive, PDEBoundaryType::Dirichlet);
     u.has_boundary_value_map[&A3][LocationType::XPositive] = true;
     u.set_boundary_value(&A3, LocationType::XPositive, 0.0); // ← 添加这行来分配内存
     set_dirichlet_zero(v, &A3, LocationType::XPositive);
     for (int j = 0; j < u_A3.get_ny(); ++j)
     {
-        double y_norm                                         = (j + 0.5) / static_cast<double>(u_A3.get_ny());
-        double u_val                                          = -6.0 * y_norm * (1.0 - y_norm);
-        u.boundary_value_map[&A3][LocationType::XPositive][j] = u_val;
+        u.boundary_value_map[&A3][LocationType::XPositive][j] = -1.0;
     }
 
     // A4 YNegative: open/symmetry as Neumann for u and v

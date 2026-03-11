@@ -40,6 +40,7 @@ public:
         // Physics Parameters
         IO::read_number(para_map, "Re", Re);
         IO::read_number(para_map, "U0", U0);
+        IO::read_number(para_map, "diameter", diameter);
 
         // MHD Parameters
         IO::read_number(para_map, "Ha", Ha);
@@ -83,7 +84,7 @@ public:
         IO::read_bool(para_map, "use_dimensionless_viscosity", use_dimensionless_viscosity);
         if (!IO::read_number(para_map, "gamma_ref", gamma_ref))
         {
-            gamma_ref = use_dimensionless_viscosity ? (U0 / ((lx_2 > 0.0) ? lx_2 : 1.0)) : 1.0;
+            gamma_ref = use_dimensionless_viscosity ? (U0 / ((diameter > 0.0) ? diameter : 1.0)) : 1.0;
         }
     }
 
@@ -101,6 +102,7 @@ public:
             .record("ly_5", ly_5)
             .record("Re", Re)
             .record("U0", U0)
+            .record("diameter", diameter)
             .record("Ha", Ha)
             .record("B0", B0)
             .record("sigma", sigma)
@@ -144,6 +146,7 @@ public:
     // Physics
     double Re = 100.0;
     double U0 = 1.0;
+    double diameter = 0.01;
 
     // MHD Parameters
     double Ha    = 10.0; // Hartmann number
@@ -158,9 +161,9 @@ public:
     int    pv_output_step = 0;     // 循环输出时刻间隔步数 (0 表示使用 num_iterations/10)
 
     // Solver Settings
-    int    gmres_m        = 30;
-    double gmres_tol      = 1.e-6;
-    int    gmres_max_iter = 1000;
+    int    gmres_m        = 20;
+    double gmres_tol      = 1.e-8;
+    int    gmres_max_iter = 100;
 
     // Non-Newtonian Model Parameters
     int    model_type  = 1;          // 0: Newtonian, 1: Power Law (paper default), 2: Carreau, 3: Casson
