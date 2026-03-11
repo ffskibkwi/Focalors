@@ -6,6 +6,7 @@
 // Journal of Fluid Mechanics. 2007;592:23-49. doi:10.1017/S0022112007008269
 class NSSolver3DNonUniVisc : public ConcatNSSolver3D
 {
+public:
     NSSolver3DNonUniVisc(Variable3D*            in_u_var,
                          Variable3D*            in_v_var,
                          Variable3D*            in_w_var,
@@ -22,13 +23,13 @@ class NSSolver3DNonUniVisc : public ConcatNSSolver3D
 
         if (mu1 < mu2)
             std::swap(mu1, mu2);
-        ln_mu1_mu2 = std::log(mu1 / mu2);
+        mu1_mu2 = mu1 / mu2;
     }
 
     void euler_conv_diff_inner();
     void euler_conv_diff_outer();
 
 private:
-    Variable3D* c_var      = nullptr;
-    double      ln_mu1_mu2 = 0.0;
+    Variable3D* c_var   = nullptr;
+    double      mu1_mu2 = 0.0;
 };
