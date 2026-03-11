@@ -23,13 +23,13 @@ public:
 
         if (mu1 < mu2)
             std::swap(mu1, mu2);
-        ln_mu1_mu2 = std::log(mu1 / mu2);
+        mu1_mu2 = mu1 / mu2;
     }
 
     void euler_conv_diff_inner();
     void euler_conv_diff_outer();
 
 private:
-    Variable3D* c_var      = nullptr;
-    double      ln_mu1_mu2 = 0.0;
+    Variable3D* c_var   = nullptr;
+    double      mu1_mu2 = 0.0;
 };
