@@ -12,7 +12,6 @@
 #include "io/stat.h"
 #include "io/vtk_writer.h"
 #include "ns/ns_solver3d_nonuniform_viscosity.h"
-#include "ns/physical_pe_solver3d.h"
 #include "ns/scalar_solver3d.h"
 #include "pe/concat/concat_solver3d.h"
 
@@ -339,7 +338,7 @@ int main(int argc, char* argv[])
     ConcatPoissonSolver3D p_solver(&p);
     NSSolver3DNonUniVisc  ns_solver(&u, &v, &w, &p, &p_solver, &c, dynamic_viscosity_1, dynamic_viscosity_2);
     ScalarSolver3D        solver_c(&u, &v, &w, &c, diffusion_coefficient, c_scheme);
-    PhysicalPESolver3D    ppe_solver(&u, &v, &w, &p, &p_solver, density);
+    // PhysicalPESolver3D    ppe_solver(&u, &v, &w, &p, &p_solver, density);  // TODO: Enable when IBM boundary handling is supported
 
     VTKWriter vtk_writer;
     vtk_writer.add_vector_as_cell_data(&u, &v, &w, "velocity");
@@ -361,62 +360,17 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = true;
         }
 
-        ns_solver.euler_conv_diff_inner();
-        ns_solver.euler_conv_diff_outer();
+        // NS solve
+        ns_solver.solve();
 
+        // IBM solve for velocity (if obstacle exists)
         if (has_obstacle)
             ibm_solver.solve();
 
-        ns_solver.phys_boundary_update();
-        ns_solver.nondiag_shared_boundary_update();
-        ns_solver.diag_shared_boundary_update();
-
-        // divu
-        ns_solver.velocity_div_inner();
-        ns_solver.velocity_div_outer();
-
-        // PE
-        ns_solver.normalize_pressure();
-        p_solver.solve();
-
-        // update buffer for p
-        ns_solver.pressure_buffer_update();
-
-        // p grad
-        ns_solver.add_pressure_gradient();
-
-        // Boundary update
-        ns_solver.phys_boundary_update();
-        ns_solver.nondiag_shared_boundary_update();
-        ns_solver.diag_shared_boundary_update();
-
-        // Physical pressure solver - only when no obstacle (IBM not supported yet)
-        if (!has_obstacle && iter % static_cast<int>(5e2) == 0)
-        {
-            ppe_solver.solve();
-
-            CSVHandler pressure_drop_file(env_cfg.debugOutputDir + "/pressure_drop");
-
-            double p_inlet = 0.0;
-            for (int j = 0; j < ny1; j++)
-                for (int k = 0; k < nz1; k++)
-                    p_inlet += p_A1(0, j, k);
-            for (int j = 0; j < ny3; j++)
-                for (int k = 0; k < nz3; k++)
-                    p_inlet += p_A3(nx3 - 1, j, k);
-            p_inlet /= ny1 * nz1 + ny3 * nz3;
-
-            double p_outlet = 0.0;
-            for (int i = 0; i < nx2; i++)
-                for (int k = 0; k < nz2; k++)
-                    p_outlet += p_A2(i, ny2 - 1, k);
-            p_inlet /= nx2 * nz2;
-
-            double pressure_drop = p_inlet - p_outlet;
-            pressure_drop_file.stream << pressure_drop << std::endl;
-        }
-
+        // Concentration solve
         solver_c.solve();
+
+        // IBM concentration solve (if obstacle exists)
         if (has_obstacle)
             ibm_solver_c.solve();
 
