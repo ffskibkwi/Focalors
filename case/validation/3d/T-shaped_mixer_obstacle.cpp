@@ -127,10 +127,7 @@ int main(int argc, char* argv[])
         ss << std::to_string((int)Re);
         ss << "ob=";
         ss << std::to_string((int)has_obstacle);
-        ss << "lx1=";
-        ss << std::to_string(lx1);
-        ss << "ly4=";
-        ss << std::to_string(ly4);
+        ss << "TVD_VanLeer";
         env_cfg.debugOutputDir = ss.str();
     }
 
