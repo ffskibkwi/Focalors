@@ -289,7 +289,7 @@ int main(int argc, char* argv[])
     // Note: A2 starts at x=20*H/d, y=0, z=0
     double sphere_radius   = Height / 3.0;  // Radius = H/3
     double sphere_center_x = 20.5 * Height; // Center of A2 domain (21*H from origin)
-    double sphere_center_y = 0.5 * Height;  // T-junction y coordinate (within A2)
+    double sphere_center_y = 0.0;           // T-junction y coordinate (within A2)
     double sphere_center_z = 0.5 * Height;  // Center in z direction
 
     std::cout << "IBM sphere (non-dim): center = (" << sphere_center_x << ", " << sphere_center_y << ", "
@@ -414,8 +414,8 @@ int main(int argc, char* argv[])
             double p_outlet = 0.0;
             for (int i = 0; i < nx4; i++)
                 for (int k = 0; k < nz4; k++)
-                    p_outlet += p_A4(i, ny4 - 1, k);
-            p_inlet /= nx4 * nz4;
+                    p_outlet += p_A4(i, 0, k);
+            p_outlet /= nx4 * nz4;
 
             double pressure_drop = p_inlet - p_outlet;
             pressure_drop_file.stream << pressure_drop << std::endl;
