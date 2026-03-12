@@ -12,7 +12,6 @@
 #include "io/stat.h"
 #include "io/vtk_writer.h"
 #include "ns/ns_solver3d_nonuniform_viscosity.h"
-#include "ns/physical_pe_solver3d.h"
 #include "ns/scalar_solver3d.h"
 #include "pe/concat/concat_solver3d.h"
 
@@ -342,12 +341,10 @@ int main(int argc, char* argv[])
     ConcatPoissonSolver3D p_solver(&p);
     NSSolver3DNonUniVisc  ns_solver(&u, &v, &w, &p, &p_solver, &c, dynamic_viscosity_1, dynamic_viscosity_2);
     ScalarSolver3D        solver_c(&u, &v, &w, &c, diffusion_coefficient, c_scheme);
-    PhysicalPESolver3D    ppe_solver(&u, &v, &w, &p, &p_solver, density);
 
     VTKWriter vtk_writer;
     vtk_writer.add_vector_as_cell_data(&u, &v, &w, "velocity");
     vtk_writer.add_scalar_as_cell_data(&c);
-    vtk_writer.add_scalar_as_cell_data(&p);
     vtk_writer.validate();
 
     TIMER_END(Init);
@@ -392,37 +389,6 @@ int main(int argc, char* argv[])
         ns_solver.phys_boundary_update();
         ns_solver.nondiag_shared_boundary_update();
         ns_solver.diag_shared_boundary_update();
-
-        if (iter % static_cast<int>(5e2) == 0)
-        {
-            env_cfg.track_pe_solve_detail_time = false;
-
-            std::cout << "PPE begin" << std::endl;
-
-            ppe_solver.solve();
-
-            CSVHandler pressure_drop_file(env_cfg.debugOutputDir + "/pressure_drop");
-
-            double p_inlet = 0.0;
-            for (int j = 0; j < ny1; j++)
-                for (int k = 0; k < nz1; k++)
-                    p_inlet += p_A1(0, j, k);
-            for (int j = 0; j < ny3; j++)
-                for (int k = 0; k < nz3; k++)
-                    p_inlet += p_A3(nx3 - 1, j, k);
-            p_inlet /= ny1 * nz1 + ny3 * nz3;
-
-            double p_outlet = 0.0;
-            for (int i = 0; i < nx4; i++)
-                for (int k = 0; k < nz4; k++)
-                    p_outlet += p_A4(i, 0, k);
-            p_outlet /= nx4 * nz4;
-
-            double pressure_drop = p_inlet - p_outlet;
-            pressure_drop_file.stream << pressure_drop << std::endl;
-
-            std::cout << "PPE end" << std::endl;
-        }
 
         solver_c.solve();
         if (has_obstacle)
