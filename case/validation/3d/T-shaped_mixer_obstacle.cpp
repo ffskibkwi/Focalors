@@ -5,14 +5,14 @@
 #include "base/field/field3.h"
 #include "base/location_boundary.h"
 #include "base/math/random.h"
-#include "ibm/ib_scalar_solver_3d_Uhlmann.h"
-#include "ibm/ib_velocity_solver_3d_Uhlmann.h"
-#include "ibm/particles_coordinate_map_3d.h"
+#include "ibm_Uhlmann/ib_scalar_solver_3d_Uhlmann.h"
+#include "ibm_Uhlmann/ib_velocity_solver_3d_Uhlmann.h"
 #include "io/csv_handler.h"
 #include "io/stat.h"
 #include "io/vtk_writer.h"
 #include "ns/ns_solver3d_nonuniform_viscosity.h"
 #include "ns/scalar_solver3d.h"
+#include "particle/particles_coordinate_map_3d.h"
 #include "pe/concat/concat_solver3d.h"
 
 #include <algorithm>

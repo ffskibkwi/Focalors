@@ -4,11 +4,11 @@
 #include "base/domain/variable2d.h"
 #include "base/field/field2.h"
 #include "base/location_boundary.h"
-#include "ibm/ib_velocity_solver_2d_Uhlmann.h"
-#include "ibm/particles_coordinate_map_2d.h"
+#include "ibm_Uhlmann/ib_velocity_solver_2d_Uhlmann.h"
 #include "io/case_base.hpp"
 #include "io/csv_writer_2d.h"
 #include "ns/ns_solver2d.h"
+#include "particle/particles_coordinate_map_2d.h"
 #include "pe/concat/concat_solver2d.h"
 
 #include <algorithm>

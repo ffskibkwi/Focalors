@@ -1,6 +1,6 @@
 #pragma once
 
-#include "particles_base.h"
+#include "particle/particles_base.h"
 
 #include <limits>
 

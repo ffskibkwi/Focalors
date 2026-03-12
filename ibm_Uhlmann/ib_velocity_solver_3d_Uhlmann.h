@@ -2,7 +2,7 @@
 
 #include "base/domain/variable3d.h"
 #include "ib_kernel.hpp"
-#include "particles_coordinate_3d.h"
+#include "particle/particles_coordinate_3d.h"
 #include "particles_ib_3d.h"
 
 #include <algorithm>

@@ -4,8 +4,8 @@
 #include "base/domain/variable3d.h"
 #include "base/field/field3.h"
 #include "base/location_boundary.h"
-#include "ibm/ib_velocity_solver_3d_Uhlmann.h"
-#include "ibm/particles_coordinate_map_3d.h"
+#include "ibm_Uhlmann/ib_velocity_solver_3d_Uhlmann.h"
+#include "particle/particles_coordinate_map_3d.h"
 #include "poisson_base/base/math/compare.h"
 
 #include <cmath>

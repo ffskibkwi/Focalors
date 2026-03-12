@@ -2,7 +2,7 @@
 
 #include "base/domain/variable2d.h"
 #include "ib_kernel.hpp"
-#include "particles_coordinate_2d.h"
+#include "particle/particles_coordinate_2d.h"
 #include "particles_ib_scalar.h"
 
 #include <functional>
