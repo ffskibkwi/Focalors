@@ -78,11 +78,15 @@ void ScalarSolver3D::solve()
             break;
         case DifferenceSchemeType::Conv_Upwind1st_Diff_Center2nd:
             conv_uw1st_diff_cd2nd_inner();
-            conv_uw1st_diff_cd2nd_outer();
+            conv_uw1st_diff_cd2nd_outer_width1();
             break;
         case DifferenceSchemeType::Conv_QUICK_Diff_Center2nd:
             conv_QUICK_diff_cd2nd_inner();
-            conv_QUICK_diff_cd2nd_outer();
+            conv_uw1st_diff_cd2nd_outer_width2();
+            break;
+        case DifferenceSchemeType::Conv_TVD_VanLeer_Diff_Center2nd:
+            conv_TVD_VanLeer_diff_cd2nd_inner();
+            conv_uw1st_diff_cd2nd_outer_width2();
             break;
         default:
             std::cerr << "ScalarSolver3D " << scheme << " is not implemented!" << std::endl;
@@ -312,7 +316,7 @@ void ScalarSolver3D::conv_uw1st_diff_cd2nd_inner()
     }
 }
 
-void ScalarSolver3D::conv_uw1st_diff_cd2nd_outer()
+void ScalarSolver3D::conv_uw1st_diff_cd2nd_outer_width1()
 {
     for (auto& domain : domains)
     {
@@ -504,7 +508,7 @@ void ScalarSolver3D::conv_QUICK_diff_cd2nd_inner()
     }
 }
 
-void ScalarSolver3D::conv_QUICK_diff_cd2nd_outer()
+void ScalarSolver3D::conv_uw1st_diff_cd2nd_outer_width2()
 {
     for (auto& domain : domains)
     {
@@ -617,5 +621,85 @@ void ScalarSolver3D::conv_QUICK_diff_cd2nd_outer()
         }
 
         swap_field_data(s, s_temp);
+    }
+}
+
+inline double ScalarSolver3D::get_tvd_van_leer(double s_up2, double s_up, double s_down)
+{
+    double eps         = 1e-15;
+    double denominator = s_down - s_up;
+
+    // If gradient is zero, face value is simply the upstream value
+    if (std::abs(denominator) < eps)
+        return s_up;
+
+    // Successive gradient ratio
+    double r = (s_up - s_up2) / denominator;
+
+    // Van Leer Limiter function
+    double psi = (r + std::abs(r)) / (1.0 + std::abs(r));
+
+    // Face value: Upwind + Anti-diffusive correction
+    return s_up + 0.5 * psi * (s_down - s_up);
+}
+
+void ScalarSolver3D::conv_TVD_VanLeer_diff_cd2nd_inner()
+{
+    for (auto& domain : domains)
+    {
+        field3& u      = *u_field_map[domain];
+        field3& v      = *v_field_map[domain];
+        field3& w      = *w_field_map[domain];
+        field3& s      = *s_field_map[domain];
+        field3& s_temp = *s_temp_field_map[domain];
+
+        int    nx = u.get_nx();
+        int    ny = u.get_ny();
+        int    nz = u.get_nz();
+        double hx = domain->hx;
+        double hy = domain->hy;
+        double hz = domain->hz;
+
+        OPENMP_PARALLEL_FOR()
+        for (int i = 2; i < nx - 2; i++)
+        {
+            for (int j = 2; j < ny - 2; j++)
+            {
+                for (int k = 2; k < nz - 2; k++)
+                {
+                    double s_ijk = s(i, j, k);
+
+                    double u_e    = u(i + 1, j, k);
+                    double s_e    = (u_e > 0) ? get_tvd_van_leer(s(i - 1, j, k), s_ijk, s(i + 1, j, k)) :
+                                                get_tvd_van_leer(s(i + 2, j, k), s(i + 1, j, k), s_ijk);
+                    double u_w    = u(i, j, k);
+                    double s_w    = (u_w > 0) ? get_tvd_van_leer(s(i - 2, j, k), s(i - 1, j, k), s_ijk) :
+                                                get_tvd_van_leer(s(i + 1, j, k), s_ijk, s(i - 1, j, k));
+                    double conv_x = (u_e * s_e - u_w * s_w) / hx;
+
+                    double v_n    = v(i, j + 1, k);
+                    double s_n    = (v_n > 0) ? get_tvd_van_leer(s(i, j - 1, k), s_ijk, s(i, j + 1, k)) :
+                                                get_tvd_van_leer(s(i, j + 2, k), s(i, j + 1, k), s_ijk);
+                    double v_s    = v(i, j, k);
+                    double s_s    = (v_s > 0) ? get_tvd_van_leer(s(i, j - 2, k), s(i, j - 1, k), s_ijk) :
+                                                get_tvd_van_leer(s(i, j + 1, k), s_ijk, s(i, j - 1, k));
+                    double conv_y = (v_n * s_n - v_s * s_s) / hy;
+
+                    double w_u    = w(i, j, k + 1);
+                    double s_u    = (w_u > 0) ? get_tvd_van_leer(s(i, j, k - 1), s_ijk, s(i, j, k + 1)) :
+                                                get_tvd_van_leer(s(i, j, k + 2), s(i, j, k + 1), s_ijk);
+                    double w_d    = w(i, j, k);
+                    double s_d    = (w_d > 0) ? get_tvd_van_leer(s(i, j, k - 2), s(i, j, k - 1), s_ijk) :
+                                                get_tvd_van_leer(s(i, j, k + 1), s_ijk, s(i, j, k - 1));
+                    double conv_z = (w_u * s_u - w_d * s_d) / hz;
+
+                    double diffuse = nr * ((s(i + 1, j, k) - 2.0 * s_ijk + s(i - 1, j, k)) / (hx * hx) +
+                                           (s(i, j + 1, k) - 2.0 * s_ijk + s(i, j - 1, k)) / (hy * hy) +
+                                           (s(i, j, k + 1) - 2.0 * s_ijk + s(i, j, k - 1)) / (hz * hz));
+
+                    s_temp(i, j, k) = s_ijk - dt * (conv_x + conv_y + conv_z - diffuse);
+                }
+            }
+        }
     }
 }

@@ -62,7 +62,7 @@ int main(int argc, char* argv[])
 
     double Height = 0.2e-3;
 
-    double lx1 = 20 * Height;
+    double lx1 = 15 * Height;
     double ly1 = Height;
     double lz1 = Height;
 
@@ -75,7 +75,7 @@ int main(int argc, char* argv[])
     double lz3 = lz1; // symmetry
 
     double lx4 = Height;
-    double ly4 = 40.0 * Height;
+    double ly4 = 30.0 * Height;
     double lz4 = Height;
 
     double hx = Height / 20.0;
@@ -109,7 +109,7 @@ int main(int argc, char* argv[])
 
     double diffusion_coefficient = 3.23e-10;
 
-    DifferenceSchemeType c_scheme = DifferenceSchemeType::Conv_QUICK_Diff_Center2nd;
+    DifferenceSchemeType c_scheme = DifferenceSchemeType::Conv_TVD_VanLeer_Diff_Center2nd;
 
     std::cout << "mixing_channel_hydraulic_diameter = " << mixing_channel_hydraulic_diameter << std::endl;
     std::cout << "inlet_velocity = " << inlet_velocity << std::endl;

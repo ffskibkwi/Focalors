@@ -33,12 +33,21 @@ public:
     void conv_cd2nd_diff_cd2nd_outer();
 
     void conv_uw1st_diff_cd2nd_inner();
-    void conv_uw1st_diff_cd2nd_outer();
+    void conv_uw1st_diff_cd2nd_outer_width1();
 
     void conv_QUICK_diff_cd2nd_inner();
-    void conv_QUICK_diff_cd2nd_outer();
+    void conv_uw1st_diff_cd2nd_outer_width2();
+
+    void conv_TVD_VanLeer_diff_cd2nd_inner();
 
 private:
+    /**
+     * Helper: Van Leer Limiter Calculation
+     * psi(r) = (r + |r|) / (1 + r)
+     * If s_up2 == s_up (template insufficient), r = 0 -> psi = 0 -> First-Order Upwind.
+     */
+    inline double get_tvd_van_leer(double s_up2, double s_up, double s_down);
+
     std::vector<Domain3DUniform*>                                                            domains;
     std::unordered_map<Domain3DUniform*, std::unordered_map<LocationType, Domain3DUniform*>> adjacency;
 
