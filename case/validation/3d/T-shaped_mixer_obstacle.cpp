@@ -62,7 +62,7 @@ int main(int argc, char* argv[])
 
     double Height = 0.2e-3;
 
-    double lx1 = 20 * Height; // in reference paper no say
+    double lx1 = 15 * Height; // in reference paper no say
     double ly1 = Height;
     double lz1 = Height;
 
@@ -75,7 +75,7 @@ int main(int argc, char* argv[])
     double lz3 = lz1; // symmetry
 
     double lx4 = Height;
-    double ly4 = 52.0 * Height; // in reference paper is 10.4e-3, 52H
+    double ly4 = 30.0 * Height; // in reference paper is 10.4e-3, 52H
     double lz4 = Height;
 
     double hx = Height / 20.0;
