@@ -4,7 +4,7 @@
 #include "base/domain/variable2d.h"
 #include "base/field/field2.h"
 #include "base/location_boundary.h"
-#include "ibm/ib_solver_2d.h"
+#include "ibm/ib_velocity_solver_2d_Uhlmann.h"
 #include "ibm/particles_coordinate_map_2d.h"
 #include "poisson_base/base/math/compare.h"
 
@@ -317,7 +317,7 @@ int main(int /*argc*/, char* /*argv*/[])
 
     auto coord_map_single_raw = coord_map_single.get_map();
 
-    IBSolver2D ibm_single(&u_single, &v_single, coord_map_single_raw);
+    IBVelocitySolver2D_Uhlmann ibm_single(&u_single, &v_single, coord_map_single_raw);
     ibm_single.set_parameters(coord_map_single.get_h(), hx);
 
     // Sample before IBM solve
@@ -364,7 +364,7 @@ int main(int /*argc*/, char* /*argv*/[])
 
     auto coord_map_multi_raw = coord_map_multi.get_map();
 
-    IBSolver2D ibm_multi(&u_multi, &v_multi, coord_map_multi_raw);
+    IBVelocitySolver2D_Uhlmann ibm_multi(&u_multi, &v_multi, coord_map_multi_raw);
     ibm_multi.set_parameters(coord_map_multi.get_h(), hx);
 
     // Sample before IBM solve

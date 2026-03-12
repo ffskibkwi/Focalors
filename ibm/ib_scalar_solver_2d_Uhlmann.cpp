@@ -1,8 +1,9 @@
-#include "ib_solver_scalar_2d.h"
+#include "ib_scalar_solver_2d_Uhlmann.h"
 
 #include <cmath>
 
-IBSolverScalar2D::IBSolverScalar2D(Variable2D* _scalar_var, std::unordered_map<Domain2DUniform*, PCoord2D*>& _coord_map)
+IBScalarSolver2D_Uhlmann::IBScalarSolver2D_Uhlmann(Variable2D*                                      _scalar_var,
+                                                   std::unordered_map<Domain2DUniform*, PCoord2D*>& _coord_map)
     : scalar_var(_scalar_var)
     , coord_map(_coord_map)
 {
@@ -50,13 +51,13 @@ IBSolverScalar2D::IBSolverScalar2D(Variable2D* _scalar_var, std::unordered_map<D
     };
 }
 
-void IBSolverScalar2D::solve()
+void IBScalarSolver2D_Uhlmann::solve()
 {
     calc_ib_scalar();
     apply_ib_scalar();
 }
 
-double& IBSolverScalar2D::get_scalar_value(Domain2DUniform* domain, int iix, int iiy)
+double& IBScalarSolver2D_Uhlmann::get_scalar_value(Domain2DUniform* domain, int iix, int iiy)
 {
     // iix, iiy are GLOBAL grid indices
     // Compute global position of this cell center
@@ -117,7 +118,7 @@ double& IBSolverScalar2D::get_scalar_value(Domain2DUniform* domain, int iix, int
     return zero;
 }
 
-void IBSolverScalar2D::calc_ib_scalar()
+void IBScalarSolver2D_Uhlmann::calc_ib_scalar()
 {
     // Process each domain in the geometry tree
     for (auto* domain : scalar_var->geometry->domains)
@@ -160,7 +161,7 @@ void IBSolverScalar2D::calc_ib_scalar()
     }
 }
 
-void IBSolverScalar2D::apply_ib_scalar()
+void IBScalarSolver2D_Uhlmann::apply_ib_scalar()
 {
     // Process each domain in the geometry tree
     for (auto* domain : scalar_var->geometry->domains)

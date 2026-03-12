@@ -5,8 +5,8 @@
 #include "base/field/field3.h"
 #include "base/location_boundary.h"
 #include "base/math/random.h"
-#include "ibm/ib_solver_3d.h"
-#include "ibm/ib_solver_scalar_3d.h"
+#include "ibm/ib_scalar_solver_3d_Uhlmann.h"
+#include "ibm/ib_velocity_solver_3d_Uhlmann.h"
 #include "ibm/particles_coordinate_map_3d.h"
 #include "io/csv_handler.h"
 #include "io/stat.h"
@@ -302,11 +302,11 @@ int main(int argc, char* argv[])
     auto coord_map_raw = coord_map.get_map();
 
     // Velocity IBM solver
-    IBSolver3D ibm_solver(&u, &v, &w, coord_map_raw);
+    IBVelocitySolver3D_Uhlmann ibm_solver(&u, &v, &w, coord_map_raw);
     ibm_solver.set_parameters(coord_map.get_h(), hx);
 
     // Concentration IBM solver
-    IBSolverScalar3D ibm_solver_c(&c, coord_map_raw);
+    IBScalarSolver3D_Uhlmann ibm_solver_c(&c, coord_map_raw);
     ibm_solver_c.set_parameters(coord_map.get_h(), hx);
 
     // Initialize IBM particle velocities to zero (solid sphere)

@@ -1,11 +1,11 @@
-#include "ib_solver_3d.h"
+#include "ib_velocity_solver_3d_Uhlmann.h"
 
 #include <cmath>
 
-IBSolver3D::IBSolver3D(Variable3D*                                      _u_var,
-                       Variable3D*                                      _v_var,
-                       Variable3D*                                      _w_var,
-                       std::unordered_map<Domain3DUniform*, PCoord3D*>& _coord_map)
+IBVelocitySolver3D_Uhlmann::IBVelocitySolver3D_Uhlmann(Variable3D*                                      _u_var,
+                                                       Variable3D*                                      _v_var,
+                                                       Variable3D*                                      _w_var,
+                                                       std::unordered_map<Domain3DUniform*, PCoord3D*>& _coord_map)
     : u_var(_u_var)
     , v_var(_v_var)
     , w_var(_w_var)
@@ -176,13 +176,13 @@ IBSolver3D::IBSolver3D(Variable3D*                                      _u_var,
     };
 }
 
-void IBSolver3D::solve()
+void IBVelocitySolver3D_Uhlmann::solve()
 {
     calc_ib_force();
     apply_ib_force();
 }
 
-double& IBSolver3D::get_u_value(Domain3DUniform* domain, int iix, int iiy, int iiz)
+double& IBVelocitySolver3D_Uhlmann::get_u_value(Domain3DUniform* domain, int iix, int iiy, int iiz)
 {
     // iix, iiy, iiz are GLOBAL grid indices
     // Compute global position of this u-face
@@ -250,7 +250,7 @@ double& IBSolver3D::get_u_value(Domain3DUniform* domain, int iix, int iiy, int i
     return zero;
 }
 
-double& IBSolver3D::get_v_value(Domain3DUniform* domain, int iix, int iiy, int iiz)
+double& IBVelocitySolver3D_Uhlmann::get_v_value(Domain3DUniform* domain, int iix, int iiy, int iiz)
 {
     // iix, iiy, iiz are GLOBAL grid indices
     // Compute global position of this v-face
@@ -318,7 +318,7 @@ double& IBSolver3D::get_v_value(Domain3DUniform* domain, int iix, int iiy, int i
     return zero;
 }
 
-double& IBSolver3D::get_w_value(Domain3DUniform* domain, int iix, int iiy, int iiz)
+double& IBVelocitySolver3D_Uhlmann::get_w_value(Domain3DUniform* domain, int iix, int iiy, int iiz)
 {
     // iix, iiy, iiz are GLOBAL grid indices
     // Compute global position of this w-face
@@ -386,7 +386,7 @@ double& IBSolver3D::get_w_value(Domain3DUniform* domain, int iix, int iiy, int i
     return zero;
 }
 
-void IBSolver3D::calc_ib_force()
+void IBVelocitySolver3D_Uhlmann::calc_ib_force()
 {
     // Process each domain in the geometry tree
     for (auto* domain : u_var->geometry->domains)
@@ -488,7 +488,7 @@ void IBSolver3D::calc_ib_force()
     }
 }
 
-void IBSolver3D::apply_ib_force()
+void IBVelocitySolver3D_Uhlmann::apply_ib_force()
 {
     // Process each domain in geometry tree
     for (auto* domain : u_var->geometry->domains)

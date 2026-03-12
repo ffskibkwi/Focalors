@@ -8,6 +8,9 @@
 #include <algorithm>
 #include <functional>
 
+// Markus Uhlmann. 2005. An immersed boundary method with direct forcing for the simulation of particulate flows. J.
+// Comput. Phys. 209, 2 (1 November 2005), 448–476. https://doi.org/10.1016/j.jcp.2005.03.017
+
 /**
  * @brief Immersed boundary method solver for scalar fields (e.g., concentration) in 3D.
  *
@@ -17,10 +20,10 @@
  * The IB point is at the grid cell center, and the scalar index matches the grid index.
  * Support domain: [-2, +2] in x, y, and z directions (5 points in each direction).
  */
-class IBSolverScalar3D
+class IBScalarSolver3D_Uhlmann
 {
 public:
-    IBSolverScalar3D(Variable3D* _scalar_var, std::unordered_map<Domain3DUniform*, PCoord3D*>& _coord_map);
+    IBScalarSolver3D_Uhlmann(Variable3D* _scalar_var, std::unordered_map<Domain3DUniform*, PCoord3D*>& _coord_map);
 
     void solve();
 

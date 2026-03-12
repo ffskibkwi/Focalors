@@ -1,10 +1,10 @@
-#include "ib_solver_2d.h"
+#include "ib_velocity_solver_2d_Uhlmann.h"
 
 #include <cmath>
 
-IBSolver2D::IBSolver2D(Variable2D*                                      _u_var,
-                       Variable2D*                                      _v_var,
-                       std::unordered_map<Domain2DUniform*, PCoord2D*>& _coord_map)
+IBVelocitySolver2D_Uhlmann::IBVelocitySolver2D_Uhlmann(Variable2D*                                      _u_var,
+                                                       Variable2D*                                      _v_var,
+                                                       std::unordered_map<Domain2DUniform*, PCoord2D*>& _coord_map)
     : u_var(_u_var)
     , v_var(_v_var)
     , coord_map(_coord_map)
@@ -87,13 +87,13 @@ IBSolver2D::IBSolver2D(Variable2D*                                      _u_var,
     };
 }
 
-void IBSolver2D::solve()
+void IBVelocitySolver2D_Uhlmann::solve()
 {
     calc_ib_force();
     apply_ib_force();
 }
 
-double& IBSolver2D::get_u_value(Domain2DUniform* domain, int iix, int iiy)
+double& IBVelocitySolver2D_Uhlmann::get_u_value(Domain2DUniform* domain, int iix, int iiy)
 {
     // iix, iiy are GLOBAL grid indices
     // Compute global position of this u-face
@@ -154,7 +154,7 @@ double& IBSolver2D::get_u_value(Domain2DUniform* domain, int iix, int iiy)
     return zero;
 }
 
-double& IBSolver2D::get_v_value(Domain2DUniform* domain, int iix, int iiy)
+double& IBVelocitySolver2D_Uhlmann::get_v_value(Domain2DUniform* domain, int iix, int iiy)
 {
     // iix, iiy are GLOBAL grid indices
     // Compute global position of this v-face
@@ -215,7 +215,7 @@ double& IBSolver2D::get_v_value(Domain2DUniform* domain, int iix, int iiy)
     return zero;
 }
 
-void IBSolver2D::calc_ib_force()
+void IBVelocitySolver2D_Uhlmann::calc_ib_force()
 {
     // Process each domain in the geometry tree
     for (auto* domain : u_var->geometry->domains)
@@ -278,7 +278,7 @@ void IBSolver2D::calc_ib_force()
     }
 }
 
-void IBSolver2D::apply_ib_force()
+void IBVelocitySolver2D_Uhlmann::apply_ib_force()
 {
     // Process each domain in the geometry tree
     for (auto* domain : u_var->geometry->domains)

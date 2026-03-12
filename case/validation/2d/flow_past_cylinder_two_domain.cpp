@@ -4,7 +4,7 @@
 #include "base/domain/variable2d.h"
 #include "base/field/field2.h"
 #include "base/location_boundary.h"
-#include "ibm/ib_solver_2d.h"
+#include "ibm/ib_velocity_solver_2d_Uhlmann.h"
 #include "ibm/particles_coordinate_map_2d.h"
 #include "io/case_base.hpp"
 #include "io/csv_writer_2d.h"
@@ -276,7 +276,7 @@ int main(int argc, char* argv[])
 
     auto coord_map_raw = coord_map.get_map();
 
-    IBSolver2D ibm_solver(&u, &v, coord_map_raw);
+    IBVelocitySolver2D_Uhlmann ibm_solver(&u, &v, coord_map_raw);
     ibm_solver.set_parameters(coord_map.get_h(), h);
 
     // Initialize IBM particle velocities to zero (solid cylinder)

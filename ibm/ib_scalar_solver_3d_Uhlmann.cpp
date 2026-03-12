@@ -1,8 +1,9 @@
-#include "ib_solver_scalar_3d.h"
+#include "ib_scalar_solver_3d_Uhlmann.h"
 
 #include <cmath>
 
-IBSolverScalar3D::IBSolverScalar3D(Variable3D* _scalar_var, std::unordered_map<Domain3DUniform*, PCoord3D*>& _coord_map)
+IBScalarSolver3D_Uhlmann::IBScalarSolver3D_Uhlmann(Variable3D*                                      _scalar_var,
+                                                   std::unordered_map<Domain3DUniform*, PCoord3D*>& _coord_map)
     : scalar_var(_scalar_var)
     , coord_map(_coord_map)
 {
@@ -68,13 +69,13 @@ IBSolverScalar3D::IBSolverScalar3D(Variable3D* _scalar_var, std::unordered_map<D
     };
 }
 
-void IBSolverScalar3D::solve()
+void IBScalarSolver3D_Uhlmann::solve()
 {
     calc_ib_scalar();
     apply_ib_scalar();
 }
 
-double& IBSolverScalar3D::get_scalar_value(Domain3DUniform* domain, int iix, int iiy, int iiz)
+double& IBScalarSolver3D_Uhlmann::get_scalar_value(Domain3DUniform* domain, int iix, int iiy, int iiz)
 {
     // iix, iiy, iiz are GLOBAL grid indices
     // Compute global position of this cell center
@@ -143,7 +144,7 @@ double& IBSolverScalar3D::get_scalar_value(Domain3DUniform* domain, int iix, int
     return zero;
 }
 
-void IBSolverScalar3D::calc_ib_scalar()
+void IBScalarSolver3D_Uhlmann::calc_ib_scalar()
 {
     // Process each domain in the geometry tree
     for (auto* domain : scalar_var->geometry->domains)
@@ -194,7 +195,7 @@ void IBSolverScalar3D::calc_ib_scalar()
     }
 }
 
-void IBSolverScalar3D::apply_ib_scalar()
+void IBScalarSolver3D_Uhlmann::apply_ib_scalar()
 {
     // Process each domain in geometry tree
     for (auto* domain : scalar_var->geometry->domains)

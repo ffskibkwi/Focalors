@@ -8,6 +8,9 @@
 #include <algorithm>
 #include <functional>
 
+// Markus Uhlmann. 2005. An immersed boundary method with direct forcing for the simulation of particulate flows. J.
+// Comput. Phys. 209, 2 (1 November 2005), 448–476. https://doi.org/10.1016/j.jcp.2005.03.017
+
 /**
  * @brief Immersed boundary method solver.
  *
@@ -19,13 +22,13 @@
  * ΔV = ib_h * ib_h * grid_h in 3D
  * ΔV = ib_h * grid_h in 3D
  */
-class IBSolver3D
+class IBVelocitySolver3D_Uhlmann
 {
 public:
-    IBSolver3D(Variable3D*                                      _u_var,
-               Variable3D*                                      _v_var,
-               Variable3D*                                      _w_var,
-               std::unordered_map<Domain3DUniform*, PCoord3D*>& _coord_map);
+    IBVelocitySolver3D_Uhlmann(Variable3D*                                      _u_var,
+                               Variable3D*                                      _v_var,
+                               Variable3D*                                      _w_var,
+                               std::unordered_map<Domain3DUniform*, PCoord3D*>& _coord_map);
 
     void solve();
 
