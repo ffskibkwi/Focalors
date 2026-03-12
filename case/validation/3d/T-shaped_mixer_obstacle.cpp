@@ -62,7 +62,7 @@ int main(int argc, char* argv[])
 
     double Height = 0.2e-3;
 
-    double lx1 = 15 * Height;
+    double lx1 = 20 * Height; // in reference paper no say
     double ly1 = Height;
     double lz1 = Height;
 
@@ -75,7 +75,7 @@ int main(int argc, char* argv[])
     double lz3 = lz1; // symmetry
 
     double lx4 = Height;
-    double ly4 = 30.0 * Height;
+    double ly4 = 52.0 * Height; // in reference paper is 10.4e-3, 52H
     double lz4 = Height;
 
     double hx = Height / 20.0;
@@ -123,10 +123,14 @@ int main(int argc, char* argv[])
     {
         std::stringstream ss;
         ss << "./result/T-shaped_mixer_obstacle/";
-        ss << "Re";
+        ss << "Re=";
         ss << std::to_string((int)Re);
-        ss << "ob";
+        ss << "ob=";
         ss << std::to_string((int)has_obstacle);
+        ss << "lx1=";
+        ss << std::to_string(lx1);
+        ss << "ly4=";
+        ss << std::to_string(ly4);
         env_cfg.debugOutputDir = ss.str();
     }
 
@@ -287,10 +291,10 @@ int main(int argc, char* argv[])
 
     // IBM setup: sphere at T-junction center
     // Note: A2 starts at x=20*H/d, y=0, z=0
-    double sphere_radius   = Height / 3.0;  // Radius = H/3
-    double sphere_center_x = 20.5 * Height; // Center of A2 domain (21*H from origin)
-    double sphere_center_y = 0.0;           // T-junction y coordinate (within A2)
-    double sphere_center_z = 0.5 * Height;  // Center in z direction
+    double sphere_radius   = Height / 3.0;                                    // Radius = H/3
+    double sphere_center_x = (A1.get_lx() + A2.get_lx() + A3.get_lx()) / 2.0; // Center of A2 domain
+    double sphere_center_y = 0.0;                                             // T-junction y coordinate (within A2)
+    double sphere_center_z = A1.get_lz() / 2.0;                               // Center in z direction
 
     std::cout << "IBM sphere (non-dim): center = (" << sphere_center_x << ", " << sphere_center_y << ", "
               << sphere_center_z << "), radius = " << sphere_radius << std::endl;
