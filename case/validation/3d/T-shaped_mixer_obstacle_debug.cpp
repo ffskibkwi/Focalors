@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
 {
     TIMER_BEGIN(Init, "Init", TimeRecordType::None, true);
 
-    if (argc != 3)
+    if (argc != 2)
     {
         std::cerr << "Error argument! Usage: program Re[double > 0]" << std::endl;
         return 0;
