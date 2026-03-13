@@ -115,6 +115,12 @@ public:
         double inlet_velocity  = Reynolds_number * dynamic_viscosity / (density * mixing_channel_hydraulic_diameter);
         double convective_time = mixing_channel_hydraulic_diameter / inlet_velocity;
 
+        paras_record.record("mixing_channel_hydraulic_diameter", mixing_channel_hydraulic_diameter)
+            .record("density", density)
+            .record("dynamic_viscosity", dynamic_viscosity)
+            .record("inlet_velocity", inlet_velocity)
+            .record("convective_time", convective_time);
+
         // Non-dimensionalize
         lx1 /= mixing_channel_hydraulic_diameter;
         ly1 /= mixing_channel_hydraulic_diameter;

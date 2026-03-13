@@ -122,11 +122,23 @@ public:
         Pe = Schmidt_number * Reynolds_number;
         nr = 1.0 / Pe;
 
+        // Sphere parameters
+        sphere_radius   = sphere_radius_ratio * Height;
+        sphere_center_x = (lx1 + lx2 + lx3) / 2.0;
+        sphere_center_y = sphere_center_y_ratio * Height - ly2;
+        sphere_center_z = lz1 / 2.0;
+
         double mixing_channel_hydraulic_diameter = 2.0 * lx2 * ly2 / (lx2 + ly2);
         double density                           = 1e3;
         double dynamic_viscosity                 = 1.01e-3;
         double inlet_velocity  = Reynolds_number * dynamic_viscosity / (density * mixing_channel_hydraulic_diameter);
         double convective_time = mixing_channel_hydraulic_diameter / inlet_velocity;
+
+        paras_record.record("mixing_channel_hydraulic_diameter", mixing_channel_hydraulic_diameter)
+            .record("density", density)
+            .record("dynamic_viscosity", dynamic_viscosity)
+            .record("inlet_velocity", inlet_velocity)
+            .record("convective_time", convective_time);
 
         // Non-dimensionalize
         lx1 /= mixing_channel_hydraulic_diameter;
@@ -151,13 +163,6 @@ public:
 
         dt /= convective_time;
 
-        // Sphere parameters
-        sphere_radius   = sphere_radius_ratio * Height;
-        sphere_center_x = (lx1 + lx2 + lx3) / 2.0;
-        sphere_center_y = sphere_center_y_ratio * Height - ly2;
-        sphere_center_z = lz1 / 2.0;
-
-        // Non-dimensionalize
         sphere_radius /= mixing_channel_hydraulic_diameter;
         sphere_center_x /= mixing_channel_hydraulic_diameter;
         sphere_center_y /= mixing_channel_hydraulic_diameter;
