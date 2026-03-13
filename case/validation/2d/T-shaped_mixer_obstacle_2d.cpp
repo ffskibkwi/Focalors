@@ -2,7 +2,7 @@
 #include "base/domain/domain2d.h"
 #include "base/domain/geometry2d.h"
 #include "base/domain/variable2d.h"
-#include "base/field/field3.h"
+#include "base/field/field2.h"
 #include "base/location_boundary.h"
 #include "base/math/random.h"
 #include "ibm_Uhlmann/ib_velocity_solver_2d_Uhlmann.h"
@@ -98,8 +98,6 @@ int main(int argc, char* argv[])
 
     double diffusion_coefficient = 3.23e-10;
 
-    DifferenceSchemeType c_scheme = DifferenceSchemeType::Conv_TVD_VanLeer_Diff_Center2nd;
-
     std::cout << "mixing_channel_hydraulic_diameter = " << mixing_channel_hydraulic_diameter << std::endl;
     std::cout << "inlet_velocity = " << inlet_velocity << std::endl;
 
@@ -114,8 +112,6 @@ int main(int argc, char* argv[])
         ss << "./result/T-shaped_mixer_obstacle_Uhlmann_Dirichlet/";
         ss << "Re=";
         ss << std::to_string((int)Re);
-        ss << "ob=";
-        ss << std::to_string((int)has_obstacle);
         ss << "TVD_VanLeer";
         env_cfg.debugOutputDir = ss.str();
     }
@@ -146,24 +142,24 @@ int main(int argc, char* argv[])
     geo.axis(&A1, LocationType::YNegative);
 
     // Variable2Ds
-    Variable2D u("u"), v("v"), w("w"), p("p"), c("concentration");
+    Variable2D u("u"), v("v"), p("p");
     u.set_geometry(geo);
     v.set_geometry(geo);
     p.set_geometry(geo);
 
     // Fields on each domain
-    field3 u_A1, u_A2, u_A3, u_A4;
-    field3 v_A1, v_A2, v_A3, v_A4;
-    field3 p_A1, p_A2, p_A3, p_A4;
+    field2 u_A1, u_A2, u_A3, u_A4;
+    field2 v_A1, v_A2, v_A3, v_A4;
+    field2 p_A1, p_A2, p_A3, p_A4;
 
-    u.set_x_face_center_field(&A1, u_A1);
-    u.set_x_face_center_field(&A2, u_A2);
-    u.set_x_face_center_field(&A3, u_A3);
-    u.set_x_face_center_field(&A4, u_A4);
-    v.set_y_face_center_field(&A1, v_A1);
-    v.set_y_face_center_field(&A2, v_A2);
-    v.set_y_face_center_field(&A3, v_A3);
-    v.set_y_face_center_field(&A4, v_A4);
+    u.set_x_edge_field(&A1, u_A1);
+    u.set_x_edge_field(&A2, u_A2);
+    u.set_x_edge_field(&A3, u_A3);
+    u.set_x_edge_field(&A4, u_A4);
+    v.set_y_edge_field(&A1, v_A1);
+    v.set_y_edge_field(&A2, v_A2);
+    v.set_y_edge_field(&A3, v_A3);
+    v.set_y_edge_field(&A4, v_A4);
     p.set_center_field(&A1, p_A1);
     p.set_center_field(&A2, p_A2);
     p.set_center_field(&A3, p_A3);
@@ -187,7 +183,7 @@ int main(int argc, char* argv[])
     // Default outer boundaries
     std::vector<Domain2DUniform*> domains = {&A1, &A2, &A3, &A4};
     std::vector<LocationType>     dirs    = {
-        LocationType::XNegative, LocationType::XPositive, LocationType::YNegative, LocationType::YPositive;
+        LocationType::XNegative, LocationType::XPositive, LocationType::YNegative, LocationType::YPositive};
 
     for (auto* d : domains)
     {
@@ -198,7 +194,6 @@ int main(int argc, char* argv[])
             // velocity: default wall (Dirichlet 0)
             set_dirichlet_zero(u, d, loc);
             set_dirichlet_zero(v, d, loc);
-            set_dirichlet_zero(w, d, loc);
             // pressure: default Neumann (zero gradient)
             set_neumann_zero(p, d, loc);
         }
@@ -209,8 +204,8 @@ int main(int argc, char* argv[])
         u.has_boundary_value_map[&A1][LocationType::XNegative] = true;
         u.has_boundary_value_map[&A3][LocationType::XPositive] = true;
 
-        double* u_inlet_buffer_xneg = *u.boundary_value_map[&A1][LocationType::XNegative];
-        double* u_inlet_buffer_xpos = *u.boundary_value_map[&A3][LocationType::XPositive];
+        double* u_inlet_buffer_xneg = u.boundary_value_map[&A1][LocationType::XNegative];
+        double* u_inlet_buffer_xpos = u.boundary_value_map[&A3][LocationType::XPositive];
 
         for (int j = 0; j < u_A1.get_ny(); ++j)
         {
@@ -251,12 +246,8 @@ int main(int argc, char* argv[])
     auto coord_map_raw = coord_map.get_map();
 
     // Velocity IBM solver
-    IBVelocitySolver2D_Uhlmann ibm_solver(&u, &v, &w, coord_map_raw);
+    IBVelocitySolver2D_Uhlmann ibm_solver(&u, &v, coord_map_raw);
     ibm_solver.set_parameters(coord_map.get_h(), hx);
-
-    // Concentration IBM solver
-    IBScalarSolver2D_Uhlmann ibm_solver_c(&c, coord_map_raw);
-    ibm_solver_c.set_parameters(coord_map.get_h(), hx);
 
     // Initialize IBM particle velocities to zero (solid sphere)
     for (auto& kv : coord_map_raw)
@@ -271,24 +262,11 @@ int main(int argc, char* argv[])
         {
             Up[i] = 0.0;
             Vp[i] = 0.0;
-            Wp[i] = 0.0;
-        }
-    }
-
-    // Initialize IBM concentration particles (no source/sink, just interpolation)
-    for (auto& kv : coord_map_raw)
-    {
-        auto* p_coord   = kv.second;
-        auto* ib_data_c = ibm_solver_c.get_ib_data(kv.first);
-        EXPOSE_PIBSCALAR(ib_data_c)
-        for (int i = 0; i < p_coord->cur_n; i++)
-        {
-            Sp[i] = 0.0; // No prescribed concentration value
         }
     }
 
     ConcatPoissonSolver2D p_solver(&p);
-    NSSolver2D            ns_solver(&u, &v, &p, &p_solver, dynamic_viscosity_2);
+    ConcatNSSolver2D      ns_solver(&u, &v, &p, &p_solver);
 
     TIMER_END(Init);
 
@@ -338,7 +316,7 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = false;
         }
 
-        if (std::isnan(u_A1(0, 0, 0)))
+        if (std::isnan(u_A1(0, 0)))
         {
             std::cout << "Error: Find nan at u_A1! Break solving." << std::endl;
             break;
