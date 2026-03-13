@@ -389,8 +389,8 @@ int main(int argc, char* argv[])
         if (step % case_param.pv_output_step == 0)
         {
             std::cout << "Saving step " << step << " to CSV files.\n";
-            IO::write_csv(u, nowtime_dir + "/u/u_" + std::to_string(step));
-            IO::write_csv(v, nowtime_dir + "/v/v_" + std::to_string(step));
+            IO::write_csv(u, env_cfg.debugOutputDir + "/" + std::to_string(step) + "/u");
+            IO::write_csv(v, env_cfg.debugOutputDir + "/" + std::to_string(step) + "/v");
         }
 
         // Check for divergence

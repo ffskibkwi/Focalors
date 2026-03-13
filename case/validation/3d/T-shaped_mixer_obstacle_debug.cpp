@@ -120,7 +120,7 @@ int main(int argc, char* argv[])
     EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
     {
         std::stringstream ss;
-        ss << "./result/T-shaped_mixer_obstacle_Uhlmann_Dirichlet/";
+        ss << "./result/T-shaped_mixer_obstacle_debug_3d/";
         ss << "Re=";
         ss << std::to_string((int)Re);
         ss << "TVD_VanLeer";

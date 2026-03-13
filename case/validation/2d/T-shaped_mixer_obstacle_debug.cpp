@@ -7,8 +7,8 @@
 #include "base/math/random.h"
 #include "ibm_Uhlmann/ib_velocity_solver_2d_Uhlmann.h"
 #include "io/csv_handler.h"
+#include "io/csv_writer_2d.h"
 #include "io/stat.h"
-#include "io/vtk_writer.h"
 #include "ns/ns_solver2d.h"
 #include "particle/particles_coordinate_map_2d.h"
 #include "pe/concat/concat_solver2d.h"
@@ -109,7 +109,7 @@ int main(int argc, char* argv[])
     EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
     {
         std::stringstream ss;
-        ss << "./result/T-shaped_mixer_obstacle_Uhlmann_Dirichlet/";
+        ss << "./result/T-shaped_mixer_obstacle_debug_2d/";
         ss << "Re=";
         ss << std::to_string((int)Re);
         ss << "TVD_VanLeer";
@@ -314,6 +314,13 @@ int main(int argc, char* argv[])
         {
             env_cfg.track_pe_solve_detail_time = false;
             env_cfg.showGmresRes               = false;
+        }
+
+        if (iter % static_cast<int>(1e4) == 0)
+        {
+            std::cout << "Saving step " << iter << " to CSV files.\n";
+            IO::write_csv(u, env_cfg.debugOutputDir + "/" + std::to_string(iter) + "/u");
+            IO::write_csv(v, env_cfg.debugOutputDir + "/" + std::to_string(iter) + "/v");
         }
 
         if (iter % 100 == 0)
