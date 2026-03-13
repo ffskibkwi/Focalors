@@ -57,7 +57,7 @@ public:
         // Geometry parameters
         IO::read_number(para_map, "Height", Height);
         IO::read_number(para_map, "lx1_ratio", lx1_ratio);
-        IO::read_number(para_map, "ly2_ratio", ly2_ratio);
+        IO::read_number(para_map, "lx2_ratio", lx2_ratio);
         IO::read_number(para_map, "ly4_ratio", ly4_ratio);
         IO::read_number(para_map, "mesh_density", mesh_density);
 
@@ -75,7 +75,7 @@ public:
         ly1 = Height;
         lz1 = Height;
 
-        lx2 = Height;
+        lx2 = lx2_ratio * Height;
         ly2 = Height;
         lz2 = Height;
 
@@ -83,7 +83,7 @@ public:
         ly3 = ly1;
         lz3 = lz1;
 
-        lx4 = Height;
+        lx4 = lx2;
         ly4 = ly4_ratio * Height;
         lz4 = Height;
 
@@ -136,20 +136,6 @@ public:
 
         dt = cfl * hx;
         dt /= convective_time;
-
-        // Update grid sizes after non-dimensionalization
-        nx1 = static_cast<int>(lx1 / hx);
-        ny1 = static_cast<int>(ly1 / hy);
-        nz1 = static_cast<int>(lz1 / hz);
-        nx2 = static_cast<int>(lx2 / hx);
-        ny2 = static_cast<int>(ly2 / hy);
-        nz2 = static_cast<int>(lz2 / hz);
-        nx3 = static_cast<int>(lx3 / hx);
-        ny3 = static_cast<int>(ly3 / hy);
-        nz3 = static_cast<int>(lz3 / hz);
-        nx4 = static_cast<int>(lx4 / hx);
-        ny4 = static_cast<int>(ly4 / hy);
-        nz4 = static_cast<int>(lz4 / hz);
     }
 
     bool record_paras() override
@@ -159,7 +145,7 @@ public:
 
         paras_record.record("Height", Height)
             .record("lx1_ratio", lx1_ratio)
-            .record("ly2_ratio", ly2_ratio)
+            .record("lx2_ratio", lx2_ratio)
             .record("ly4_ratio", ly4_ratio)
             .record("mesh_density", mesh_density)
             .record("lx1", lx1)
@@ -204,7 +190,7 @@ public:
     // Geometry parameters
     double Height       = 1e-3;
     double lx1_ratio    = 10.0;
-    double ly2_ratio    = 1.0;
+    double lx2_ratio    = 1.0;
     double ly4_ratio    = 20.0;
     int    mesh_density = 20;
 
@@ -471,6 +457,9 @@ int main(int argc, char* argv[])
 
         if (iter % case_param.statistics_output_step == 0)
         {
+            CSVHandler u_rms_file(case_param.root_dir + "/u_rms");
+            u_rms_file.stream << calc_rms(u) << std::endl;
+
             CSVHandler c_rms_file(case_param.root_dir + "/c_rms");
             c_rms_file.stream << calc_rms(c) << std::endl;
 
