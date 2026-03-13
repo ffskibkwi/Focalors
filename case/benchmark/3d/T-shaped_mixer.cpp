@@ -471,7 +471,7 @@ int main(int argc, char* argv[])
             c_rms_file.stream << calc_rms(c) << std::endl;
 
             CSVHandler MI_file(case_param.root_dir + "/MI");
-            for (int j = case_param.ny4 - 1; j > 0; j--)
+            for (int j = case_param.ny4 - 1; j >= 0; j--)
             {
                 MI_file.stream << calc_MI(j);
                 if (j != 0)
