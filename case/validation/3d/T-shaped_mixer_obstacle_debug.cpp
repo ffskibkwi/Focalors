@@ -1,17 +1,19 @@
 #include "base/config.h"
-#include "base/domain/domain2d.h"
-#include "base/domain/geometry2d.h"
-#include "base/domain/variable2d.h"
-#include "base/field/field2.h"
+#include "base/domain/domain3d.h"
+#include "base/domain/geometry3d.h"
+#include "base/domain/variable3d.h"
+#include "base/field/field3.h"
 #include "base/location_boundary.h"
 #include "base/math/random.h"
-#include "ibm_Uhlmann/ib_velocity_solver_2d_Uhlmann.h"
+#include "ibm_Uhlmann/ib_scalar_solver_3d_Uhlmann.h"
+#include "ibm_Uhlmann/ib_velocity_solver_3d_Uhlmann.h"
 #include "io/csv_handler.h"
 #include "io/stat.h"
 #include "io/vtk_writer.h"
-#include "ns/ns_solver2d.h"
-#include "particle/particles_coordinate_map_2d.h"
-#include "pe/concat/concat_solver2d.h"
+#include "ns/ns_solver3d_nonuniform_viscosity.h"
+#include "ns/scalar_solver3d.h"
+#include "particle/particles_coordinate_map_3d.h"
+#include "pe/concat/concat_solver3d.h"
 
 #include <algorithm>
 #include <cassert>
@@ -65,12 +67,15 @@ int main(int argc, char* argv[])
 
     double lx2 = Height;
     double ly2 = Height;
+    double lz2 = Height;
 
     double lx3 = lx1; // symmetry
     double ly3 = ly1; // symmetry
+    double lz3 = lz1; // symmetry
 
     double lx4 = Height;
-    double ly4 = 5.0 * Height;
+    double ly4 = 5.0 * Height; // in reference paper is 10.4e-3, 52H
+    double lz4 = Height;
 
     double hx = Height / 10.0;
     double hy = Height / 10.0;
@@ -78,12 +83,16 @@ int main(int argc, char* argv[])
 
     int nx1 = lx1 / hx;
     int ny1 = ly1 / hy;
+    int nz1 = lz1 / hz;
     int nx2 = lx2 / hx;
     int ny2 = ly2 / hy;
+    int nz2 = lz2 / hz;
     int nx3 = lx3 / hx;
     int ny3 = ly3 / hy;
+    int nz3 = lz3 / hz;
     int nx4 = lx4 / hx;
     int ny4 = ly4 / hy;
+    int nz4 = lz4 / hz;
 
     double Re = std::stod(argv[1]);
 
@@ -98,13 +107,15 @@ int main(int argc, char* argv[])
 
     double diffusion_coefficient = 3.23e-10;
 
+    DifferenceSchemeType c_scheme = DifferenceSchemeType::Conv_TVD_VanLeer_Diff_Center2nd;
+
     std::cout << "mixing_channel_hydraulic_diameter = " << mixing_channel_hydraulic_diameter << std::endl;
     std::cout << "inlet_velocity = " << inlet_velocity << std::endl;
 
     std::cout << "convection trem CFL = " << dt / hx << std::endl;
 
     // Geometry: Cross shape
-    Geometry2D geo;
+    Geometry3D geo;
 
     EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
     {
@@ -123,10 +134,10 @@ int main(int argc, char* argv[])
     PhysicsConfig& physics_cfg = PhysicsConfig::Get();
     physics_cfg.set_nu(kinematic_viscosity);
 
-    Domain2DUniform A1(nx1, ny1, lx1, ly1, "A1");
-    Domain2DUniform A2(nx2, ny2, lx2, ly2, "A2");
-    Domain2DUniform A3(nx3, ny3, lx3, ly3, "A3");
-    Domain2DUniform A4(nx4, ny4, lx4, ly4, "A4");
+    Domain3DUniform A1(nx1, ny1, nz1, lx1, ly1, lz1, "A1");
+    Domain3DUniform A2(nx2, ny2, nz2, lx2, ly2, lz2, "A2");
+    Domain3DUniform A3(nx3, ny3, nz3, lx3, ly3, lz3, "A3");
+    Domain3DUniform A4(nx4, ny4, nz4, lx4, ly4, lz4, "A4");
 
     geo.add_domain(&A1);
     geo.add_domain(&A2);
@@ -140,26 +151,33 @@ int main(int argc, char* argv[])
 
     geo.axis(&A1, LocationType::XNegative);
     geo.axis(&A1, LocationType::YNegative);
+    geo.axis(&A1, LocationType::ZNegative);
 
     // Variable2Ds
-    Variable2D u("u"), v("v"), p("p");
+    Variable3D u("u"), v("v"), w("w"), p("p");
     u.set_geometry(geo);
     v.set_geometry(geo);
+    w.set_geometry(geo);
     p.set_geometry(geo);
 
     // Fields on each domain
-    field2 u_A1, u_A2, u_A3, u_A4;
-    field2 v_A1, v_A2, v_A3, v_A4;
-    field2 p_A1, p_A2, p_A3, p_A4;
+    field3 u_A1, u_A2, u_A3, u_A4;
+    field3 v_A1, v_A2, v_A3, v_A4;
+    field3 w_A1, w_A2, w_A3, w_A4;
+    field3 p_A1, p_A2, p_A3, p_A4;
 
-    u.set_x_edge_field(&A1, u_A1);
-    u.set_x_edge_field(&A2, u_A2);
-    u.set_x_edge_field(&A3, u_A3);
-    u.set_x_edge_field(&A4, u_A4);
-    v.set_y_edge_field(&A1, v_A1);
-    v.set_y_edge_field(&A2, v_A2);
-    v.set_y_edge_field(&A3, v_A3);
-    v.set_y_edge_field(&A4, v_A4);
+    u.set_x_face_center_field(&A1, u_A1);
+    u.set_x_face_center_field(&A2, u_A2);
+    u.set_x_face_center_field(&A3, u_A3);
+    u.set_x_face_center_field(&A4, u_A4);
+    v.set_y_face_center_field(&A1, v_A1);
+    v.set_y_face_center_field(&A2, v_A2);
+    v.set_y_face_center_field(&A3, v_A3);
+    v.set_y_face_center_field(&A4, v_A4);
+    w.set_z_face_center_field(&A1, w_A1);
+    w.set_z_face_center_field(&A2, w_A2);
+    w.set_z_face_center_field(&A3, w_A3);
+    w.set_z_face_center_field(&A4, w_A4);
     p.set_center_field(&A1, p_A1);
     p.set_center_field(&A2, p_A2);
     p.set_center_field(&A3, p_A3);
@@ -169,21 +187,25 @@ int main(int argc, char* argv[])
               << std::endl;
 
     // Helper setters
-    auto set_dirichlet_zero = [](Variable2D& var, Domain2DUniform* d, LocationType loc) {
+    auto set_dirichlet_zero = [](Variable3D& var, Domain3DUniform* d, LocationType loc) {
         var.set_boundary_type(d, loc, PDEBoundaryType::Dirichlet);
         var.set_boundary_value(d, loc, 0.0);
     };
-    auto set_neumann_zero = [](Variable2D& var, Domain2DUniform* d, LocationType loc) {
+    auto set_neumann_zero = [](Variable3D& var, Domain3DUniform* d, LocationType loc) {
         var.set_boundary_type(d, loc, PDEBoundaryType::Neumann);
     };
-    auto isdjacented = [&](Domain2DUniform* d, LocationType loc) {
+    auto isdjacented = [&](Domain3DUniform* d, LocationType loc) {
         return geo.adjacency.count(d) && geo.adjacency[d].count(loc);
     };
 
     // Default outer boundaries
-    std::vector<Domain2DUniform*> domains = {&A1, &A2, &A3, &A4};
-    std::vector<LocationType>     dirs    = {
-        LocationType::XNegative, LocationType::XPositive, LocationType::YNegative, LocationType::YPositive};
+    std::vector<Domain3DUniform*> domains = {&A1, &A2, &A3, &A4};
+    std::vector<LocationType>     dirs    = {LocationType::XNegative,
+                                             LocationType::XPositive,
+                                             LocationType::YNegative,
+                                             LocationType::YPositive,
+                                             LocationType::ZNegative,
+                                             LocationType::ZPositive};
 
     for (auto* d : domains)
     {
@@ -194,6 +216,7 @@ int main(int argc, char* argv[])
             // velocity: default wall (Dirichlet 0)
             set_dirichlet_zero(u, d, loc);
             set_dirichlet_zero(v, d, loc);
+            set_dirichlet_zero(w, d, loc);
             // pressure: default Neumann (zero gradient)
             set_neumann_zero(p, d, loc);
         }
@@ -204,21 +227,25 @@ int main(int argc, char* argv[])
         u.has_boundary_value_map[&A1][LocationType::XNegative] = true;
         u.has_boundary_value_map[&A3][LocationType::XPositive] = true;
 
-        double* u_inlet_buffer_xneg = u.boundary_value_map[&A1][LocationType::XNegative];
-        double* u_inlet_buffer_xpos = u.boundary_value_map[&A3][LocationType::XPositive];
+        field2& u_inlet_buffer_xneg = *u.boundary_value_map[&A1][LocationType::XNegative];
+        field2& u_inlet_buffer_xpos = *u.boundary_value_map[&A3][LocationType::XPositive];
 
         for (int j = 0; j < u_A1.get_ny(); ++j)
         {
-            double y = j * hy + 0.5 * hy;
-            y /= ly1;
-            double vel             = 6.0 * inlet_velocity * (1.0 - y) * y;
-            u_inlet_buffer_xneg[j] = vel;
-            u_inlet_buffer_xpos[j] = -vel;
+            for (int k = 0; k < u_A1.get_nz(); ++k)
+            {
+                double z = k * hz + 0.5 * hz;
+                z /= lz1;
+                double vel                = 6.0 * inlet_velocity * (1.0 - z) * z;
+                u_inlet_buffer_xneg(j, k) = vel;
+                u_inlet_buffer_xpos(j, k) = -vel;
+            }
         }
     }
     // Outlet
     u.set_boundary_type(&A4, LocationType::YNegative, PDEBoundaryType::Neumann);
     v.set_boundary_type(&A4, LocationType::YNegative, PDEBoundaryType::Neumann);
+    w.set_boundary_type(&A4, LocationType::YNegative, PDEBoundaryType::Neumann);
 
     add_random_number(u_A1, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
     add_random_number(u_A2, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
@@ -230,23 +257,29 @@ int main(int argc, char* argv[])
     add_random_number(v_A3, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
     add_random_number(v_A4, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
 
+    add_random_number(w_A1, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
+    add_random_number(w_A2, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
+    add_random_number(w_A3, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
+    add_random_number(w_A4, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
+
     // IBM setup: sphere at T-junction center
     // Note: A2 starts at x=20*H/d, y=0, z=0
     double sphere_radius   = Height / 3.0;                                    // Radius = H/3
     double sphere_center_x = (A1.get_lx() + A2.get_lx() + A3.get_lx()) / 2.0; // Center of A2 domain
     double sphere_center_y = 0.0;                                             // T-junction y coordinate (within A2)
+    double sphere_center_z = A1.get_lz() / 2.0;                               // Center in z direction
 
-    std::cout << "IBM sphere (non-dim): center = (" << sphere_center_x << ", " << sphere_center_y
-              << "), radius = " << sphere_radius << std::endl;
+    std::cout << "IBM sphere (non-dim): center = (" << sphere_center_x << ", " << sphere_center_y << ", "
+              << sphere_center_z << "), radius = " << sphere_radius << std::endl;
 
-    PCoordMap2D coord_map;
-    coord_map.add_cylinder(hx, sphere_radius, sphere_center_x, sphere_center_y);
+    PCoordMap3D coord_map;
+    coord_map.add_sphere(hx, sphere_radius, sphere_center_x, sphere_center_y, sphere_center_z);
     coord_map.generate_map(&geo);
 
     auto coord_map_raw = coord_map.get_map();
 
     // Velocity IBM solver
-    IBVelocitySolver2D_Uhlmann ibm_solver(&u, &v, coord_map_raw);
+    IBVelocitySolver3D_Uhlmann ibm_solver(&u, &v, &w, coord_map_raw);
     ibm_solver.set_parameters(coord_map.get_h(), hx);
 
     // Initialize IBM particle velocities to zero (solid sphere)
@@ -255,18 +288,23 @@ int main(int argc, char* argv[])
         auto* p_coord = kv.second;
         auto* ib_data = ibm_solver.get_ib_data(kv.first);
 
-        EXPOSE_PCOORD2D(p_coord)
-        EXPOSE_PIB2D(ib_data)
+        EXPOSE_PCOORD3D(p_coord)
+        EXPOSE_PIB3D(ib_data)
 
         for (int i = 0; i < p_coord->cur_n; i++)
         {
             Up[i] = 0.0;
             Vp[i] = 0.0;
+            Wp[i] = 0.0;
         }
     }
 
-    ConcatPoissonSolver2D p_solver(&p);
-    ConcatNSSolver2D      ns_solver(&u, &v, &p, &p_solver);
+    ConcatPoissonSolver3D p_solver(&p);
+    ConcatNSSolver3D      ns_solver(&u, &v, &w, &p, &p_solver);
+
+    VTKWriter vtk_writer;
+    vtk_writer.add_vector_as_cell_data(&u, &v, &w, "velocity");
+    vtk_writer.validate();
 
     TIMER_END(Init);
 
@@ -316,7 +354,19 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = false;
         }
 
-        if (std::isnan(u_A1(0, 0)))
+        if (iter % static_cast<int>(1e4) == 0)
+        {
+            static int count = 0;
+            vtk_writer.write(env_cfg.debugOutputDir + "/vtk/" + std::to_string(count++));
+        }
+
+        if (iter % 100 == 0)
+        {
+            CSVHandler u_rms_file(env_cfg.debugOutputDir + "/u_rms");
+            u_rms_file.stream << calc_rms(u) << std::endl;
+        }
+
+        if (std::isnan(u_A1(0, 0, 0)))
         {
             std::cout << "Error: Find nan at u_A1! Break solving." << std::endl;
             break;

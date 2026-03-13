@@ -7,12 +7,12 @@
 #include "base/math/random.h"
 #include "ibm_MirrorPoint/ib_solver_3d_mirror_point.h"
 #include "ibm_Uhlmann/ib_velocity_solver_3d_Uhlmann.h"
-#include "particle/particles_coordinate_map_3d.h"
 #include "io/csv_handler.h"
 #include "io/stat.h"
 #include "io/vtk_writer.h"
 #include "ns/ns_solver3d_nonuniform_viscosity.h"
 #include "ns/scalar_solver3d.h"
+#include "particle/particles_coordinate_map_3d.h"
 #include "pe/concat/concat_solver3d.h"
 
 #include <algorithm>
@@ -323,7 +323,7 @@ int main(int argc, char* argv[])
 
     // MirrorPoint concentration solver (Neumann: zero flux)
     // Create sphere shape for MirrorPoint
-    Sphere sphere(sphere_center_x, sphere_center_y, sphere_center_z, sphere_radius);
+    Sphere                 sphere(sphere_center_x, sphere_center_y, sphere_center_z, sphere_radius);
     IBSolver3D_MirrorPoint solver_c(&c, PDEBoundaryType::Neumann, 0.0);
     solver_c.add_shape(&sphere);
     solver_c.build();
@@ -412,6 +412,12 @@ int main(int argc, char* argv[])
         {
             static int count = 0;
             vtk_writer.write(env_cfg.debugOutputDir + "/vtk/" + std::to_string(count++));
+        }
+
+        if (iter % 100 == 0)
+        {
+            CSVHandler u_rms_file(env_cfg.debugOutputDir + "/u_rms");
+            u_rms_file.stream << calc_rms(u) << std::endl;
         }
 
         if (iter % 100 == 0)
