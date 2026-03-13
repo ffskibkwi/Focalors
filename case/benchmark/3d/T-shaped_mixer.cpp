@@ -104,6 +104,8 @@ public:
         ny4 = static_cast<int>(ly4 / hy);
         nz4 = static_cast<int>(lz4 / hz);
 
+        dt = cfl * hx;
+
         Pe = Schmidt_number * Reynolds_number;
         nr = 1.0 / Pe;
 
@@ -134,7 +136,6 @@ public:
         hy /= mixing_channel_hydraulic_diameter;
         hz /= mixing_channel_hydraulic_diameter;
 
-        dt = cfl * hx;
         dt /= convective_time;
     }
 

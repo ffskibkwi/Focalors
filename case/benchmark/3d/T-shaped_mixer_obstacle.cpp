@@ -117,6 +117,8 @@ public:
         ny4 = static_cast<int>(ly4 / hy);
         nz4 = static_cast<int>(lz4 / hz);
 
+        dt = cfl * hx;
+
         Pe = Schmidt_number * Reynolds_number;
         nr = 1.0 / Pe;
 
@@ -147,13 +149,12 @@ public:
         hy /= mixing_channel_hydraulic_diameter;
         hz /= mixing_channel_hydraulic_diameter;
 
-        dt = cfl * hx;
         dt /= convective_time;
 
         // Sphere parameters
-        sphere_radius   = sphere_radius_ratio * Height / mixing_channel_hydraulic_diameter;
+        sphere_radius   = sphere_radius_ratio * Height;
         sphere_center_x = (lx1 + lx2 + lx3) / 2.0;
-        sphere_center_y = sphere_center_y_ratio * Height / mixing_channel_hydraulic_diameter - ly2;
+        sphere_center_y = sphere_center_y_ratio * Height - ly2;
         sphere_center_z = lz1 / 2.0;
 
         // Non-dimensionalize
