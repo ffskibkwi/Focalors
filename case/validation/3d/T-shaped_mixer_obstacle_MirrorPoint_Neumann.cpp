@@ -330,7 +330,13 @@ int main(int argc, char* argv[])
 
     if (has_obstacle)
     {
-        std::cout << "Uhlmann IBM particle count: " << coord_map.get_total_particle_count() << "\n";
+        // Calculate total particle count
+        int total_particles = 0;
+        for (auto& kv : coord_map_raw)
+        {
+            total_particles += kv.second->cur_n;
+        }
+        std::cout << "Uhlmann IBM particle count: " << total_particles << "\n";
         std::cout << "MirrorPoint concentration interior points:\n";
         std::cout << "    c solver: " << solver_c.get_num_interior_points(&A1) << " (A1), "
                   << solver_c.get_num_interior_points(&A2) << " (A2), " << solver_c.get_num_interior_points(&A3)
