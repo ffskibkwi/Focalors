@@ -121,7 +121,7 @@ int main(int argc, char* argv[])
     EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
     {
         std::stringstream ss;
-        ss << "./result/T-shaped_mixer_obstacle/";
+        ss << "./result/T-shaped_mixer_obstacle_Uhlmann_Dirichlet/";
         ss << "Re=";
         ss << std::to_string((int)Re);
         ss << "ob=";
@@ -275,15 +275,15 @@ int main(int argc, char* argv[])
     add_random_number(u_A3, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
     add_random_number(u_A4, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
 
-    add_random_number(v_A1, -0.01, 0.01, 42);
-    add_random_number(v_A2, -0.01, 0.01, 42);
-    add_random_number(v_A3, -0.01, 0.01, 42);
-    add_random_number(v_A4, -0.01, 0.01, 42);
+    add_random_number(v_A1, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
+    add_random_number(v_A2, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
+    add_random_number(v_A3, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
+    add_random_number(v_A4, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
 
-    add_random_number(w_A1, -0.01, 0.01, 42);
-    add_random_number(w_A2, -0.01, 0.01, 42);
-    add_random_number(w_A3, -0.01, 0.01, 42);
-    add_random_number(w_A4, -0.01, 0.01, 42);
+    add_random_number(w_A1, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
+    add_random_number(w_A2, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
+    add_random_number(w_A3, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
+    add_random_number(w_A4, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
 
     // IBM setup: sphere at T-junction center
     // Note: A2 starts at x=20*H/d, y=0, z=0
