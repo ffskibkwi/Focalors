@@ -5,6 +5,7 @@
 #include "base/field/field3.h"
 #include "base/location_boundary.h"
 #include "base/math/random.h"
+#include "io/case_base.hpp"
 #include "io/csv_handler.h"
 #include "io/stat.h"
 #include "io/vtk_writer.h"
@@ -21,11 +22,7 @@
 #include <sstream>
 #include <string>
 
-// Steady and unsteady regimes in a T-shaped micro-mixer: Synergic experimental and numerical investigation, Alessandro
-// Mariotti and Chiara Galletti and Roberto Mauri and Maria Vittoria Salvetti and Elisabetta Brunazzi
-
 /**
- *
  * y
  * ▲
  * │
@@ -45,118 +42,240 @@
  * O                         x
  *
  */
-int main(int argc, char* argv[])
-{
-    TIMER_BEGIN(Init, "Init", TimeRecordType::None, true);
 
-    if (argc != 4)
+class TShapedMixerCase : public CaseBase
+{
+public:
+    TShapedMixerCase(int argc, char* argv[])
+        : CaseBase(argc, argv)
+    {}
+
+    void read_paras() override
     {
-        std::cerr << "Error argument! Usage: program Re[double > 0] Sc[double > 0] Wo/H[double > 0]" << std::endl;
-        return 0;
+        CaseBase::read_paras();
+
+        // Geometry parameters
+        IO::read_number(para_map, "Height", Height);
+        IO::read_number(para_map, "lx1_ratio", lx1_ratio);
+        IO::read_number(para_map, "ly2_ratio", ly2_ratio);
+        IO::read_number(para_map, "ly4_ratio", ly4_ratio);
+        IO::read_number(para_map, "mesh_density", mesh_density);
+
+        // Time stepping
+        IO::read_number(para_map, "cfl", cfl);
+        IO::read_number(para_map, "pv_output_step", pv_output_step);
+        IO::read_number(para_map, "statistics_output_step", statistics_output_step);
+
+        // Physics parameters
+        IO::read_number(para_map, "Re", Reynolds_number);
+        IO::read_number(para_map, "Sc", Schmidt_number);
+
+        // Calculate derived parameters
+        lx1 = lx1_ratio * Height;
+        ly1 = Height;
+        lz1 = Height;
+
+        lx2 = Height;
+        ly2 = Height;
+        lz2 = Height;
+
+        lx3 = lx1;
+        ly3 = ly1;
+        lz3 = lz1;
+
+        lx4 = Height;
+        ly4 = ly4_ratio * Height;
+        lz4 = Height;
+
+        hx = Height / mesh_density;
+        hy = Height / mesh_density;
+        hz = Height / mesh_density;
+
+        nx1 = static_cast<int>(lx1 / hx);
+        ny1 = static_cast<int>(ly1 / hy);
+        nz1 = static_cast<int>(lz1 / hz);
+        nx2 = static_cast<int>(lx2 / hx);
+        ny2 = static_cast<int>(ly2 / hy);
+        nz2 = static_cast<int>(lz2 / hz);
+        nx3 = static_cast<int>(lx3 / hx);
+        ny3 = static_cast<int>(ly3 / hy);
+        nz3 = static_cast<int>(lz3 / hz);
+        nx4 = static_cast<int>(lx4 / hx);
+        ny4 = static_cast<int>(ly4 / hy);
+        nz4 = static_cast<int>(lz4 / hz);
+
+        Pe = Schmidt_number * Reynolds_number;
+        nr = 1.0 / Pe;
+
+        double mixing_channel_hydraulic_diameter = 2.0 * lx2 * ly2 / (lx2 + ly2);
+        double density                           = 1e3;
+        double dynamic_viscosity                 = 1.01e-3;
+        double inlet_velocity  = Reynolds_number * dynamic_viscosity / (density * mixing_channel_hydraulic_diameter);
+        double convective_time = mixing_channel_hydraulic_diameter / inlet_velocity;
+
+        // Non-dimensionalize
+        lx1 /= mixing_channel_hydraulic_diameter;
+        ly1 /= mixing_channel_hydraulic_diameter;
+        lz1 /= mixing_channel_hydraulic_diameter;
+
+        lx2 /= mixing_channel_hydraulic_diameter;
+        ly2 /= mixing_channel_hydraulic_diameter;
+        lz2 /= mixing_channel_hydraulic_diameter;
+
+        lx3 /= mixing_channel_hydraulic_diameter;
+        ly3 /= mixing_channel_hydraulic_diameter;
+        lz3 /= mixing_channel_hydraulic_diameter;
+
+        lx4 /= mixing_channel_hydraulic_diameter;
+        ly4 /= mixing_channel_hydraulic_diameter;
+        lz4 /= mixing_channel_hydraulic_diameter;
+
+        hx /= mixing_channel_hydraulic_diameter;
+        hy /= mixing_channel_hydraulic_diameter;
+        hz /= mixing_channel_hydraulic_diameter;
+
+        dt = cfl * hx;
+        dt /= convective_time;
+
+        // Update grid sizes after non-dimensionalization
+        nx1 = static_cast<int>(lx1 / hx);
+        ny1 = static_cast<int>(ly1 / hy);
+        nz1 = static_cast<int>(lz1 / hz);
+        nx2 = static_cast<int>(lx2 / hx);
+        ny2 = static_cast<int>(ly2 / hy);
+        nz2 = static_cast<int>(lz2 / hz);
+        nx3 = static_cast<int>(lx3 / hx);
+        ny3 = static_cast<int>(ly3 / hy);
+        nz3 = static_cast<int>(lz3 / hz);
+        nx4 = static_cast<int>(lx4 / hx);
+        ny4 = static_cast<int>(ly4 / hy);
+        nz4 = static_cast<int>(lz4 / hz);
     }
 
-    double Height = 1e-3;
+    bool record_paras() override
+    {
+        if (!CaseBase::record_paras())
+            return false;
 
-    double lx1 = 10 * Height;
-    double ly1 = Height;
-    double lz1 = Height;
+        paras_record.record("Height", Height)
+            .record("lx1_ratio", lx1_ratio)
+            .record("ly2_ratio", ly2_ratio)
+            .record("ly4_ratio", ly4_ratio)
+            .record("mesh_density", mesh_density)
+            .record("lx1", lx1)
+            .record("ly1", ly1)
+            .record("lz1", lz1)
+            .record("lx2", lx2)
+            .record("ly2", ly2)
+            .record("lz2", lz2)
+            .record("lx3", lx3)
+            .record("ly3", ly3)
+            .record("lz3", lz3)
+            .record("lx4", lx4)
+            .record("ly4", ly4)
+            .record("lz4", lz4)
+            .record("hx", hx)
+            .record("hy", hy)
+            .record("hz", hz)
+            .record("nx1", nx1)
+            .record("ny1", ny1)
+            .record("nz1", nz1)
+            .record("nx2", nx2)
+            .record("ny2", ny2)
+            .record("nz2", nz2)
+            .record("nx3", nx3)
+            .record("ny3", ny3)
+            .record("nz3", nz3)
+            .record("nx4", nx4)
+            .record("ny4", ny4)
+            .record("nz4", nz4)
+            .record("cfl", cfl)
+            .record("dt", dt)
+            .record("Reynolds_number", Reynolds_number)
+            .record("Schmidt_number", Schmidt_number)
+            .record("Pe", Pe)
+            .record("nr", nr)
+            .record("pv_output_step", pv_output_step)
+            .record("statistics_output_step", statistics_output_step);
 
-    double lx2 = std::stod(argv[3]) * Height;
-    double ly2 = Height;
-    double lz2 = Height;
+        return true;
+    }
 
-    double lx3 = lx1; // symmetry
-    double ly3 = ly1; // symmetry
-    double lz3 = lz1; // symmetry
+    // Geometry parameters
+    double Height       = 1e-3;
+    double lx1_ratio    = 10.0;
+    double ly2_ratio    = 1.0;
+    double ly4_ratio    = 20.0;
+    int    mesh_density = 20;
 
-    double lx4 = lx2;
-    double ly4 = 20.0 * Height;
-    double lz4 = Height;
+    // Derived geometry
+    double lx1, ly1, lz1;
+    double lx2, ly2, lz2;
+    double lx3, ly3, lz3;
+    double lx4, ly4, lz4;
+    double hx, hy, hz;
+    int    nx1, ny1, nz1;
+    int    nx2, ny2, nz2;
+    int    nx3, ny3, nz3;
+    int    nx4, ny4, nz4;
 
-    double hx = Height / 20.0;
-    double hy = Height / 20.0;
-    double hz = Height / 20.0;
+    // Time stepping
+    double cfl                    = 0.1;
+    double dt                     = 0.0;
+    int    pv_output_step         = 10000;
+    int    statistics_output_step = 20;
 
-    int nx1 = lx1 / hx;
-    int ny1 = ly1 / hy;
-    int nz1 = lz1 / hz;
-    int nx2 = lx2 / hx;
-    int ny2 = ly2 / hy;
-    int nz2 = lz2 / hz;
-    int nx3 = lx3 / hx;
-    int ny3 = ly3 / hy;
-    int nz3 = lz3 / hz;
-    int nx4 = lx4 / hx;
-    int ny4 = ly4 / hy;
-    int nz4 = lz4 / hz;
+    // Physics parameters
+    double Reynolds_number = 100.0;
+    double Schmidt_number  = 0.1;
+    double Pe              = 0.0;
+    double nr              = 0.0;
+};
 
-    double Re = std::stod(argv[1]);
-    double Sc = std::stod(argv[2]);
-    double Pe = Sc * Re;
-    double nr = 1.0 / Pe;
+int main(int argc, char* argv[])
+{
+    TShapedMixerCase case_param(argc, argv);
+    case_param.read_paras();
 
-    double dt = hx / 10.0;
+    // Configuration
+    EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
+    env_cfg.showGmresRes       = false;
+    env_cfg.showCurrentStep    = false;
 
-    double density                           = 1e3;
-    double dynamic_viscosity                 = 1.01e-3;
-    double mixing_channel_hydraulic_diameter = 2.0 * lx2 * ly2 / (lx2 + ly2);
-    double inlet_velocity                    = Re * dynamic_viscosity / (density * mixing_channel_hydraulic_diameter);
-    double convective_time                   = mixing_channel_hydraulic_diameter / inlet_velocity;
+    TimeAdvancingConfig& time_cfg = TimeAdvancingConfig::Get();
+    time_cfg.dt                   = case_param.dt;
+    time_cfg.num_iterations       = case_param.max_step;
 
-    DifferenceSchemeType c_scheme = DifferenceSchemeType::Conv_QUICK_Diff_Center2nd;
+    PhysicsConfig& physics_cfg = PhysicsConfig::Get();
+    physics_cfg.set_Re(case_param.Reynolds_number);
 
-    lx1 /= mixing_channel_hydraulic_diameter;
-    ly1 /= mixing_channel_hydraulic_diameter;
-    lz1 /= mixing_channel_hydraulic_diameter;
-
-    lx2 /= mixing_channel_hydraulic_diameter;
-    ly2 /= mixing_channel_hydraulic_diameter;
-    lz2 /= mixing_channel_hydraulic_diameter;
-
-    lx3 /= mixing_channel_hydraulic_diameter;
-    ly3 /= mixing_channel_hydraulic_diameter;
-    lz3 /= mixing_channel_hydraulic_diameter;
-
-    lx4 /= mixing_channel_hydraulic_diameter;
-    ly4 /= mixing_channel_hydraulic_diameter;
-    lz4 /= mixing_channel_hydraulic_diameter;
-
-    hx /= mixing_channel_hydraulic_diameter;
-    hy /= mixing_channel_hydraulic_diameter;
-    hz /= mixing_channel_hydraulic_diameter;
-
-    dt /= convective_time;
-
-    std::cout << "mixing_channel_hydraulic_diameter = " << mixing_channel_hydraulic_diameter << std::endl;
-    std::cout << "inlet_velocity = " << inlet_velocity << std::endl;
-    std::cout << "convective_time = " << convective_time << std::endl;
-
-    std::cout << "convection trem CFL = " << dt / hx << std::endl;
-    std::cout << "Petlet cell = " << hx * Pe << std::endl;
+    case_param.record_paras();
 
     // Geometry: Cross shape
     Geometry3D geo;
 
-    EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
-    {
-        std::stringstream ss;
-        ss << "./result/T-shaped_mixer/";
-        ss << "Re";
-        ss << std::to_string((int)Re);
-        env_cfg.debugOutputDir = ss.str();
-    }
+    std::cout << "=== T-shaped Mixer ===\n";
+    std::cout << "Domain dimensions (non-dim):\n";
+    std::cout << "  A1: " << case_param.lx1 << " x " << case_param.ly1 << " x " << case_param.lz1 << "\n";
+    std::cout << "  A2: " << case_param.lx2 << " x " << case_param.ly2 << " x " << case_param.lz2 << "\n";
+    std::cout << "  A3: " << case_param.lx3 << " x " << case_param.ly3 << " x " << case_param.lz3 << "\n";
+    std::cout << "  A4: " << case_param.lx4 << " x " << case_param.ly4 << " x " << case_param.lz4 << "\n";
+    std::cout << "Grid: " << case_param.nx1 << "x" << case_param.ny1 << "x" << case_param.nz1 << " (A1)\n";
+    std::cout << "      " << case_param.nx2 << "x" << case_param.ny2 << "x" << case_param.nz2 << " (A2)\n";
+    std::cout << "      " << case_param.nx3 << "x" << case_param.ny3 << "x" << case_param.nz3 << " (A3)\n";
+    std::cout << "      " << case_param.nx4 << "x" << case_param.ny4 << "x" << case_param.nz4 << " (A4)\n";
+    std::cout << "Grid spacing: " << case_param.hx << " x " << case_param.hy << " x " << case_param.hz << "\n";
+    std::cout << "Re = " << case_param.Reynolds_number << ", Sc = " << case_param.Schmidt_number << "\n";
+    std::cout << "dt = " << case_param.dt << ", max_step = " << case_param.max_step << "\n\n";
 
-    TimeAdvancingConfig& time_cfg = TimeAdvancingConfig::Get();
-    time_cfg.dt                   = dt;
-    time_cfg.num_iterations       = 2e5;
-
-    PhysicsConfig& physics_cfg = PhysicsConfig::Get();
-    physics_cfg.set_Re(Re);
-
-    Domain3DUniform A1(nx1, ny1, nz1, lx1, ly1, lz1, "A1");
-    Domain3DUniform A2(nx2, ny2, nz2, lx2, ly2, lz2, "A2");
-    Domain3DUniform A3(nx3, ny3, nz3, lx3, ly3, lz3, "A3");
-    Domain3DUniform A4(nx4, ny4, nz4, lx4, ly4, lz4, "A4");
+    Domain3DUniform A1(
+        case_param.nx1, case_param.ny1, case_param.nz1, case_param.lx1, case_param.ly1, case_param.lz1, "A1");
+    Domain3DUniform A2(
+        case_param.nx2, case_param.ny2, case_param.nz2, case_param.lx2, case_param.ly2, case_param.lz2, "A2");
+    Domain3DUniform A3(
+        case_param.nx3, case_param.ny3, case_param.nz3, case_param.lx3, case_param.ly3, case_param.lz3, "A3");
+    Domain3DUniform A4(
+        case_param.nx4, case_param.ny4, case_param.nz4, case_param.lx4, case_param.ly4, case_param.lz4, "A4");
 
     geo.add_domain(&A1);
     geo.add_domain(&A2);
@@ -172,7 +291,7 @@ int main(int argc, char* argv[])
     geo.axis(&A1, LocationType::YNegative);
     geo.axis(&A1, LocationType::ZNegative);
 
-    // Variable2Ds
+    // Variable3Ds
     Variable3D u("u"), v("v"), w("w"), p("p"), c("concentration");
     u.set_geometry(geo);
     v.set_geometry(geo);
@@ -260,8 +379,8 @@ int main(int argc, char* argv[])
         {
             for (int k = 0; k < u_A1.get_nz(); ++k)
             {
-                double z = k * hz + 0.5 * hz;
-                z /= lz1;
+                double z = k * case_param.hz + 0.5 * case_param.hz;
+                z /= case_param.lz1;
                 double vel                = 6.0 * (1.0 - z) * z;
                 u_inlet_buffer_xneg(j, k) = vel;
                 u_inlet_buffer_xpos(j, k) = -vel;
@@ -301,25 +420,25 @@ int main(int argc, char* argv[])
     add_random_number(w_A3, -0.01, 0.01, 42);
     add_random_number(w_A4, -0.01, 0.01, 42);
 
+    DifferenceSchemeType c_scheme = DifferenceSchemeType::Conv_QUICK_Diff_Center2nd;
+
     ConcatPoissonSolver3D p_solver(&p);
     ConcatNSSolver3D      ns_solver(&u, &v, &w, &p, &p_solver);
-    ScalarSolver3D        solver_c(&u, &v, &w, &c, nr, c_scheme);
+    ScalarSolver3D        solver_c(&u, &v, &w, &c, case_param.nr, c_scheme);
 
     VTKWriter vtk_writer;
     vtk_writer.add_vector_as_cell_data(&u, &v, &w, "velocity");
     vtk_writer.add_scalar_as_cell_data(&c);
     vtk_writer.validate();
 
-    TIMER_END(Init);
-
     auto calc_MI = [&](int j) {
         double c_mean = c_A4.mean_at_xz_plane(j);
         double sigma  = 0.0;
         OPENMP_PARALLEL_FOR(reduction(+ : sigma))
-        for (int i = 0; i < nx4; i++)
-            for (int k = 0; k < nz4; k++)
+        for (int i = 0; i < case_param.nx4; i++)
+            for (int k = 0; k < case_param.nz4; k++)
                 sigma += (c_A4(i, j, k) - c_mean) * (c_A4(i, j, k) - c_mean);
-        sigma = std::sqrt(sigma / (nx4 * nz4));
+        sigma = std::sqrt(sigma / (case_param.nx4 * case_param.nz4));
         return 1 - sigma / 0.5;
     };
 
@@ -347,16 +466,16 @@ int main(int argc, char* argv[])
         if (iter % static_cast<int>(1e4) == 0)
         {
             static int count = 0;
-            vtk_writer.write(env_cfg.debugOutputDir + "/vtk/" + std::to_string(count++));
+            vtk_writer.write(case_param.root_dir + "/vtk/" + std::to_string(count++));
         }
 
-        if (iter % 20 == 0)
+        if (iter % case_param.statistics_output_step == 0)
         {
-            CSVHandler c_rms_file(env_cfg.debugOutputDir + "/c_rms");
+            CSVHandler c_rms_file(case_param.root_dir + "/c_rms");
             c_rms_file.stream << calc_rms(c) << std::endl;
 
-            CSVHandler MI_file(env_cfg.debugOutputDir + "/MI");
-            for (int j = ny4 - 1; j > 0; j--)
+            CSVHandler MI_file(case_param.root_dir + "/MI");
+            for (int j = case_param.ny4 - 1; j > 0; j--)
             {
                 MI_file.stream << calc_MI(j);
                 if (j != 0)
