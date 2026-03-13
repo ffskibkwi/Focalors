@@ -6,6 +6,8 @@
 #include "base/location_boundary.h"
 #include "base/math/random.h"
 #include "ibm_MirrorPoint/ib_solver_3d_mirror_point.h"
+#include "ibm_Uhlmann/ib_velocity_solver_3d_Uhlmann.h"
+#include "particle/particles_coordinate_map_3d.h"
 #include "io/csv_handler.h"
 #include "io/stat.h"
 #include "io/vtk_writer.h"
@@ -283,52 +285,53 @@ int main(int argc, char* argv[])
     add_random_number(w_A3, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
     add_random_number(w_A4, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
 
-    // MirrorPoint IBM setup: sphere at T-junction center
+    // IBM setup: sphere at T-junction center
     // Note: A2 starts at x=20*H/d, y=0, z=0
     double sphere_radius   = Height / 3.0;                                    // Radius = H/3
     double sphere_center_x = (A1.get_lx() + A2.get_lx() + A3.get_lx()) / 2.0; // Center of A2 domain
     double sphere_center_y = 0.0;                                             // T-junction y coordinate (within A2)
     double sphere_center_z = A1.get_lz() / 2.0;                               // Center in z direction
 
-    std::cout << "MirrorPoint sphere (non-dim): center = (" << sphere_center_x << ", " << sphere_center_y << ", "
+    std::cout << "IBM sphere (non-dim): center = (" << sphere_center_x << ", " << sphere_center_y << ", "
               << sphere_center_z << "), radius = " << sphere_radius << std::endl;
 
-    // Create sphere shape
-    Sphere sphere(sphere_center_x, sphere_center_y, sphere_center_z, sphere_radius);
+    // Uhlmann velocity IBM solver
+    PCoordMap3D coord_map;
+    coord_map.add_sphere(hx, sphere_radius, sphere_center_x, sphere_center_y, sphere_center_z);
+    coord_map.generate_map(&geo);
+    auto coord_map_raw = coord_map.get_map();
 
-    // MirrorPoint velocity solvers (Neumann boundary: BC = 0 for no-slip)
-    // For Neumann: (phi_mirror - phi) / delta_l = BC
-    // BC = 0 means zero gradient at the boundary (free-slip condition)
-    // For no-slip, use Dirichlet BC = 0 instead
-    IBSolver3D_MirrorPoint solver_u(&u, PDEBoundaryType::Neumann, 0.0);
-    solver_u.add_shape(&sphere);
-    solver_u.build();
+    IBVelocitySolver3D_Uhlmann ibm_velocity_solver(&u, &v, &w, coord_map_raw);
+    ibm_velocity_solver.set_parameters(coord_map.get_h(), hx);
 
-    IBSolver3D_MirrorPoint solver_v(&v, PDEBoundaryType::Neumann, 0.0);
-    solver_v.add_shape(&sphere);
-    solver_v.build();
+    // Initialize IBM particle velocities to zero (solid sphere)
+    for (auto& kv : coord_map_raw)
+    {
+        auto* p_coord = kv.second;
+        auto* ib_data = ibm_velocity_solver.get_ib_data(kv.first);
 
-    IBSolver3D_MirrorPoint solver_w(&w, PDEBoundaryType::Neumann, 0.0);
-    solver_w.add_shape(&sphere);
-    solver_w.build();
+        EXPOSE_PCOORD3D(p_coord)
+        EXPOSE_PIB3D(ib_data)
+
+        for (int i = 0; i < p_coord->cur_n; i++)
+        {
+            Up[i] = 0.0;
+            Vp[i] = 0.0;
+            Wp[i] = 0.0;
+        }
+    }
 
     // MirrorPoint concentration solver (Neumann: zero flux)
+    // Create sphere shape for MirrorPoint
+    Sphere sphere(sphere_center_x, sphere_center_y, sphere_center_z, sphere_radius);
     IBSolver3D_MirrorPoint solver_c(&c, PDEBoundaryType::Neumann, 0.0);
     solver_c.add_shape(&sphere);
     solver_c.build();
 
     if (has_obstacle)
     {
-        std::cout << "MirrorPoint interior points:\n";
-        std::cout << "    u solver: " << solver_u.get_num_interior_points(&A1) << " (A1), "
-                  << solver_u.get_num_interior_points(&A2) << " (A2), " << solver_u.get_num_interior_points(&A3)
-                  << " (A3), " << solver_u.get_num_interior_points(&A4) << " (A4)\n";
-        std::cout << "    v solver: " << solver_v.get_num_interior_points(&A1) << " (A1), "
-                  << solver_v.get_num_interior_points(&A2) << " (A2), " << solver_v.get_num_interior_points(&A3)
-                  << " (A3), " << solver_v.get_num_interior_points(&A4) << " (A4)\n";
-        std::cout << "    w solver: " << solver_w.get_num_interior_points(&A1) << " (A1), "
-                  << solver_w.get_num_interior_points(&A2) << " (A2), " << solver_w.get_num_interior_points(&A3)
-                  << " (A3), " << solver_w.get_num_interior_points(&A4) << " (A4)\n";
+        std::cout << "Uhlmann IBM particle count: " << coord_map.get_total_particle_count() << "\n";
+        std::cout << "MirrorPoint concentration interior points:\n";
         std::cout << "    c solver: " << solver_c.get_num_interior_points(&A1) << " (A1), "
                   << solver_c.get_num_interior_points(&A2) << " (A2), " << solver_c.get_num_interior_points(&A3)
                   << " (A3), " << solver_c.get_num_interior_points(&A4) << " (A4)\n";
@@ -360,12 +363,10 @@ int main(int argc, char* argv[])
         ns_solver.euler_conv_diff_inner();
         ns_solver.euler_conv_diff_outer();
 
-        // Apply MirrorPoint IBM solvers
+        // Apply Uhlmann velocity IBM solver
         if (has_obstacle)
         {
-            solver_u.apply();
-            solver_v.apply();
-            solver_w.apply();
+            ibm_velocity_solver.solve();
         }
 
         ns_solver.phys_boundary_update();
