@@ -5,14 +5,11 @@
 #include "base/field/field3.h"
 #include "base/location_boundary.h"
 #include "base/math/random.h"
-#include "ibm_Uhlmann/ib_scalar_solver_3d_Uhlmann.h"
-#include "ibm_Uhlmann/ib_velocity_solver_3d_Uhlmann.h"
 #include "io/csv_handler.h"
 #include "io/stat.h"
 #include "io/vtk_writer.h"
-#include "ns/ns_solver3d_nonuniform_viscosity.h"
+#include "ns/ns_solver3d.h"
 #include "ns/scalar_solver3d.h"
-#include "particle/particles_coordinate_map_3d.h"
 #include "pe/concat/concat_solver3d.h"
 
 #include <algorithm>
@@ -24,9 +21,8 @@
 #include <sstream>
 #include <string>
 
-// Tata Rao, Lanka & Goel, Sanket & Dubey, Satish & Javed, Arshad. (2019). Performance Investigation of T-Shaped
-// Micromixer with Different Obstacles. Journal of Physics: Conference Series. 1276.
-// 012003. 10.1088/1742-6596/1276/1/012003.
+// Steady and unsteady regimes in a T-shaped micro-mixer: Synergic experimental and numerical investigation, Alessandro
+// Mariotti and Chiara Galletti and Roberto Mauri and Maria Vittoria Salvetti and Elisabetta Brunazzi
 
 /**
  *
@@ -53,19 +49,19 @@ int main(int argc, char* argv[])
 {
     TIMER_BEGIN(Init, "Init", TimeRecordType::None, true);
 
-    if (argc != 3)
+    if (argc != 4)
     {
-        std::cerr << "Error argument! Usage: program Re[double > 0] has_obstacle[0 or 1]" << std::endl;
+        std::cerr << "Error argument! Usage: program Re[double > 0] Sc[double > 0] Wo/H[double > 0]" << std::endl;
         return 0;
     }
 
-    double Height = 0.2e-3;
+    double Height = 1e-3;
 
-    double lx1 = 15 * Height; // in reference paper no say
+    double lx1 = 10 * Height;
     double ly1 = Height;
     double lz1 = Height;
 
-    double lx2 = Height;
+    double lx2 = std::stod(argv[3]) * Height;
     double ly2 = Height;
     double lz2 = Height;
 
@@ -73,8 +69,8 @@ int main(int argc, char* argv[])
     double ly3 = ly1; // symmetry
     double lz3 = lz1; // symmetry
 
-    double lx4 = Height;
-    double ly4 = 30.0 * Height; // in reference paper is 10.4e-3, 52H
+    double lx4 = lx2;
+    double ly4 = 20.0 * Height;
     double lz4 = Height;
 
     double hx = Height / 20.0;
@@ -94,26 +90,49 @@ int main(int argc, char* argv[])
     int ny4 = ly4 / hy;
     int nz4 = lz4 / hz;
 
-    double Re           = std::stod(argv[1]);
-    bool   has_obstacle = std::stoi(argv[2]);
+    double Re = std::stod(argv[1]);
+    double Sc = std::stod(argv[2]);
+    double Pe = Sc * Re;
+    double nr = 1.0 / Pe;
 
-    double dt = hx / 20.0;
+    double dt = hx / 10.0;
 
     double density                           = 1e3;
-    double dynamic_viscosity_1               = 26.46e-3;
-    double dynamic_viscosity_2               = 1e-3;
-    double mixing_channel_hydraulic_diameter = Height;
-    double inlet_velocity                    = Re * dynamic_viscosity_2 / (density * mixing_channel_hydraulic_diameter);
-    double kinematic_viscosity               = dynamic_viscosity_2 / density;
+    double dynamic_viscosity                 = 1.01e-3;
+    double mixing_channel_hydraulic_diameter = 2.0 * lx2 * ly2 / (lx2 + ly2);
+    double inlet_velocity                    = Re * dynamic_viscosity / (density * mixing_channel_hydraulic_diameter);
+    double convective_time                   = mixing_channel_hydraulic_diameter / inlet_velocity;
 
-    double diffusion_coefficient = 3.23e-10;
+    DifferenceSchemeType c_scheme = DifferenceSchemeType::Conv_QUICK_Diff_Center2nd;
 
-    DifferenceSchemeType c_scheme = DifferenceSchemeType::Conv_TVD_VanLeer_Diff_Center2nd;
+    lx1 /= mixing_channel_hydraulic_diameter;
+    ly1 /= mixing_channel_hydraulic_diameter;
+    lz1 /= mixing_channel_hydraulic_diameter;
+
+    lx2 /= mixing_channel_hydraulic_diameter;
+    ly2 /= mixing_channel_hydraulic_diameter;
+    lz2 /= mixing_channel_hydraulic_diameter;
+
+    lx3 /= mixing_channel_hydraulic_diameter;
+    ly3 /= mixing_channel_hydraulic_diameter;
+    lz3 /= mixing_channel_hydraulic_diameter;
+
+    lx4 /= mixing_channel_hydraulic_diameter;
+    ly4 /= mixing_channel_hydraulic_diameter;
+    lz4 /= mixing_channel_hydraulic_diameter;
+
+    hx /= mixing_channel_hydraulic_diameter;
+    hy /= mixing_channel_hydraulic_diameter;
+    hz /= mixing_channel_hydraulic_diameter;
+
+    dt /= convective_time;
 
     std::cout << "mixing_channel_hydraulic_diameter = " << mixing_channel_hydraulic_diameter << std::endl;
     std::cout << "inlet_velocity = " << inlet_velocity << std::endl;
+    std::cout << "convective_time = " << convective_time << std::endl;
 
     std::cout << "convection trem CFL = " << dt / hx << std::endl;
+    std::cout << "Petlet cell = " << hx * Pe << std::endl;
 
     // Geometry: Cross shape
     Geometry3D geo;
@@ -121,21 +140,18 @@ int main(int argc, char* argv[])
     EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
     {
         std::stringstream ss;
-        ss << "./result/T-shaped_mixer_obstacle_Uhlmann_Dirichlet/";
-        ss << "Re=";
+        ss << "./result/T-shaped_mixer/";
+        ss << "Re";
         ss << std::to_string((int)Re);
-        ss << "ob=";
-        ss << std::to_string((int)has_obstacle);
-        ss << "TVD_VanLeer";
         env_cfg.debugOutputDir = ss.str();
     }
 
     TimeAdvancingConfig& time_cfg = TimeAdvancingConfig::Get();
     time_cfg.dt                   = dt;
-    time_cfg.num_iterations       = 4e5;
+    time_cfg.num_iterations       = 2e5;
 
     PhysicsConfig& physics_cfg = PhysicsConfig::Get();
-    physics_cfg.set_nu(kinematic_viscosity);
+    physics_cfg.set_Re(Re);
 
     Domain3DUniform A1(nx1, ny1, nz1, lx1, ly1, lz1, "A1");
     Domain3DUniform A2(nx2, ny2, nz2, lx2, ly2, lz2, "A2");
@@ -246,7 +262,7 @@ int main(int argc, char* argv[])
             {
                 double z = k * hz + 0.5 * hz;
                 z /= lz1;
-                double vel                = 6.0 * inlet_velocity * (1.0 - z) * z;
+                double vel                = 6.0 * (1.0 - z) * z;
                 u_inlet_buffer_xneg(j, k) = vel;
                 u_inlet_buffer_xpos(j, k) = -vel;
             }
@@ -270,77 +286,24 @@ int main(int argc, char* argv[])
     w.set_boundary_type(&A4, LocationType::YNegative, PDEBoundaryType::Neumann);
     c.set_boundary_type(&A4, LocationType::YNegative, PDEBoundaryType::Neumann);
 
-    add_random_number(u_A1, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
-    add_random_number(u_A2, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
-    add_random_number(u_A3, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
-    add_random_number(u_A4, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
+    add_random_number(u_A1, -0.01, 0.01, 42);
+    add_random_number(u_A2, -0.01, 0.01, 42);
+    add_random_number(u_A3, -0.01, 0.01, 42);
+    add_random_number(u_A4, -0.01, 0.01, 42);
 
-    add_random_number(v_A1, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
-    add_random_number(v_A2, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
-    add_random_number(v_A3, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
-    add_random_number(v_A4, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
+    add_random_number(v_A1, -0.01, 0.01, 42);
+    add_random_number(v_A2, -0.01, 0.01, 42);
+    add_random_number(v_A3, -0.01, 0.01, 42);
+    add_random_number(v_A4, -0.01, 0.01, 42);
 
-    add_random_number(w_A1, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
-    add_random_number(w_A2, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
-    add_random_number(w_A3, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
-    add_random_number(w_A4, -0.01 * inlet_velocity, 0.01 * inlet_velocity, 42);
-
-    // IBM setup: sphere at T-junction center
-    // Note: A2 starts at x=20*H/d, y=0, z=0
-    double sphere_radius   = Height / 3.0;                                    // Radius = H/3
-    double sphere_center_x = (A1.get_lx() + A2.get_lx() + A3.get_lx()) / 2.0; // Center of A2 domain
-    double sphere_center_y = 0.0;                                             // T-junction y coordinate (within A2)
-    double sphere_center_z = A1.get_lz() / 2.0;                               // Center in z direction
-
-    std::cout << "IBM sphere (non-dim): center = (" << sphere_center_x << ", " << sphere_center_y << ", "
-              << sphere_center_z << "), radius = " << sphere_radius << std::endl;
-
-    PCoordMap3D coord_map;
-    coord_map.add_sphere(hx, sphere_radius, sphere_center_x, sphere_center_y, sphere_center_z);
-    coord_map.generate_map(&geo);
-
-    auto coord_map_raw = coord_map.get_map();
-
-    // Velocity IBM solver
-    IBVelocitySolver3D_Uhlmann ibm_solver(&u, &v, &w, coord_map_raw);
-    ibm_solver.set_parameters(coord_map.get_h(), hx);
-
-    // Concentration IBM solver
-    IBScalarSolver3D_Uhlmann ibm_solver_c(&c, coord_map_raw);
-    ibm_solver_c.set_parameters(coord_map.get_h(), hx);
-
-    // Initialize IBM particle velocities to zero (solid sphere)
-    for (auto& kv : coord_map_raw)
-    {
-        auto* p_coord = kv.second;
-        auto* ib_data = ibm_solver.get_ib_data(kv.first);
-
-        EXPOSE_PCOORD3D(p_coord)
-        EXPOSE_PIB3D(ib_data)
-
-        for (int i = 0; i < p_coord->cur_n; i++)
-        {
-            Up[i] = 0.0;
-            Vp[i] = 0.0;
-            Wp[i] = 0.0;
-        }
-    }
-
-    // Initialize IBM concentration particles (no source/sink, just interpolation)
-    for (auto& kv : coord_map_raw)
-    {
-        auto* p_coord   = kv.second;
-        auto* ib_data_c = ibm_solver_c.get_ib_data(kv.first);
-        EXPOSE_PIBSCALAR(ib_data_c)
-        for (int i = 0; i < p_coord->cur_n; i++)
-        {
-            Sp[i] = 0.0; // No prescribed concentration value
-        }
-    }
+    add_random_number(w_A1, -0.01, 0.01, 42);
+    add_random_number(w_A2, -0.01, 0.01, 42);
+    add_random_number(w_A3, -0.01, 0.01, 42);
+    add_random_number(w_A4, -0.01, 0.01, 42);
 
     ConcatPoissonSolver3D p_solver(&p);
-    NSSolver3DNonUniVisc  ns_solver(&u, &v, &w, &p, &p_solver, &c, dynamic_viscosity_1, dynamic_viscosity_2);
-    ScalarSolver3D        solver_c(&u, &v, &w, &c, diffusion_coefficient, c_scheme);
+    ConcatNSSolver3D      ns_solver(&u, &v, &w, &p, &p_solver);
+    ScalarSolver3D        solver_c(&u, &v, &w, &c, nr, c_scheme);
 
     VTKWriter vtk_writer;
     vtk_writer.add_vector_as_cell_data(&u, &v, &w, "velocity");
@@ -348,6 +311,17 @@ int main(int argc, char* argv[])
     vtk_writer.validate();
 
     TIMER_END(Init);
+
+    auto calc_MI = [&](int j) {
+        double c_mean = c_A4.mean_at_xz_plane(j);
+        double sigma  = 0.0;
+        OPENMP_PARALLEL_FOR(reduction(+ : sigma))
+        for (int i = 0; i < nx4; i++)
+            for (int k = 0; k < nz4; k++)
+                sigma += (c_A4(i, j, k) - c_mean) * (c_A4(i, j, k) - c_mean);
+        sigma = std::sqrt(sigma / (nx4 * nz4));
+        return 1 - sigma / 0.5;
+    };
 
     for (int iter = 0; iter <= time_cfg.num_iterations; iter++)
     {
@@ -361,38 +335,8 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = true;
         }
 
-        ns_solver.euler_conv_diff_inner();
-        ns_solver.euler_conv_diff_outer();
-
-        if (has_obstacle)
-            ibm_solver.solve();
-
-        ns_solver.phys_boundary_update();
-        ns_solver.nondiag_shared_boundary_update();
-        ns_solver.diag_shared_boundary_update();
-
-        // divu
-        ns_solver.velocity_div_inner();
-        ns_solver.velocity_div_outer();
-
-        // PE
-        ns_solver.normalize_pressure();
-        p_solver.solve();
-
-        // update buffer for p
-        ns_solver.pressure_buffer_update();
-
-        // p grad
-        ns_solver.add_pressure_gradient();
-
-        // Boundary update
-        ns_solver.phys_boundary_update();
-        ns_solver.nondiag_shared_boundary_update();
-        ns_solver.diag_shared_boundary_update();
-
+        ns_solver.solve();
         solver_c.solve();
-        if (has_obstacle)
-            ibm_solver_c.solve();
 
         if (iter % 100 == 0)
         {
@@ -406,16 +350,20 @@ int main(int argc, char* argv[])
             vtk_writer.write(env_cfg.debugOutputDir + "/vtk/" + std::to_string(count++));
         }
 
-        if (iter % 100 == 0)
-        {
-            CSVHandler u_rms_file(env_cfg.debugOutputDir + "/u_rms");
-            u_rms_file.stream << calc_rms(u) << std::endl;
-        }
-
-        if (iter % 100 == 0)
+        if (iter % 20 == 0)
         {
             CSVHandler c_rms_file(env_cfg.debugOutputDir + "/c_rms");
             c_rms_file.stream << calc_rms(c) << std::endl;
+
+            CSVHandler MI_file(env_cfg.debugOutputDir + "/MI");
+            for (int j = ny4 - 1; j > 0; j--)
+            {
+                MI_file.stream << calc_MI(j);
+                if (j != 0)
+                    MI_file.stream << ',';
+                else
+                    MI_file.stream << std::endl;
+            }
         }
 
         if (std::isnan(u_A1(0, 0, 0)))
