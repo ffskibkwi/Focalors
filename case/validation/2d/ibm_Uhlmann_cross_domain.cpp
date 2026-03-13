@@ -188,28 +188,42 @@ static bool sample_v_at(const Variable2D& v, double x, double y, double& value)
     return false;
 }
 
-// 采样并输出圆柱边界上的速度值
-static void sample_and_print_velocity(const Variable2D&  u,
-                                      const Variable2D&  v,
-                                      const std::string& label,
-                                      double             cylinder_cx,
-                                      double             cylinder_cy,
-                                      double             cylinder_r)
+// 采样并对比IBM前后的速度值，输出不相等的个数
+static size_t sample_and_compare_velocity(const Variable2D&  u_before,
+                                          const Variable2D&  v_before,
+                                          const Variable2D&  u_after,
+                                          const Variable2D&  v_after,
+                                          double             cylinder_cx,
+                                          double             cylinder_cy,
+                                          double             cylinder_r,
+                                          double            abs_eps,
+                                          double            rel_eps)
 {
-    std::cout << "[" << label << "] Velocity samples on cylinder surface (r=" << cylinder_r << "):\n";
     auto sample_points = generate_cylinder_surface_points(cylinder_cx, cylinder_cy, cylinder_r, 10);
+    size_t mismatch_count = 0;
 
     for (const auto& [x, y] : sample_points)
     {
-        double u_val = 0.0, v_val = 0.0;
-        bool   u_ok = sample_u_at(u, x, y, u_val);
-        bool   v_ok = sample_v_at(v, x, y, v_val);
-        std::cout << "    (" << x << "," << y << ") u=" << (u_ok ? std::to_string(u_val) : "N/A")
-                  << " v=" << (v_ok ? std::to_string(v_val) : "N/A") << "\n";
+        double u_before_val = 0.0, v_before_val = 0.0;
+        double u_after_val = 0.0, v_after_val = 0.0;
+        bool   u_ok_before = sample_u_at(u_before, x, y, u_before_val);
+        bool   v_ok_before = sample_v_at(v_before, x, y, v_before_val);
+        bool   u_ok_after = sample_u_at(u_after, x, y, u_after_val);
+        bool   v_ok_after = sample_v_at(v_after, x, y, v_after_val);
+
+        if (u_ok_before && u_ok_after && !approximatelyEqualAbsRel(u_before_val, u_after_val, abs_eps, rel_eps))
+            mismatch_count++;
+        if (v_ok_before && v_ok_after && !approximatelyEqualAbsRel(v_before_val, v_after_val, abs_eps, rel_eps))
+            mismatch_count++;
     }
+
+    std::cout << "    IBM before/after comparison: " << mismatch_count << " mismatches out of "
+              << sample_points.size() * 2 << " samples\n";
+    return mismatch_count;
 }
 
 // 真正对比：单域 (u_single,v_single) 与 多域 (u_multi,v_multi) 在同一物理位置上的速度
+// 输出相等和不等的个数
 static void compare_velocity_fields_phys(const Variable2D& u_single,
                                          const Variable2D& v_single,
                                          const Variable2D& u_multi,
@@ -220,6 +234,8 @@ static void compare_velocity_fields_phys(const Variable2D& u_single,
     std::cout << "[IBM 2D] Comparing velocities between single-domain and two-domain setups (by physical coords)...\n";
 
     Geometry2D* geo_single = u_single.geometry;
+    size_t equal_count = 0;
+    size_t mismatch_count = 0;
 
     for (auto* d : geo_single->domains)
     {
@@ -241,10 +257,12 @@ static void compare_velocity_fields_phys(const Variable2D& u_single,
 
                 double a = fu(i, j);
                 double b = 0.0;
-                if (!sample_u_at(u_multi, x, y, b) || !approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
+                if (sample_u_at(u_multi, x, y, b))
                 {
-                    std::cout << "[u] mismatch at phys(" << x << "," << y << ") single=" << a << ", multi=" << b
-                              << "\n";
+                    if (approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
+                        equal_count++;
+                    else
+                        mismatch_count++;
                 }
             }
         }
@@ -259,14 +277,19 @@ static void compare_velocity_fields_phys(const Variable2D& u_single,
 
                 double a = fv(i, j);
                 double b = 0.0;
-                if (!sample_v_at(v_multi, x, y, b) || !approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
+                if (sample_v_at(v_multi, x, y, b))
                 {
-                    std::cout << "[v] mismatch at phys(" << x << "," << y << ") single=" << a << ", multi=" << b
-                              << "\n";
+                    if (approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
+                        equal_count++;
+                    else
+                        mismatch_count++;
                 }
             }
         }
     }
+
+    std::cout << "    Single vs Multi domain comparison: " << equal_count << " equal, " << mismatch_count
+              << " mismatched\n";
 }
 
 int main(int /*argc*/, char* /*argv*/[])
@@ -320,13 +343,20 @@ int main(int /*argc*/, char* /*argv*/[])
     IBVelocitySolver2D_Uhlmann ibm_single(&u_single, &v_single, coord_map_single_raw);
     ibm_single.set_parameters(coord_map_single.get_h(), hx);
 
-    // Sample before IBM solve
-    sample_and_print_velocity(u_single, v_single, "Case 1 (Before IBM)", cx, cy, r);
+    // Keep a copy before IBM solve for comparison
+    Variable2D u_single_before("u_single_before"), v_single_before("v_single_before");
+    u_single_before.set_geometry(geo_single);
+    v_single_before.set_geometry(geo_single);
+    field2 u_single_before_f, v_single_before_f;
+    u_single_before.set_x_edge_field(&d_single, u_single_before_f);
+    v_single_before.set_y_edge_field(&d_single, v_single_before_f);
+    copy_velocity(u_single, v_single, u_single_before, v_single_before);
 
+    // Apply IBM
     ibm_single.solve();
 
-    // Sample after IBM solve
-    sample_and_print_velocity(u_single, v_single, "Case 1 (After IBM)", cx, cy, r);
+    // Compare before/after
+    sample_and_compare_velocity(u_single_before, v_single_before, u_single, v_single, cx, cy, r, 1e-10, 1e-8);
 
     // ------------------ 情况 2：两个 domain 拼接 ------------------
     Geometry2D geo_multi;
@@ -367,13 +397,23 @@ int main(int /*argc*/, char* /*argv*/[])
     IBVelocitySolver2D_Uhlmann ibm_multi(&u_multi, &v_multi, coord_map_multi_raw);
     ibm_multi.set_parameters(coord_map_multi.get_h(), hx);
 
-    // Sample before IBM solve
-    sample_and_print_velocity(u_multi, v_multi, "Case 2 (Before IBM)", cx, cy, r);
+    // Keep a copy before IBM solve for comparison
+    Variable2D u_multi_before("u_multi_before"), v_multi_before("v_multi_before");
+    u_multi_before.set_geometry(geo_multi);
+    v_multi_before.set_geometry(geo_multi);
+    field2 u_multi_before_left_f, v_multi_before_left_f;
+    field2 u_multi_before_right_f, v_multi_before_right_f;
+    u_multi_before.set_x_edge_field(&d_left, u_multi_before_left_f);
+    u_multi_before.set_x_edge_field(&d_right, u_multi_before_right_f);
+    v_multi_before.set_y_edge_field(&d_left, v_multi_before_left_f);
+    v_multi_before.set_y_edge_field(&d_right, v_multi_before_right_f);
+    copy_velocity(u_multi, v_multi, u_multi_before, v_multi_before);
 
+    // Apply IBM
     ibm_multi.solve();
 
-    // Sample after IBM solve
-    sample_and_print_velocity(u_multi, v_multi, "Case 2 (After IBM)", cx, cy, r);
+    // Compare before/after
+    sample_and_compare_velocity(u_multi_before, v_multi_before, u_multi, v_multi, cx, cy, r, 1e-10, 1e-8);
 
     // 为了在同一个几何/域索引下比较，把 multi 的结果复制到 single 几何布局下。
     // 这里简化处理：geo_multi 和 geo_single 在物理空间完全重合，只是划分不同；

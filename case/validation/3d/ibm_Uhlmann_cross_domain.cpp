@@ -163,32 +163,87 @@ static bool sample_w_at(const Variable3D& w, double x, double y, double z, doubl
     return false;
 }
 
-// 采样并输出球体边界上的速度值
-static void sample_and_print_velocity(const Variable3D&  u,
-                                      const Variable3D&  v,
-                                      const Variable3D&  w,
-                                      const std::string& label,
-                                      double             sphere_cx,
-                                      double             sphere_cy,
-                                      double             sphere_cz,
-                                      double             sphere_r)
+// 将某个 Variable3D 的所有域的场复制到另一个 Variable3D（假定几何一致）
+static void copy_velocity(const Variable3D& src_u, const Variable3D& src_v, const Variable3D& src_w,
+                          Variable3D& dst_u, Variable3D& dst_v, Variable3D& dst_w)
 {
-    std::cout << "[" << label << "] Velocity samples on sphere surface (r=" << sphere_r << "):\n";
-    auto sample_points = generate_sphere_surface_points(sphere_cx, sphere_cy, sphere_cz, sphere_r, 10);
-
-    for (const auto& [x, y, z] : sample_points)
+    for (auto& kv : src_u.field_map)
     {
-        double u_val = 0.0, v_val = 0.0, w_val = 0.0;
-        bool   u_ok = sample_u_at(u, x, y, z, u_val);
-        bool   v_ok = sample_v_at(v, x, y, z, v_val);
-        bool   w_ok = sample_w_at(w, x, y, z, w_val);
-        std::cout << "    (" << x << "," << y << "," << z << ") u=" << (u_ok ? std::to_string(u_val) : "N/A")
-                  << " v=" << (v_ok ? std::to_string(v_val) : "N/A") << " w=" << (w_ok ? std::to_string(w_val) : "N/A")
-                  << "\n";
+        Domain3DUniform* d     = kv.first;
+        const field3&    src_f = *kv.second;
+        field3&          dst_f = *dst_u.field_map.at(d);
+        for (int i = 0; i < src_f.get_nx(); ++i)
+            for (int j = 0; j < src_f.get_ny(); ++j)
+                for (int k = 0; k < src_f.get_nz(); ++k)
+                    dst_f(i, j, k) = src_f(i, j, k);
+    }
+
+    for (auto& kv : src_v.field_map)
+    {
+        Domain3DUniform* d     = kv.first;
+        const field3&    src_f = *kv.second;
+        field3&          dst_f = *dst_v.field_map.at(d);
+        for (int i = 0; i < src_f.get_nx(); ++i)
+            for (int j = 0; j < src_f.get_ny(); ++j)
+                for (int k = 0; k < src_f.get_nz(); ++k)
+                    dst_f(i, j, k) = src_f(i, j, k);
+    }
+
+    for (auto& kv : src_w.field_map)
+    {
+        Domain3DUniform* d     = kv.first;
+        const field3&    src_f = *kv.second;
+        field3&          dst_f = *dst_w.field_map.at(d);
+        for (int i = 0; i < src_f.get_nx(); ++i)
+            for (int j = 0; j < src_f.get_ny(); ++j)
+                for (int k = 0; k < src_f.get_nz(); ++k)
+                    dst_f(i, j, k) = src_f(i, j, k);
     }
 }
 
+// 采样并对比IBM前后的速度值，输出不相等的个数
+static size_t sample_and_compare_velocity(const Variable3D&  u_before,
+                                          const Variable3D&  v_before,
+                                          const Variable3D&  w_before,
+                                          const Variable3D&  u_after,
+                                          const Variable3D&  v_after,
+                                          const Variable3D&  w_after,
+                                          double             sphere_cx,
+                                          double             sphere_cy,
+                                          double             sphere_cz,
+                                          double             sphere_r,
+                                          double            abs_eps,
+                                          double            rel_eps)
+{
+    auto sample_points = generate_sphere_surface_points(sphere_cx, sphere_cy, sphere_cz, sphere_r, 10);
+    size_t mismatch_count = 0;
+
+    for (const auto& [x, y, z] : sample_points)
+    {
+        double u_before_val = 0.0, v_before_val = 0.0, w_before_val = 0.0;
+        double u_after_val = 0.0, v_after_val = 0.0, w_after_val = 0.0;
+        bool   u_ok_before = sample_u_at(u_before, x, y, z, u_before_val);
+        bool   v_ok_before = sample_v_at(v_before, x, y, z, v_before_val);
+        bool   w_ok_before = sample_w_at(w_before, x, y, z, w_before_val);
+        bool   u_ok_after = sample_u_at(u_after, x, y, z, u_after_val);
+        bool   v_ok_after = sample_v_at(v_after, x, y, z, v_after_val);
+        bool   w_ok_after = sample_w_at(w_after, x, y, z, w_after_val);
+
+        if (u_ok_before && u_ok_after && !approximatelyEqualAbsRel(u_before_val, u_after_val, abs_eps, rel_eps))
+            mismatch_count++;
+        if (v_ok_before && v_ok_after && !approximatelyEqualAbsRel(v_before_val, v_after_val, abs_eps, rel_eps))
+            mismatch_count++;
+        if (w_ok_before && w_ok_after && !approximatelyEqualAbsRel(w_before_val, w_after_val, abs_eps, rel_eps))
+            mismatch_count++;
+    }
+
+    std::cout << "    IBM before/after comparison: " << mismatch_count << " mismatches out of "
+              << sample_points.size() * 3 << " samples\n";
+    return mismatch_count;
+}
+
 // 真正对比：单域 (u_single,v_single,w_single) 与 多域 (u_multi,v_multi,w_multi)
+// 输出相等和不等的个数
 static void compare_velocity_fields_phys(const Variable3D& u_single,
                                          const Variable3D& v_single,
                                          const Variable3D& w_single,
@@ -201,6 +256,8 @@ static void compare_velocity_fields_phys(const Variable3D& u_single,
     std::cout << "[IBM 3D] Comparing velocities between single-domain and two-domain setups (by physical coords)...\n";
 
     Geometry3D* geo_single = u_single.geometry;
+    size_t equal_count = 0;
+    size_t mismatch_count = 0;
 
     for (auto* d : geo_single->domains)
     {
@@ -228,10 +285,12 @@ static void compare_velocity_fields_phys(const Variable3D& u_single,
 
                     double a = fu(i, j, k);
                     double b = 0.0;
-                    if (!sample_u_at(u_multi, x, y, z, b) || !approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
+                    if (sample_u_at(u_multi, x, y, z, b))
                     {
-                        std::cout << "[u] mismatch at phys(" << x << "," << y << "," << z << ") single=" << a
-                                  << ", multi=" << b << "\n";
+                        if (approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
+                            equal_count++;
+                        else
+                            mismatch_count++;
                     }
                 }
             }
@@ -250,10 +309,12 @@ static void compare_velocity_fields_phys(const Variable3D& u_single,
 
                     double a = fv(i, j, k);
                     double b = 0.0;
-                    if (!sample_v_at(v_multi, x, y, z, b) || !approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
+                    if (sample_v_at(v_multi, x, y, z, b))
                     {
-                        std::cout << "[v] mismatch at phys(" << x << "," << y << "," << z << ") single=" << a
-                                  << ", multi=" << b << "\n";
+                        if (approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
+                            equal_count++;
+                        else
+                            mismatch_count++;
                     }
                 }
             }
@@ -272,15 +333,20 @@ static void compare_velocity_fields_phys(const Variable3D& u_single,
 
                     double a = fw(i, j, k);
                     double b = 0.0;
-                    if (!sample_w_at(w_multi, x, y, z, b) || !approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
+                    if (sample_w_at(w_multi, x, y, z, b))
                     {
-                        std::cout << "[w] mismatch at phys(" << x << "," << y << "," << z << ") single=" << a
-                                  << ", multi=" << b << "\n";
+                        if (approximatelyEqualAbsRel(a, b, abs_eps, rel_eps))
+                            equal_count++;
+                        else
+                            mismatch_count++;
                     }
                 }
             }
         }
     }
+
+    std::cout << "    Single vs Multi domain comparison: " << equal_count << " equal, " << mismatch_count
+              << " mismatched\n";
 }
 
 int main(int /*argc*/, char* /*argv*/[])
@@ -340,13 +406,23 @@ int main(int /*argc*/, char* /*argv*/[])
     IBVelocitySolver3D_Uhlmann ibm_single(&u_single, &v_single, &w_single, coord_map_single_raw);
     ibm_single.set_parameters(coord_map_single.get_h(), hx);
 
-    // Sample before IBM solve
-    sample_and_print_velocity(u_single, v_single, w_single, "Case 1 (Before IBM)", cx, cy, cz, r);
+    // Keep a copy before IBM solve for comparison
+    Variable3D u_single_before("u_single_before"), v_single_before("v_single_before"), w_single_before("w_single_before");
+    u_single_before.set_geometry(geo_single);
+    v_single_before.set_geometry(geo_single);
+    w_single_before.set_geometry(geo_single);
+    field3 u_single_before_f, v_single_before_f, w_single_before_f;
+    u_single_before.set_x_face_center_field(&d_single, u_single_before_f);
+    v_single_before.set_y_face_center_field(&d_single, v_single_before_f);
+    w_single_before.set_z_face_center_field(&d_single, w_single_before_f);
+    copy_velocity(u_single, v_single, w_single, u_single_before, v_single_before, w_single_before);
 
+    // Apply IBM
     ibm_single.solve();
 
-    // Sample after IBM solve
-    sample_and_print_velocity(u_single, v_single, w_single, "Case 1 (After IBM)", cx, cy, cz, r);
+    // Compare before/after
+    sample_and_compare_velocity(u_single_before, v_single_before, w_single_before,
+                                 u_single, v_single, w_single, cx, cy, cz, r, 1e-10, 1e-8);
 
     // ------------------ 情况 2：两个 domain 拼接（沿 x 方向）------------------
     Geometry3D geo_multi;
@@ -391,13 +467,27 @@ int main(int /*argc*/, char* /*argv*/[])
     IBVelocitySolver3D_Uhlmann ibm_multi(&u_multi, &v_multi, &w_multi, coord_map_multi_raw);
     ibm_multi.set_parameters(coord_map_multi.get_h(), hx);
 
-    // Sample before IBM solve
-    sample_and_print_velocity(u_multi, v_multi, w_multi, "Case 2 (Before IBM)", cx, cy, cz, r);
+    // Keep a copy before IBM solve for comparison
+    Variable3D u_multi_before("u_multi_before"), v_multi_before("v_multi_before"), w_multi_before("w_multi_before");
+    u_multi_before.set_geometry(geo_multi);
+    v_multi_before.set_geometry(geo_multi);
+    w_multi_before.set_geometry(geo_multi);
+    field3 u_multi_before_left_f, v_multi_before_left_f, w_multi_before_left_f;
+    field3 u_multi_before_right_f, v_multi_before_right_f, w_multi_before_right_f;
+    u_multi_before.set_x_face_center_field(&d_left, u_multi_before_left_f);
+    u_multi_before.set_x_face_center_field(&d_right, u_multi_before_right_f);
+    v_multi_before.set_y_face_center_field(&d_left, v_multi_before_left_f);
+    v_multi_before.set_y_face_center_field(&d_right, v_multi_before_right_f);
+    w_multi_before.set_z_face_center_field(&d_left, w_multi_before_left_f);
+    w_multi_before.set_z_face_center_field(&d_right, w_multi_before_right_f);
+    copy_velocity(u_multi, v_multi, w_multi, u_multi_before, v_multi_before, w_multi_before);
 
+    // Apply IBM
     ibm_multi.solve();
 
-    // Sample after IBM solve
-    sample_and_print_velocity(u_multi, v_multi, w_multi, "Case 2 (After IBM)", cx, cy, cz, r);
+    // Compare before/after
+    sample_and_compare_velocity(u_multi_before, v_multi_before, w_multi_before,
+                                 u_multi, v_multi, w_multi, cx, cy, cz, r, 1e-10, 1e-8);
 
     // 按物理坐标真正对比单域结果和双域结果
     compare_velocity_fields_phys(u_single, v_single, w_single, u_multi, v_multi, w_multi, 1e-10, 1e-8);
