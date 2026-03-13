@@ -5,6 +5,7 @@
 #include "base/field/field3.h"
 #include "base/location_boundary.h"
 #include "ibm_Uhlmann/ib_velocity_solver_3d_Uhlmann.h"
+#include "io/vtk_writer.h"
 #include "particle/particles_coordinate_map_3d.h"
 #include "poisson_base/base/math/compare.h"
 
@@ -491,6 +492,23 @@ int main(int /*argc*/, char* /*argv*/[])
 
     // 按物理坐标真正对比单域结果和双域结果
     compare_velocity_fields_phys(u_single, v_single, w_single, u_multi, v_multi, w_multi, 1e-10, 1e-8);
+
+    // ------------------ VTK 输出 ------------------
+    std::cout << "\n--- Writing VTK output ---\n";
+
+    // Case 1: Single domain
+    VTKWriter vtk_single;
+    vtk_single.add_vector_as_cell_data(&u_single, &v_single, &w_single, "velocity");
+    vtk_single.validate();
+    vtk_single.write("vtk/ibm_Uhlmann_3d_single_domain");
+
+    // Case 2: Multi domain
+    VTKWriter vtk_multi;
+    vtk_multi.add_vector_as_cell_data(&u_multi, &v_multi, &w_multi, "velocity");
+    vtk_multi.validate();
+    vtk_multi.write("vtk/ibm_Uhlmann_3d_multi_domain");
+
+    std::cout << "VTK files written to vtk/ibm_Uhlmann_3d_single_domain.vtu and vtk/ibm_Uhlmann_3d_multi_domain.vtu\n";
 
     std::cout << "[IBM 3D] Validation finished.\n";
 
