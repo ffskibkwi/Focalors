@@ -144,7 +144,7 @@ public:
     // Physics parameters
     double feature_fluid_velocity = 1.0;
     double fluid_density          = 1.0;
-    double Reynolds_number        = 100.0;
+    double Reynolds_number        = 150.0;
     double dynamic_viscosity      = 1.0;
     double kinematic_viscosity    = 1.0;
 
