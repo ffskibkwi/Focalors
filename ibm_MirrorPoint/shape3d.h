@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <utility>
 
 /**
@@ -40,9 +41,9 @@ public:
 
     std::tuple<double, double, double> get_closest_point(double x, double y, double z) const override
     {
-        double dx = x - cx;
-        double dy = y - cy;
-        double dz = z - cz;
+        double dx   = x - cx;
+        double dy   = y - cy;
+        double dz   = z - cz;
         double dist = std::sqrt(dx * dx + dy * dy + dz * dz);
 
         if (dist < 1e-14)

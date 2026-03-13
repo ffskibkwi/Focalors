@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <utility>
 
 /**
@@ -39,8 +40,8 @@ public:
 
     std::pair<double, double> get_closest_point(double x, double y) const override
     {
-        double dx = x - cx;
-        double dy = y - cy;
+        double dx   = x - cx;
+        double dy   = y - cy;
         double dist = std::sqrt(dx * dx + dy * dy);
 
         if (dist < 1e-14)

@@ -32,6 +32,7 @@ file(GLOB_RECURSE SOLVER_HEADER_FILES
     "${CMAKE_SOURCE_DIR}/poisson_base/instrumentor/*.h" "${CMAKE_SOURCE_DIR}/poisson_base/instrumentor/*.hpp"
     "${CMAKE_SOURCE_DIR}/ns/*.h"   "${CMAKE_SOURCE_DIR}/ns/*.hpp"
     "${CMAKE_SOURCE_DIR}/ibm_Uhlmann/*.h"   "${CMAKE_SOURCE_DIR}/ibm_Uhlmann/*.hpp"
+    "${CMAKE_SOURCE_DIR}/ibm_MirrorPoint/*.h"   "${CMAKE_SOURCE_DIR}/ibm_MirrorPoint/*.hpp"
     "${CMAKE_SOURCE_DIR}/particle/*.h"   "${CMAKE_SOURCE_DIR}/particle/*.hpp"
     "${CMAKE_SOURCE_DIR}/io/*.h"   "${CMAKE_SOURCE_DIR}/io/*.hpp"
 )
@@ -41,6 +42,7 @@ file(GLOB_RECURSE SOLVER_SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/poisson_base/instrumentor/*.cpp"
     "${CMAKE_SOURCE_DIR}/ns/*.cpp"
     "${CMAKE_SOURCE_DIR}/ibm_Uhlmann/*.cpp"
+    "${CMAKE_SOURCE_DIR}/ibm_MirrorPoint/*.cpp"
     "${CMAKE_SOURCE_DIR}/particle/*.cpp"
     "${CMAKE_SOURCE_DIR}/io/*.cpp"
 )
