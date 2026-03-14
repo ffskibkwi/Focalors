@@ -25,9 +25,9 @@
 class IBScalarSolver2D_Uhlmann
 {
 public:
-    IBScalarSolver2D_Uhlmann(Variable2D*                                      _scalar_var,
-                               std::unordered_map<Domain2DUniform*, PCoord2D*>&   _coord_map,
-                               std::unordered_map<Domain2DUniform*, PIBNormal*>& _normal_map);
+    IBScalarSolver2D_Uhlmann(Variable2D*                                       _scalar_var,
+                             std::unordered_map<Domain2DUniform*, PCoord2D*>&  _coord_map,
+                             std::unordered_map<Domain2DUniform*, PIBNormal*>& _normal_map);
 
     void solve();
 
@@ -55,7 +55,7 @@ public:
     std::unordered_map<Domain2DUniform*, PIBScalar*>& get_ib_map() { return ib_map; }
 
     // Access normal data for a domain
-    PIBNormal*                           get_normal_data(Domain2DUniform* domain) { return normal_map[domain]; }
+    PIBNormal* get_normal_data(Domain2DUniform* domain) { return normal_map[domain]; }
     std::unordered_map<Domain2DUniform*, PIBNormal*>& get_normal_map() { return normal_map; }
 
 private:

@@ -2,8 +2,8 @@
 
 #include <cmath>
 
-IBScalarSolver2D_Uhlmann::IBScalarSolver2D_Uhlmann(Variable2D*                                      _scalar_var,
-                                                   std::unordered_map<Domain2DUniform*, PCoord2D*>&   _coord_map,
+IBScalarSolver2D_Uhlmann::IBScalarSolver2D_Uhlmann(Variable2D*                                       _scalar_var,
+                                                   std::unordered_map<Domain2DUniform*, PCoord2D*>&  _coord_map,
                                                    std::unordered_map<Domain2DUniform*, PIBNormal*>& _normal_map)
     : scalar_var(_scalar_var)
     , coord_map(_coord_map)
@@ -126,8 +126,8 @@ void IBScalarSolver2D_Uhlmann::calc_ib_scalar()
     for (auto* domain : scalar_var->geometry->domains)
     {
         auto* particles = coord_map[domain];
-        auto* ib_data  = ib_map[domain];
-        auto* normal   = normal_map[domain];
+        auto* ib_data   = ib_map[domain];
+        auto* normal    = normal_map[domain];
 
         EXPOSE_PCOORD2D(particles)
         EXPOSE_PIBSCALAR(ib_data)

@@ -2,8 +2,8 @@
 
 #include <cmath>
 
-IBScalarSolver3D_Uhlmann::IBScalarSolver3D_Uhlmann(Variable3D*                                      _scalar_var,
-                                                   std::unordered_map<Domain3DUniform*, PCoord3D*>& _coord_map,
+IBScalarSolver3D_Uhlmann::IBScalarSolver3D_Uhlmann(Variable3D*                                       _scalar_var,
+                                                   std::unordered_map<Domain3DUniform*, PCoord3D*>&  _coord_map,
                                                    std::unordered_map<Domain3DUniform*, PIBNormal*>& _normal_map)
     : scalar_var(_scalar_var)
     , coord_map(_coord_map)
@@ -152,8 +152,8 @@ void IBScalarSolver3D_Uhlmann::calc_ib_scalar()
     for (auto* domain : scalar_var->geometry->domains)
     {
         auto* particles = coord_map[domain];
-        auto* ib_data  = ib_map[domain];
-        auto* normal   = normal_map[domain];
+        auto* ib_data   = ib_map[domain];
+        auto* normal    = normal_map[domain];
 
         EXPOSE_PCOORD3D(particles)
         EXPOSE_PIBSCALAR(ib_data)
@@ -271,9 +271,8 @@ void IBScalarSolver3D_Uhlmann::calc_ib_scalar()
                             double zi         = iiz * grid_h;
                             double scalar_val = get_scalar_value(domain, iix, iiy, iiz);
 
-                            phi_ghost += scalar_val *
-                                         ib_delta(ghost_x - xi, ghost_y - yi, ghost_z - zi, grid_h) * grid_h * grid_h *
-                                         grid_h;
+                            phi_ghost += scalar_val * ib_delta(ghost_x - xi, ghost_y - yi, ghost_z - zi, grid_h) *
+                                         grid_h * grid_h * grid_h;
                         }
                     }
                 }
