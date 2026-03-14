@@ -1,6 +1,7 @@
 #pragma once
 
 #include "base/domain/variable3d.h"
+#include "base/location_boundary.h"
 #include "ib_kernel.hpp"
 #include "particle/particles_coordinate_3d.h"
 #include "particles_ib_scalar.h"
@@ -19,16 +20,26 @@
  * This solver handles scalar quantities that are cell-centered (e.g., concentration).
  * The IB point is at the grid cell center, and the scalar index matches the grid index.
  * Support domain: [-2, +2] in x, y, and z directions (5 points in each direction).
+ *
+ * For Neumann boundary, requires PIBNormal data containing normal vectors.
  */
 class IBScalarSolver3D_Uhlmann
 {
 public:
-    IBScalarSolver3D_Uhlmann(Variable3D* _scalar_var, std::unordered_map<Domain3DUniform*, PCoord3D*>& _coord_map);
+    IBScalarSolver3D_Uhlmann(Variable3D*                                      _scalar_var,
+                              std::unordered_map<Domain3DUniform*, PCoord3D*>& _coord_map,
+                              std::unordered_map<Domain3DUniform*, PIBNormal*>& _normal_map);
 
     void solve();
 
     void calc_ib_scalar();
     void apply_ib_scalar();
+
+    // Set PDE type (Dirichlet or Neumann) using existing PDEBoundaryType
+    void set_pde_type(PDEBoundaryType type) { pde_type = type; }
+
+    // For Neumann boundary: set boundary condition value (dphi/dn = BC)
+    void set_neumann_bc(double bc_value) { neumann_bc = bc_value; }
 
     // Helper function to get scalar value from current or neighbor domain
     double& get_scalar_value(Domain3DUniform* domain, int iix, int iiy, int iiz);
@@ -44,14 +55,25 @@ public:
     PIBScalar*                                        get_ib_data(Domain3DUniform* domain) { return ib_map[domain]; }
     std::unordered_map<Domain3DUniform*, PIBScalar*>& get_ib_map() { return ib_map; }
 
+    // Access normal data for a domain
+    PIBNormal*                           get_normal_data(Domain3DUniform* domain) { return normal_map[domain]; }
+    std::unordered_map<Domain3DUniform*, PIBNormal*>& get_normal_map() { return normal_map; }
+
 private:
     Variable3D* scalar_var;
 
     std::unordered_map<Domain3DUniform*, PCoord3D*>  coord_map;
     std::unordered_map<Domain3DUniform*, PIBScalar*> ib_map;
+    std::unordered_map<Domain3DUniform*, PIBNormal*> normal_map;
 
     double ib_h;
     double grid_h;
+
+    // PDE type for boundary condition
+    PDEBoundaryType pde_type = PDEBoundaryType::Dirichlet;
+
+    // Neumann boundary condition value
+    double neumann_bc = 0.0;
 
     // Context helper to access field and buffer for a given domain
     struct DomainContext

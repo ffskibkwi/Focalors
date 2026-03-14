@@ -3,9 +3,11 @@
 #include <cmath>
 
 IBScalarSolver2D_Uhlmann::IBScalarSolver2D_Uhlmann(Variable2D*                                      _scalar_var,
-                                                   std::unordered_map<Domain2DUniform*, PCoord2D*>& _coord_map)
+                                                   std::unordered_map<Domain2DUniform*, PCoord2D*>&   _coord_map,
+                                                   std::unordered_map<Domain2DUniform*, PIBNormal*>& _normal_map)
     : scalar_var(_scalar_var)
     , coord_map(_coord_map)
+    , normal_map(_normal_map)
 {
     for (auto* domain : scalar_var->geometry->domains)
     {
@@ -124,39 +126,111 @@ void IBScalarSolver2D_Uhlmann::calc_ib_scalar()
     for (auto* domain : scalar_var->geometry->domains)
     {
         auto* particles = coord_map[domain];
-        auto* ib_data   = ib_map[domain];
+        auto* ib_data  = ib_map[domain];
+        auto* normal   = normal_map[domain];
 
         EXPOSE_PCOORD2D(particles)
         EXPOSE_PIBSCALAR(ib_data)
+        EXPOSE_PIBNORMAL(normal)
 
-        OPENMP_PARALLEL_FOR()
-        for (int i = 0; i < particles->cur_n; i++)
+        if (pde_type == PDEBoundaryType::Dirichlet)
         {
-            // X[i], Y[i] are global coordinates
-            // ix, iy are global grid indices
-            int ix = static_cast<int>(std::floor(X[i] / grid_h));
-            int iy = static_cast<int>(std::floor(Y[i] / grid_h));
-
-            // For scalar: support domain is 5 points in both x and y
-            // range: [i-2, i+2] in each direction
-            int min_iix = ix - 2;
-            int max_iix = ix + 2;
-            int min_iiy = iy - 2;
-            int max_iiy = iy + 2;
-
-            Sf[i] = 0.0;
-            for (int iix = min_iix; iix <= max_iix; iix++)
+            // Dirichlet: F = Sp - Sf (force to enforce scalar value at IB point)
+            OPENMP_PARALLEL_FOR()
+            for (int i = 0; i < particles->cur_n; i++)
             {
-                for (int iiy = min_iiy; iiy <= max_iiy; iiy++)
-                {
-                    double xi         = iix * grid_h;
-                    double yi         = iiy * grid_h;
-                    double scalar_val = get_scalar_value(domain, iix, iiy);
+                // X[i], Y[i] are global coordinates
+                // ix, iy are global grid indices
+                int ix = static_cast<int>(std::floor(X[i] / grid_h));
+                int iy = static_cast<int>(std::floor(Y[i] / grid_h));
 
-                    Sf[i] += scalar_val * ib_delta(X[i] - xi, Y[i] - yi, grid_h) * grid_h * grid_h;
+                // For scalar: support domain is 5 points in both x and y
+                // range: [i-2, i+2] in each direction
+                int min_iix = ix - 2;
+                int max_iix = ix + 2;
+                int min_iiy = iy - 2;
+                int max_iiy = iy + 2;
+
+                Sf[i] = 0.0;
+                for (int iix = min_iix; iix <= max_iix; iix++)
+                {
+                    for (int iiy = min_iiy; iiy <= max_iiy; iiy++)
+                    {
+                        double xi         = iix * grid_h;
+                        double yi         = iiy * grid_h;
+                        double scalar_val = get_scalar_value(domain, iix, iiy);
+
+                        Sf[i] += scalar_val * ib_delta(X[i] - xi, Y[i] - yi, grid_h) * grid_h * grid_h;
+                    }
                 }
+                Fs[i] = Sp[i] - Sf[i];
             }
-            Fs[i] = Sp[i] - Sf[i];
+        }
+        else if (pde_type == PDEBoundaryType::Neumann)
+        {
+            // Neumann: F = phi_ghost - grid_h * BC - Sf
+            // where phi_ghost is interpolated at ghost point (X + Nx*dx, Y + Ny*dx)
+            OPENMP_PARALLEL_FOR()
+            for (int i = 0; i < particles->cur_n; i++)
+            {
+                // X[i], Y[i] are global coordinates
+                // ix, iy are global grid indices
+                int ix = static_cast<int>(std::floor(X[i] / grid_h));
+                int iy = static_cast<int>(std::floor(Y[i] / grid_h));
+
+                // For scalar: support domain is 5 points in both x and y
+                int min_iix = ix - 2;
+                int max_iix = ix + 2;
+                int min_iiy = iy - 2;
+                int max_iiy = iy + 2;
+
+                // Interpolate fluid scalar at IB point
+                Sf[i] = 0.0;
+                for (int iix = min_iix; iix <= max_iix; iix++)
+                {
+                    for (int iiy = min_iiy; iiy <= max_iiy; iiy++)
+                    {
+                        double xi         = iix * grid_h;
+                        double yi         = iiy * grid_h;
+                        double scalar_val = get_scalar_value(domain, iix, iiy);
+
+                        Sf[i] += scalar_val * ib_delta(X[i] - xi, Y[i] - yi, grid_h) * grid_h * grid_h;
+                    }
+                }
+
+                // Calculate ghost point position: X_ghost = X + Nx * dx
+                double ghost_x = X[i] + Nx[i] * grid_h;
+                double ghost_y = Y[i] + Ny[i] * grid_h;
+
+                // Get ghost point global grid indices
+                int ghost_ix = static_cast<int>(std::floor(ghost_x / grid_h));
+                int ghost_iy = static_cast<int>(std::floor(ghost_y / grid_h));
+
+                // Ghost point support domain
+                int ghost_min_iix = ghost_ix - 2;
+                int ghost_max_iix = ghost_ix + 2;
+                int ghost_min_iiy = ghost_iy - 2;
+                int ghost_max_iiy = ghost_iy + 2;
+
+                // Interpolate fluid scalar at ghost point
+                double phi_ghost = 0.0;
+                for (int iix = ghost_min_iix; iix <= ghost_max_iix; iix++)
+                {
+                    for (int iiy = ghost_min_iiy; iiy <= ghost_max_iiy; iiy++)
+                    {
+                        double xi         = iix * grid_h;
+                        double yi         = iiy * grid_h;
+                        double scalar_val = get_scalar_value(domain, iix, iiy);
+
+                        phi_ghost += scalar_val * ib_delta(ghost_x - xi, ghost_y - yi, grid_h) * grid_h * grid_h;
+                    }
+                }
+
+                // Neumann BC: (phi_ghost - phi_ideal) / grid_h = BC
+                // phi_ideal = phi_ghost - grid_h * BC
+                // Force: F = phi_ideal - phi_ib = phi_ghost - grid_h * BC - Sf
+                Fs[i] = phi_ghost - grid_h * neumann_bc - Sf[i];
+            }
         }
     }
 }
