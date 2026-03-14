@@ -231,9 +231,9 @@ public:
 
     // Geometry parameters
     double Height       = 1e-3;
-    double lx1_ratio    = 10.0;
+    double lx1_ratio    = 1.0;
     double lx2_ratio    = 1.0;
-    double ly4_ratio    = 20.0;
+    double ly4_ratio    = 1.0;
     int    mesh_density = 20;
 
     // Derived geometry
