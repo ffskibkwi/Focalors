@@ -155,6 +155,15 @@ void IBScalarSolver3D_Uhlmann::calc_ib_scalar()
         auto* ib_data   = ib_map[domain];
         auto* normal    = normal_map[domain];
 
+        // Debug output
+        std::cout << "  domain=" << domain->name << ", particles=" << (particles ? "valid" : "nullptr")
+                  << ", cur_n=" << (particles ? particles->cur_n : 0) << ", max_n=" << (particles ? particles->max_n : 0)
+                  << std::endl;
+
+        // Skip domains without particles
+        if (!particles || particles->cur_n == 0)
+            continue;
+
         EXPOSE_PCOORD3D(particles)
         EXPOSE_PIBSCALAR(ib_data)
         EXPOSE_PIBNORMAL(normal)
@@ -294,13 +303,12 @@ void IBScalarSolver3D_Uhlmann::apply_ib_scalar()
         auto* particles = coord_map[domain];
         auto* ib_data   = ib_map[domain];
 
+        // Skip domains without particles
+        if (!particles || particles->cur_n == 0)
+            continue;
+
         EXPOSE_PCOORD3D(particles)
         EXPOSE_PIBSCALAR(ib_data)
-
-        if (particles->cur_n == 0)
-        {
-            continue;
-        }
 
         OPENMP_PARALLEL_FOR()
         for (int ib = 0; ib < particles->cur_n; ib++)
