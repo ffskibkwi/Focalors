@@ -298,6 +298,10 @@ void IBScalarSolver3D_Uhlmann::apply_ib_scalar()
         auto* particles = coord_map[domain];
         auto* ib_data   = ib_map[domain];
 
+        // Debug output
+        std::cout << "  domain=" << domain->name << ", particles=" << (particles ? "valid" : "nullptr")
+                  << ", cur_n=" << (particles ? particles->cur_n : 0)
+                  << ", max_n=" << (particles ? particles->max_n : 0) << std::endl;
         // Skip domains without particles
         if (!particles || particles->cur_n == 0)
             continue;
