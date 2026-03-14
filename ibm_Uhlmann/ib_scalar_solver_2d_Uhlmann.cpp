@@ -172,37 +172,35 @@ void IBScalarSolver2D_Uhlmann::apply_ib_scalar()
         EXPOSE_PCOORD2D(particles)
         EXPOSE_PIBSCALAR(ib_data)
 
-        auto& scalar_recv = *scalar_var->field_map[domain];
-
         if (particles->cur_n == 0)
         {
             continue;
         }
 
-        // Use PCoord cached global bounding box (support domain is ±2)
-        double min_X = particles->min_X;
-        double max_X = particles->max_X;
-        double min_Y = particles->min_Y;
-        double max_Y = particles->max_Y;
-
-        int min_ix = static_cast<int>(std::floor(min_X / grid_h)) - 2;
-        int max_ix = static_cast<int>(std::floor(max_X / grid_h)) + 2;
-        int min_iy = static_cast<int>(std::floor(min_Y / grid_h)) - 2;
-        int max_iy = static_cast<int>(std::floor(max_Y / grid_h)) + 2;
-
-        // scalar (cell-centered)
         OPENMP_PARALLEL_FOR()
-        for (int i = min_ix; i <= max_ix; i++)
+        for (int ib = 0; ib < particles->cur_n; ib++)
         {
-            for (int j = min_iy; j <= max_iy; j++)
-            {
-                double xx = i * grid_h;
-                double yy = j * grid_h;
+            // Get particle global grid indices
+            int ix = static_cast<int>(std::floor(X[ib] / grid_h));
+            int iy = static_cast<int>(std::floor(Y[ib] / grid_h));
 
-                for (int ib = 0; ib < particles->cur_n; ib++)
+            // Scalar support domain: ix in [ix-2, ix+2], iy in [iy-2, iy+2]
+            int min_iix = ix - 2;
+            int max_iix = ix + 2;
+            int min_iiy = iy - 2;
+            int max_iiy = iy + 2;
+
+            for (int iix = min_iix; iix <= max_iix; iix++)
+            {
+                for (int iiy = min_iiy; iiy <= max_iiy; iiy++)
                 {
-                    double ib_force = Fs[ib] * ib_delta(xx - X[ib], yy - Y[ib], grid_h) * ib_h * grid_h * grid_h;
-                    get_scalar_value(domain, i, j) += ib_force;
+                    double xx = iix * grid_h;
+                    double yy = iiy * grid_h;
+
+                    double delta    = ib_delta(xx - X[ib], yy - Y[ib], grid_h);
+                    double ib_force = Fs[ib] * delta * ib_h * grid_h * grid_h;
+
+                    get_scalar_value(domain, iix, iiy) += ib_force;
                 }
             }
         }

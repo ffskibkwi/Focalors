@@ -289,60 +289,55 @@ void IBVelocitySolver2D_Uhlmann::apply_ib_force()
         EXPOSE_PCOORD2D(particles)
         EXPOSE_PIB2D(ib_data)
 
-        auto& u_recv = *u_var->field_map[domain];
-        auto& v_recv = *v_var->field_map[domain];
-
         if (particles->cur_n == 0)
         {
             continue;
         }
 
-        // 使用 PCoord 中缓存的全局 bounding box（2h 支持域索引允许跨越 domain，不 clamp）
-        double min_X = particles->min_X;
-        double max_X = particles->max_X;
-        double min_Y = particles->min_Y;
-        double max_Y = particles->max_Y;
-
-        int min_ix_u = static_cast<int>(std::floor(min_X / grid_h)) - 1;
-        int max_ix_u = static_cast<int>(std::floor(max_X / grid_h)) + 2;
-        int min_iy_u = static_cast<int>(std::floor(min_Y / grid_h)) - 2;
-        int max_iy_u = static_cast<int>(std::floor(max_Y / grid_h)) + 2;
-
-        int min_ix_v = static_cast<int>(std::floor(min_X / grid_h)) - 2;
-        int max_ix_v = static_cast<int>(std::floor(max_X / grid_h)) + 2;
-        int min_iy_v = static_cast<int>(std::floor(min_Y / grid_h)) - 1;
-        int max_iy_v = static_cast<int>(std::floor(max_Y / grid_h)) + 2;
-
-        // u
         OPENMP_PARALLEL_FOR()
-        for (int i = min_ix_u; i <= max_ix_u; i++)
+        for (int ib = 0; ib < particles->cur_n; ib++)
         {
-            for (int j = min_iy_u; j <= max_iy_u; j++)
-            {
-                double xx = i * grid_h;
-                double yy = j * grid_h + 0.5 * grid_h;
+            // Get particle global grid indices
+            int ix = static_cast<int>(std::floor(X[ib] / grid_h));
+            int iy = static_cast<int>(std::floor(Y[ib] / grid_h));
 
-                for (int ib = 0; ib < particles->cur_n; ib++)
+            // U support domain: ix in [ix-1, ix+2], iy in [iy-2, iy+2]
+            int min_iix_u = ix - 1;
+            int max_iix_u = ix + 2;
+            int min_iiy_u = iy - 2;
+            int max_iiy_u = iy + 2;
+
+            for (int iix = min_iix_u; iix <= max_iix_u; iix++)
+            {
+                for (int iiy = min_iiy_u; iiy <= max_iiy_u; iiy++)
                 {
-                    double ib_force = Fx[ib] * ib_delta(xx - X[ib], yy - Y[ib], grid_h) * ib_h * grid_h;
-                    get_u_value(domain, i, j) += ib_force;
+                    double xx = iix * grid_h;
+                    double yy = iiy * grid_h + 0.5 * grid_h;
+
+                    double delta    = ib_delta(xx - X[ib], yy - Y[ib], grid_h);
+                    double ib_force = Fx[ib] * delta * ib_h * grid_h;
+
+                    get_u_value(domain, iix, iiy) += ib_force;
                 }
             }
-        }
 
-        // v
-        OPENMP_PARALLEL_FOR()
-        for (int i = min_ix_v; i <= max_ix_v; i++)
-        {
-            for (int j = min_iy_v; j <= max_iy_v; j++)
+            // V support domain: ix in [ix-2, ix+2], iy in [iy-1, iy+2]
+            int min_iix_v = ix - 2;
+            int max_iix_v = ix + 2;
+            int min_iiy_v = iy - 1;
+            int max_iiy_v = iy + 2;
+
+            for (int iix = min_iix_v; iix <= max_iix_v; iix++)
             {
-                double xx = i * grid_h + 0.5 * grid_h;
-                double yy = j * grid_h;
-
-                for (int ib = 0; ib < particles->cur_n; ib++)
+                for (int iiy = min_iiy_v; iiy <= max_iiy_v; iiy++)
                 {
-                    double ib_force = Fy[ib] * ib_delta(xx - X[ib], yy - Y[ib], grid_h) * ib_h * grid_h;
-                    get_v_value(domain, i, j) += ib_force;
+                    double xx = iix * grid_h + 0.5 * grid_h;
+                    double yy = iiy * grid_h;
+
+                    double delta    = ib_delta(xx - X[ib], yy - Y[ib], grid_h);
+                    double ib_force = Fy[ib] * delta * ib_h * grid_h;
+
+                    get_v_value(domain, iix, iiy) += ib_force;
                 }
             }
         }

@@ -504,99 +504,88 @@ void IBVelocitySolver3D_Uhlmann::apply_ib_force()
             continue;
         }
 
-        // 使用 PCoord 中缓存的全局 bounding box
-        double min_X = particles->min_X;
-        double max_X = particles->max_X;
-        double min_Y = particles->min_Y;
-        double max_Y = particles->max_Y;
-        double min_Z = particles->min_Z;
-        double max_Z = particles->max_Z;
-
-        int min_ix_u = static_cast<int>(std::floor(min_X / grid_h)) - 1;
-        int max_ix_u = static_cast<int>(std::floor(max_X / grid_h)) + 2;
-        int min_iy_u = static_cast<int>(std::floor(min_Y / grid_h)) - 2;
-        int max_iy_u = static_cast<int>(std::floor(max_Y / grid_h)) + 2;
-        int min_iz_u = static_cast<int>(std::floor(min_Z / grid_h)) - 2;
-        int max_iz_u = static_cast<int>(std::floor(max_Z / grid_h)) + 2;
-
-        int min_ix_v = static_cast<int>(std::floor(min_X / grid_h)) - 2;
-        int max_ix_v = static_cast<int>(std::floor(max_X / grid_h)) + 2;
-        int min_iy_v = static_cast<int>(std::floor(min_Y / grid_h)) - 1;
-        int max_iy_v = static_cast<int>(std::floor(max_Y / grid_h)) + 2;
-        int min_iz_v = static_cast<int>(std::floor(min_Z / grid_h)) - 2;
-        int max_iz_v = static_cast<int>(std::floor(max_Z / grid_h)) + 2;
-
-        int min_ix_w = static_cast<int>(std::floor(min_X / grid_h)) - 2;
-        int max_ix_w = static_cast<int>(std::floor(max_X / grid_h)) + 2;
-        int min_iy_w = static_cast<int>(std::floor(min_Y / grid_h)) - 2;
-        int max_iy_w = static_cast<int>(std::floor(max_Y / grid_h)) + 2;
-        int min_iz_w = static_cast<int>(std::floor(min_Z / grid_h)) - 1;
-        int max_iz_w = static_cast<int>(std::floor(max_Z / grid_h)) + 2;
-
-        // u
         OPENMP_PARALLEL_FOR()
-        for (int i = min_ix_u; i <= max_ix_u; i++)
+        for (int ib = 0; ib < particles->cur_n; ib++)
         {
-            for (int j = min_iy_u; j <= max_iy_u; j++)
-            {
-                for (int k = min_iz_u; k <= max_iz_u; k++)
-                {
-                    double xx = i * grid_h;
-                    double yy = j * grid_h + 0.5 * grid_h;
-                    double zz = k * grid_h + 0.5 * grid_h;
+            // Get particle global grid indices
+            int ix = static_cast<int>(std::floor(X[ib] / grid_h));
+            int iy = static_cast<int>(std::floor(Y[ib] / grid_h));
+            int iz = static_cast<int>(std::floor(Z[ib] / grid_h));
 
-                    for (int ib = 0; ib < particles->cur_n; ib++)
+            // U support domain: ix in [ix-1, ix+2], iy in [iy-2, iy+2], iz in [iz-2, iz+2]
+            int min_iix_u = ix - 1;
+            int max_iix_u = ix + 2;
+            int min_iiy_u = iy - 2;
+            int max_iiy_u = iy + 2;
+            int min_iiz_u = iz - 2;
+            int max_iiz_u = iz + 2;
+
+            for (int iix = min_iix_u; iix <= max_iix_u; iix++)
+            {
+                for (int iiy = min_iiy_u; iiy <= max_iiy_u; iiy++)
+                {
+                    for (int iiz = min_iiz_u; iiz <= max_iiz_u; iiz++)
                     {
+                        double xx = iix * grid_h;
+                        double yy = iiy * grid_h + 0.5 * grid_h;
+                        double zz = iiz * grid_h + 0.5 * grid_h;
+
                         double delta    = ib_delta(xx - X[ib], yy - Y[ib], zz - Z[ib], grid_h);
                         double ib_force = Fx[ib] * delta * ib_h * ib_h * grid_h;
 
-                        get_u_value(domain, i, j, k) += ib_force;
+                        get_u_value(domain, iix, iiy, iiz) += ib_force;
                     }
                 }
             }
-        }
 
-        // v
-        OPENMP_PARALLEL_FOR()
-        for (int i = min_ix_v; i <= max_ix_v; i++)
-        {
-            for (int j = min_iy_v; j <= max_iy_v; j++)
+            // V support domain: ix in [ix-2, ix+2], iy in [iy-1, iy+2], iz in [iz-2, iz+2]
+            int min_iix_v = ix - 2;
+            int max_iix_v = ix + 2;
+            int min_iiy_v = iy - 1;
+            int max_iiy_v = iy + 2;
+            int min_iiz_v = iz - 2;
+            int max_iiz_v = iz + 2;
+
+            for (int iix = min_iix_v; iix <= max_iix_v; iix++)
             {
-                for (int k = min_iz_v; k <= max_iz_v; k++)
+                for (int iiy = min_iiy_v; iiy <= max_iiy_v; iiy++)
                 {
-                    double xx = i * grid_h + 0.5 * grid_h;
-                    double yy = j * grid_h;
-                    double zz = k * grid_h + 0.5 * grid_h;
-
-                    for (int ib = 0; ib < particles->cur_n; ib++)
+                    for (int iiz = min_iiz_v; iiz <= max_iiz_v; iiz++)
                     {
-                        double ib_force =
-                            Fy[ib] * ib_delta(xx - X[ib], yy - Y[ib], zz - Z[ib], grid_h) * ib_h * ib_h * grid_h;
+                        double xx = iix * grid_h + 0.5 * grid_h;
+                        double yy = iiy * grid_h;
+                        double zz = iiz * grid_h + 0.5 * grid_h;
 
-                        get_v_value(domain, i, j, k) += ib_force;
+                        double delta    = ib_delta(xx - X[ib], yy - Y[ib], zz - Z[ib], grid_h);
+                        double ib_force = Fy[ib] * delta * ib_h * ib_h * grid_h;
+
+                        get_v_value(domain, iix, iiy, iiz) += ib_force;
                     }
                 }
             }
-        }
 
-        // w
-        OPENMP_PARALLEL_FOR()
-        for (int i = min_ix_w; i <= max_ix_w; i++)
-        {
-            for (int j = min_iy_w; j <= max_iy_w; j++)
+            // W support domain: ix in [ix-2, ix+2], iy in [iy-2, iy+2], iz in [iz-1, iz+2]
+            int min_iix_w = ix - 2;
+            int max_iix_w = ix + 2;
+            int min_iiy_w = iy - 2;
+            int max_iiy_w = iy + 2;
+            int min_iiz_w = iz - 1;
+            int max_iiz_w = iz + 2;
+
+            for (int iix = min_iix_w; iix <= max_iix_w; iix++)
             {
-                for (int k = min_iz_w; k <= max_iz_w; k++)
+                for (int iiy = min_iiy_w; iiy <= max_iiy_w; iiy++)
                 {
-                    double xx = i * grid_h + 0.5 * grid_h;
-                    double yy = j * grid_h + 0.5 * grid_h;
-                    double zz = k * grid_h;
-
-                    for (int ib = 0; ib < particles->cur_n; ib++)
+                    for (int iiz = min_iiz_w; iiz <= max_iiz_w; iiz++)
                     {
-                        double ib_force =
-                            Fz[ib] * ib_delta(xx - X[ib], yy - Y[ib], zz - Z[ib], grid_h) * ib_h * ib_h * grid_h;
+                        double xx = iix * grid_h + 0.5 * grid_h;
+                        double yy = iiy * grid_h + 0.5 * grid_h;
+                        double zz = iiz * grid_h;
 
-                        get_w_value(domain, i, j, k) += ib_force;
+                        double delta    = ib_delta(xx - X[ib], yy - Y[ib], zz - Z[ib], grid_h);
+                        double ib_force = Fz[ib] * delta * ib_h * ib_h * grid_h;
+
+                        get_w_value(domain, iix, iiy, iiz) += ib_force;
                     }
                 }
             }

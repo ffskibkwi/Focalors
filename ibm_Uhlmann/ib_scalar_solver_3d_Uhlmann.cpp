@@ -211,39 +211,36 @@ void IBScalarSolver3D_Uhlmann::apply_ib_scalar()
             continue;
         }
 
-        // Use PCoord cached global bounding box (support domain is ±2)
-        double min_X = particles->min_X;
-        double max_X = particles->max_X;
-        double min_Y = particles->min_Y;
-        double max_Y = particles->max_Y;
-        double min_Z = particles->min_Z;
-        double max_Z = particles->max_Z;
-
-        int min_ix = static_cast<int>(std::floor(min_X / grid_h)) - 2;
-        int max_ix = static_cast<int>(std::floor(max_X / grid_h)) + 2;
-        int min_iy = static_cast<int>(std::floor(min_Y / grid_h)) - 2;
-        int max_iy = static_cast<int>(std::floor(max_Y / grid_h)) + 2;
-        int min_iz = static_cast<int>(std::floor(min_Z / grid_h)) - 2;
-        int max_iz = static_cast<int>(std::floor(max_Z / grid_h)) + 2;
-
-        // scalar (cell-centered)
         OPENMP_PARALLEL_FOR()
-        for (int i = min_ix; i <= max_ix; i++)
+        for (int ib = 0; ib < particles->cur_n; ib++)
         {
-            for (int j = min_iy; j <= max_iy; j++)
+            // Get particle global grid indices
+            int ix = static_cast<int>(std::floor(X[ib] / grid_h));
+            int iy = static_cast<int>(std::floor(Y[ib] / grid_h));
+            int iz = static_cast<int>(std::floor(Z[ib] / grid_h));
+
+            // Scalar support domain: ix in [ix-2, ix+2], iy in [iy-2, iy+2], iz in [iz-2, iz+2]
+            int min_iix = ix - 2;
+            int max_iix = ix + 2;
+            int min_iiy = iy - 2;
+            int max_iiy = iy + 2;
+            int min_iiz = iz - 2;
+            int max_iiz = iz + 2;
+
+            for (int iix = min_iix; iix <= max_iix; iix++)
             {
-                for (int k = min_iz; k <= max_iz; k++)
+                for (int iiy = min_iiy; iiy <= max_iiy; iiy++)
                 {
-                    double xx = i * grid_h;
-                    double yy = j * grid_h;
-                    double zz = k * grid_h;
-
-                    for (int ib = 0; ib < particles->cur_n; ib++)
+                    for (int iiz = min_iiz; iiz <= max_iiz; iiz++)
                     {
-                        double ib_force =
-                            Fs[ib] * ib_delta(xx - X[ib], yy - Y[ib], zz - Z[ib], grid_h) * ib_h * ib_h * grid_h;
+                        double xx = iix * grid_h;
+                        double yy = iiy * grid_h;
+                        double zz = iiz * grid_h;
 
-                        get_scalar_value(domain, i, j, k) += ib_force;
+                        double delta    = ib_delta(xx - X[ib], yy - Y[ib], zz - Z[ib], grid_h);
+                        double ib_force = Fs[ib] * delta * ib_h * ib_h * grid_h;
+
+                        get_scalar_value(domain, iix, iiy, iiz) += ib_force;
                     }
                 }
             }
