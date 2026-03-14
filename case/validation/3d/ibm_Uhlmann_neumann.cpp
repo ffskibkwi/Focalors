@@ -388,9 +388,8 @@ int main(int argc, char* argv[])
 
     for (auto& kv : coord_map_raw)
     {
-        Domain3DUniform* domain   = kv.first;
-        PCoord3D*       p_coord  = kv.second;
-        PIBScalar*      ib_scalar = ib_solver_vel.get_ib_data(domain);
+        Domain3DUniform* domain  = kv.first;
+        PCoord3D*        p_coord = kv.second;
 
         // Create PIBNormal for this domain
         PIBNormal* p_normal = new PIBNormal(p_coord->cur_n);
