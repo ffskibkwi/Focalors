@@ -52,32 +52,32 @@ void SolidVelocityFixer2D::build()
         solid_v_idx.reserve(stride / 4);
 
         // u: XFace, located at (i, j+0.5)
-        for (int j = 0; j < ny; ++j)
+        for (int i = 0; i < nx; ++i)
         {
-            for (int i = 0; i < nx; ++i)
+            for (int j = 0; j < ny; ++j)
             {
                 double x = domain->offset_x + i * domain->hx;
                 double y = domain->offset_y + (j + 0.5) * domain->hy;
 
                 if (is_inside_any_shape(x, y))
                 {
-                    // Store linear index directly
-                    solid_u_idx.push_back(j * nx + i);
+                    // Store linear index: i * ny + j (field2 layout)
+                    solid_u_idx.push_back(i * ny + j);
                 }
             }
         }
 
         // v: YFace, located at (i+0.5, j)
-        for (int j = 0; j < ny; ++j)
+        for (int i = 0; i < nx; ++i)
         {
-            for (int i = 0; i < nx; ++i)
+            for (int j = 0; j < ny; ++j)
             {
                 double x = domain->offset_x + (i + 0.5) * domain->hx;
                 double y = domain->offset_y + j * domain->hy;
 
                 if (is_inside_any_shape(x, y))
                 {
-                    solid_v_idx.push_back(j * nx + i);
+                    solid_v_idx.push_back(i * ny + j);
                 }
             }
         }

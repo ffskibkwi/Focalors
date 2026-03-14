@@ -65,12 +65,11 @@ void SolidVelocityFixer3D::build()
         solid_w_idx.reserve(stride / 8);
 
         // u: XFace, located at (i, j+0.5, k+0.5)
-        for (int k = 0; k < nz; ++k)
+        for (int i = 0; i < nx; ++i)
         {
             for (int j = 0; j < ny; ++j)
             {
-                int base = j * nz + k;
-                for (int i = 0; i < nx; ++i)
+                for (int k = 0; k < nz; ++k)
                 {
                     double x = domain->offset_x + i * domain->hx;
                     double y = domain->offset_y + (j + 0.5) * domain->hy;
@@ -79,19 +78,18 @@ void SolidVelocityFixer3D::build()
                     if (is_inside_any_shape(x, y, z))
                     {
                         // Store linear index: i * ny * nz + j * nz + k
-                        solid_u_idx.push_back(i * nyz + base);
+                        solid_u_idx.push_back(i * nyz + j * nz + k);
                     }
                 }
             }
         }
 
         // v: YFace, located at (i+0.5, j, k+0.5)
-        for (int k = 0; k < nz; ++k)
+        for (int i = 0; i < nx; ++i)
         {
             for (int j = 0; j < ny; ++j)
             {
-                int base = j * nz + k;
-                for (int i = 0; i < nx; ++i)
+                for (int k = 0; k < nz; ++k)
                 {
                     double x = domain->offset_x + (i + 0.5) * domain->hx;
                     double y = domain->offset_y + j * domain->hy;
@@ -99,19 +97,18 @@ void SolidVelocityFixer3D::build()
 
                     if (is_inside_any_shape(x, y, z))
                     {
-                        solid_v_idx.push_back(i * nyz + base);
+                        solid_v_idx.push_back(i * nyz + j * nz + k);
                     }
                 }
             }
         }
 
         // w: ZFace, located at (i+0.5, j+0.5, k)
-        for (int k = 0; k < nz; ++k)
+        for (int i = 0; i < nx; ++i)
         {
             for (int j = 0; j < ny; ++j)
             {
-                int base = j * nz + k;
-                for (int i = 0; i < nx; ++i)
+                for (int k = 0; k < nz; ++k)
                 {
                     double x = domain->offset_x + (i + 0.5) * domain->hx;
                     double y = domain->offset_y + (j + 0.5) * domain->hy;
@@ -119,7 +116,7 @@ void SolidVelocityFixer3D::build()
 
                     if (is_inside_any_shape(x, y, z))
                     {
-                        solid_w_idx.push_back(i * nyz + base);
+                        solid_w_idx.push_back(i * nyz + j * nz + k);
                     }
                 }
             }
