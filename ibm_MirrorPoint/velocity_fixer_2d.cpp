@@ -35,9 +35,21 @@ void SolidVelocityFixer2D::build()
 
         int nx = u_field->get_nx();
         int ny = u_field->get_ny();
+        int stride = nx * ny;
 
-        std::vector<std::pair<int, int>> solid_u_points;
-        std::vector<std::pair<int, int>> solid_v_points;
+        // Cache for fast apply
+        DomainCache2D cache;
+        cache.u_data  = u_field->value;
+        cache.v_data = v_field->value;
+        cache.nx     = nx;
+        cache.ny     = ny;
+        cache.stride = stride;
+        domain_cache_map[domain] = cache;
+
+        std::vector<int> solid_u_idx;
+        std::vector<int> solid_v_idx;
+        solid_u_idx.reserve(stride / 4);
+        solid_v_idx.reserve(stride / 4);
 
         // u: XFace, located at (i, j+0.5)
         for (int j = 0; j < ny; ++j)
@@ -49,7 +61,8 @@ void SolidVelocityFixer2D::build()
 
                 if (is_inside_any_shape(x, y))
                 {
-                    solid_u_points.emplace_back(i, j);
+                    // Store linear index directly
+                    solid_u_idx.push_back(j * nx + i);
                 }
             }
         }
@@ -64,13 +77,13 @@ void SolidVelocityFixer2D::build()
 
                 if (is_inside_any_shape(x, y))
                 {
-                    solid_v_points.emplace_back(i, j);
+                    solid_v_idx.push_back(j * nx + i);
                 }
             }
         }
 
-        solid_u_points_map[domain] = std::move(solid_u_points);
-        solid_v_points_map[domain] = std::move(solid_v_points);
+        solid_u_idx_map[domain] = std::move(solid_u_idx);
+        solid_v_idx_map[domain] = std::move(solid_v_idx);
     }
 }
 
@@ -80,33 +93,33 @@ void SolidVelocityFixer2D::apply()
 
     for (auto* domain : geometry.domains)
     {
+        auto cache_it = domain_cache_map.find(domain);
+        if (cache_it == domain_cache_map.end())
+            continue;
+
+        const auto& cache = cache_it->second;
+        if (cache.u_data == nullptr || cache.v_data == nullptr)
+            continue;
+
         // Apply u
-        auto u_it = solid_u_points_map.find(domain);
-        if (u_it != solid_u_points_map.end())
+        auto u_it = solid_u_idx_map.find(domain);
+        if (u_it != solid_u_idx_map.end())
         {
-            const auto& solid_points = u_it->second;
-            if (!solid_points.empty())
+            const auto& idx_vec = u_it->second;
+            for (int idx : idx_vec)
             {
-                auto* u_field = u->field_map.at(domain);
-                for (const auto& [i, j] : solid_points)
-                {
-                    (*u_field)(i, j) = 0.0;
-                }
+                cache.u_data[idx] = 0.0;
             }
         }
 
         // Apply v
-        auto v_it = solid_v_points_map.find(domain);
-        if (v_it != solid_v_points_map.end())
+        auto v_it = solid_v_idx_map.find(domain);
+        if (v_it != solid_v_idx_map.end())
         {
-            const auto& solid_points = v_it->second;
-            if (!solid_points.empty())
+            const auto& idx_vec = v_it->second;
+            for (int idx : idx_vec)
             {
-                auto* v_field = v->field_map.at(domain);
-                for (const auto& [i, j] : solid_points)
-                {
-                    (*v_field)(i, j) = 0.0;
-                }
+                cache.v_data[idx] = 0.0;
             }
         }
     }
@@ -114,16 +127,16 @@ void SolidVelocityFixer2D::apply()
 
 size_t SolidVelocityFixer2D::get_num_solid_u_points(Domain2DUniform* domain) const
 {
-    auto it = solid_u_points_map.find(domain);
-    if (it == solid_u_points_map.end())
+    auto it = solid_u_idx_map.find(domain);
+    if (it == solid_u_idx_map.end())
         return 0;
     return it->second.size();
 }
 
 size_t SolidVelocityFixer2D::get_num_solid_v_points(Domain2DUniform* domain) const
 {
-    auto it = solid_v_points_map.find(domain);
-    if (it == solid_v_points_map.end())
+    auto it = solid_v_idx_map.find(domain);
+    if (it == solid_v_idx_map.end())
         return 0;
     return it->second.size();
 }
@@ -133,20 +146,20 @@ bool SolidVelocityFixer2D::has_solid_points(Domain2DUniform* domain) const
     return get_num_solid_u_points(domain) > 0 || get_num_solid_v_points(domain) > 0;
 }
 
-const std::vector<std::pair<int, int>>& SolidVelocityFixer2D::get_solid_u_points(Domain2DUniform* domain) const
+const std::vector<int>& SolidVelocityFixer2D::get_solid_u_points(Domain2DUniform* domain) const
 {
-    static std::vector<std::pair<int, int>> empty;
-    auto it = solid_u_points_map.find(domain);
-    if (it == solid_u_points_map.end())
+    static std::vector<int> empty;
+    auto it = solid_u_idx_map.find(domain);
+    if (it == solid_u_idx_map.end())
         return empty;
     return it->second;
 }
 
-const std::vector<std::pair<int, int>>& SolidVelocityFixer2D::get_solid_v_points(Domain2DUniform* domain) const
+const std::vector<int>& SolidVelocityFixer2D::get_solid_v_points(Domain2DUniform* domain) const
 {
-    static std::vector<std::pair<int, int>> empty;
-    auto it = solid_v_points_map.find(domain);
-    if (it == solid_v_points_map.end())
+    static std::vector<int> empty;
+    auto it = solid_v_idx_map.find(domain);
+    if (it == solid_v_idx_map.end())
         return empty;
     return it->second;
 }

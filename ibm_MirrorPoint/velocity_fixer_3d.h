@@ -77,19 +77,19 @@ public:
     bool has_solid_points(Domain3DUniform* domain) const;
 
     /**
-     * @brief Get the solid u point indices for a domain
+     * @brief Get the solid u point indices for a domain (linear indices)
      */
-    const std::vector<std::tuple<int, int, int>>& get_solid_u_points(Domain3DUniform* domain) const;
+    const std::vector<int>& get_solid_u_points(Domain3DUniform* domain) const;
 
     /**
-     * @brief Get the solid v point indices for a domain
+     * @brief Get the solid v point indices for a domain (linear indices)
      */
-    const std::vector<std::tuple<int, int, int>>& get_solid_v_points(Domain3DUniform* domain) const;
+    const std::vector<int>& get_solid_v_points(Domain3DUniform* domain) const;
 
     /**
-     * @brief Get the solid w point indices for a domain
+     * @brief Get the solid w point indices for a domain (linear indices)
      */
-    const std::vector<std::tuple<int, int, int>>& get_solid_w_points(Domain3DUniform* domain) const;
+    const std::vector<int>& get_solid_w_points(Domain3DUniform* domain) const;
 
 private:
     /**
@@ -103,12 +103,26 @@ private:
 
     std::vector<Shape3D*> shapes;
 
-    // Solid points for u (XFace): domain -> vector of (i, j, k) indices
-    std::unordered_map<Domain3DUniform*, std::vector<std::tuple<int, int, int>>> solid_u_points_map;
+    // Cached data for fast apply
+    struct DomainCache3D
+    {
+        double* u_data;
+        double* v_data;
+        double* w_data;
+        int     nx;
+        int     ny;
+        int     nz;
+        int     nyz;  // ny * nz
+        int     stride; // nx * ny * nz
+    };
+    std::unordered_map<Domain3DUniform*, DomainCache3D> domain_cache_map;
 
-    // Solid points for v (YFace): domain -> vector of (i, j, k) indices
-    std::unordered_map<Domain3DUniform*, std::vector<std::tuple<int, int, int>>> solid_v_points_map;
+    // Flattened solid points (linear indices) for u
+    std::unordered_map<Domain3DUniform*, std::vector<int>> solid_u_idx_map;
 
-    // Solid points for w (ZFace): domain -> vector of (i, j, k) indices
-    std::unordered_map<Domain3DUniform*, std::vector<std::tuple<int, int, int>>> solid_w_points_map;
+    // Flattened solid points (linear indices) for v
+    std::unordered_map<Domain3DUniform*, std::vector<int>> solid_v_idx_map;
+
+    // Flattened solid points (linear indices) for w
+    std::unordered_map<Domain3DUniform*, std::vector<int>> solid_w_idx_map;
 };

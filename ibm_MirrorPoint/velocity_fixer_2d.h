@@ -72,12 +72,12 @@ public:
     /**
      * @brief Get the solid u point indices for a domain
      */
-    const std::vector<std::pair<int, int>>& get_solid_u_points(Domain2DUniform* domain) const;
+    const std::vector<int>& get_solid_u_points(Domain2DUniform* domain) const;
 
     /**
      * @brief Get the solid v point indices for a domain
      */
-    const std::vector<std::pair<int, int>>& get_solid_v_points(Domain2DUniform* domain) const;
+    const std::vector<int>& get_solid_v_points(Domain2DUniform* domain) const;
 
 private:
     /**
@@ -90,9 +90,20 @@ private:
 
     std::vector<Shape2D*> shapes;
 
-    // Solid points for u (XFace): domain -> vector of (i, j) indices
-    std::unordered_map<Domain2DUniform*, std::vector<std::pair<int, int>>> solid_u_points_map;
+    // Cached data for fast apply
+    struct DomainCache2D
+    {
+        double* u_data;
+        double* v_data;
+        int     nx;
+        int     ny;
+        int     stride; // nx * ny
+    };
+    std::unordered_map<Domain2DUniform*, DomainCache2D> domain_cache_map;
 
-    // Solid points for v (YFace): domain -> vector of (i, j) indices
-    std::unordered_map<Domain2DUniform*, std::vector<std::pair<int, int>>> solid_v_points_map;
+    // Flattened solid points (linear indices) for u
+    std::unordered_map<Domain2DUniform*, std::vector<int>> solid_u_idx_map;
+
+    // Flattened solid points (linear indices) for v
+    std::unordered_map<Domain2DUniform*, std::vector<int>> solid_v_idx_map;
 };
