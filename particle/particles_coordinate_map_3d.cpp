@@ -2,11 +2,12 @@
 
 #include "particles_spawner.h"
 
+#include <cmath>
 #include <cstring>
 
 void PCoordMap3D::add_sphere(double grid_h, double r, double cx, double cy, double cz)
 {
-    double n = M_PI / 3.0 * (12.0 * r * r / grid_h / grid_h + 1.0);
+    int n = static_cast<int>(std::ceil(M_PI / 3.0 * (12.0 * r * r / grid_h / grid_h + 1.0)));
 
     PCoord3D* p_coord = new PCoord3D(n);
     collections.push_back(p_coord);
