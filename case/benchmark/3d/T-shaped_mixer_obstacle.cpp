@@ -6,6 +6,7 @@
 #include "base/location_boundary.h"
 #include "base/math/random.h"
 #include "ibm_MirrorPoint/ib_solver_3d_mirror_point.h"
+#include "ibm_MirrorPoint/velocity_fixer_3d.h"
 #include "ibm_Uhlmann/ib_velocity_solver_3d_Uhlmann.h"
 #include "io/case_base.hpp"
 #include "io/csv_handler.h"
@@ -506,6 +507,10 @@ int main(int argc, char* argv[])
     ib_solver_c.add_shape(&sphere);
     ib_solver_c.build();
 
+    SolidVelocityFixer3D solid_velocity_fixer(&u, &v, &w);
+    solid_velocity_fixer.add_shape(sphere);
+    solid_velocity_fixer.build();
+
     VTKWriter vtk_writer;
     vtk_writer.add_vector_as_cell_data(&u, &v, &w, "velocity");
     vtk_writer.add_scalar_as_cell_data(&c);
@@ -566,8 +571,9 @@ int main(int argc, char* argv[])
         ns_solver.nondiag_shared_boundary_update();
         ns_solver.diag_shared_boundary_update();
 
-        scalar_solver_c.solve();
+        solid_velocity_fixer.apply();
         ib_solver_c.apply();
+        scalar_solver_c.solve();
 
         if (iter % 100 == 0)
         {
