@@ -60,9 +60,6 @@ public:
 
         // Geometry parameters
         IO::read_number(para_map, "Height", Height);
-        IO::read_number(para_map, "lx1_ratio", lx1_ratio);
-        IO::read_number(para_map, "lx2_ratio", lx2_ratio);
-        IO::read_number(para_map, "ly4_ratio", ly4_ratio);
         IO::read_number(para_map, "mesh_density", mesh_density);
 
         // Time stepping
@@ -76,7 +73,6 @@ public:
 
         // Obstacle parameters
         IO::read_number(para_map, "sphere_radius_ratio", sphere_radius_ratio);
-        IO::read_number(para_map, "sphere_center_y_ratio", sphere_center_y_ratio);
 
         // IBM parameters
         IO::read_number(para_map, "ibm_repeat_number", ibm_repeat_number);
@@ -85,21 +81,9 @@ public:
         IO::read_number(para_map, "gmres_max_iter", gmres_max_iter);
 
         // Calculate derived parameters
-        lx1 = lx1_ratio * Height;
+        lx1 = Height;
         ly1 = Height;
         lz1 = Height;
-
-        lx2 = lx2_ratio * Height;
-        ly2 = Height;
-        lz2 = Height;
-
-        lx3 = lx1;
-        ly3 = ly1;
-        lz3 = lz1;
-
-        lx4 = lx2;
-        ly4 = ly4_ratio * Height;
-        lz4 = Height;
 
         hx = Height / mesh_density;
         hy = Height / mesh_density;
@@ -108,15 +92,6 @@ public:
         nx1 = static_cast<int>(lx1 / hx);
         ny1 = static_cast<int>(ly1 / hy);
         nz1 = static_cast<int>(lz1 / hz);
-        nx2 = static_cast<int>(lx2 / hx);
-        ny2 = static_cast<int>(ly2 / hy);
-        nz2 = static_cast<int>(lz2 / hz);
-        nx3 = static_cast<int>(lx3 / hx);
-        ny3 = static_cast<int>(ly3 / hy);
-        nz3 = static_cast<int>(lz3 / hz);
-        nx4 = static_cast<int>(lx4 / hx);
-        ny4 = static_cast<int>(ly4 / hy);
-        nz4 = static_cast<int>(lz4 / hz);
 
         dt = cfl * hx;
 
@@ -125,11 +100,11 @@ public:
 
         // Sphere parameters
         sphere_radius   = sphere_radius_ratio * Height;
-        sphere_center_x = (lx1 + lx2 + lx3) / 2.0;
-        sphere_center_y = sphere_center_y_ratio * Height - ly2;
+        sphere_center_x = lx1 / 2.0;
+        sphere_center_y = ly1 / 2.0;
         sphere_center_z = lz1 / 2.0;
 
-        double mixing_channel_hydraulic_diameter = 2.0 * lx2 * ly2 / (lx2 + ly2);
+        double mixing_channel_hydraulic_diameter = lx1;
         double density                           = 1e3;
         double dynamic_viscosity                 = 1.01e-3;
         double inlet_velocity  = Reynolds_number * dynamic_viscosity / (density * mixing_channel_hydraulic_diameter);
@@ -145,18 +120,6 @@ public:
         lx1 /= mixing_channel_hydraulic_diameter;
         ly1 /= mixing_channel_hydraulic_diameter;
         lz1 /= mixing_channel_hydraulic_diameter;
-
-        lx2 /= mixing_channel_hydraulic_diameter;
-        ly2 /= mixing_channel_hydraulic_diameter;
-        lz2 /= mixing_channel_hydraulic_diameter;
-
-        lx3 /= mixing_channel_hydraulic_diameter;
-        ly3 /= mixing_channel_hydraulic_diameter;
-        lz3 /= mixing_channel_hydraulic_diameter;
-
-        lx4 /= mixing_channel_hydraulic_diameter;
-        ly4 /= mixing_channel_hydraulic_diameter;
-        lz4 /= mixing_channel_hydraulic_diameter;
 
         hx /= mixing_channel_hydraulic_diameter;
         hy /= mixing_channel_hydraulic_diameter;
@@ -176,37 +139,16 @@ public:
             return false;
 
         paras_record.record("Height", Height)
-            .record("lx1_ratio", lx1_ratio)
-            .record("lx2_ratio", lx2_ratio)
-            .record("ly4_ratio", ly4_ratio)
             .record("mesh_density", mesh_density)
             .record("lx1", lx1)
             .record("ly1", ly1)
             .record("lz1", lz1)
-            .record("lx2", lx2)
-            .record("ly2", ly2)
-            .record("lz2", lz2)
-            .record("lx3", lx3)
-            .record("ly3", ly3)
-            .record("lz3", lz3)
-            .record("lx4", lx4)
-            .record("ly4", ly4)
-            .record("lz4", lz4)
             .record("hx", hx)
             .record("hy", hy)
             .record("hz", hz)
             .record("nx1", nx1)
             .record("ny1", ny1)
             .record("nz1", nz1)
-            .record("nx2", nx2)
-            .record("ny2", ny2)
-            .record("nz2", nz2)
-            .record("nx3", nx3)
-            .record("ny3", ny3)
-            .record("nz3", nz3)
-            .record("nx4", nx4)
-            .record("ny4", ny4)
-            .record("nz4", nz4)
             .record("cfl", cfl)
             .record("dt", dt)
             .record("Reynolds_number", Reynolds_number)
@@ -214,7 +156,6 @@ public:
             .record("Pe", Pe)
             .record("nr", nr)
             .record("sphere_radius_ratio", sphere_radius_ratio)
-            .record("sphere_center_y_ratio", sphere_center_y_ratio)
             .record("sphere_radius", sphere_radius)
             .record("sphere_center_x", sphere_center_x)
             .record("sphere_center_y", sphere_center_y)
@@ -231,21 +172,12 @@ public:
 
     // Geometry parameters
     double Height       = 1e-3;
-    double lx1_ratio    = 1.0;
-    double lx2_ratio    = 1.0;
-    double ly4_ratio    = 1.0;
-    int    mesh_density = 20;
+    int    mesh_density = 64;
 
     // Derived geometry
     double lx1, ly1, lz1;
-    double lx2, ly2, lz2;
-    double lx3, ly3, lz3;
-    double lx4, ly4, lz4;
     double hx, hy, hz;
     int    nx1, ny1, nz1;
-    int    nx2, ny2, nz2;
-    int    nx3, ny3, nz3;
-    int    nx4, ny4, nz4;
 
     // Time stepping
     double cfl                    = 0.1;
@@ -260,12 +192,11 @@ public:
     double nr              = 0.0;
 
     // Obstacle parameters
-    double sphere_radius_ratio   = 1.0;
-    double sphere_center_y_ratio = 0.3;
-    double sphere_radius         = 0.0;
-    double sphere_center_x       = 0.0;
-    double sphere_center_y       = 0.0;
-    double sphere_center_z       = 0.0;
+    double sphere_radius_ratio = 1.0;
+    double sphere_radius       = 0.0;
+    double sphere_center_x     = 0.0;
+    double sphere_center_y     = 0.0;
+    double sphere_center_z     = 0.0;
 
     // IBM parameters
     int    ibm_repeat_number = 1;
@@ -299,13 +230,7 @@ int main(int argc, char* argv[])
     std::cout << "=== T-shaped Mixer with Obstacle ===\n";
     std::cout << "Domain dimensions (non-dim):\n";
     std::cout << "  A1: " << case_param.lx1 << " x " << case_param.ly1 << " x " << case_param.lz1 << "\n";
-    std::cout << "  A2: " << case_param.lx2 << " x " << case_param.ly2 << " x " << case_param.lz2 << "\n";
-    std::cout << "  A3: " << case_param.lx3 << " x " << case_param.ly3 << " x " << case_param.lz3 << "\n";
-    std::cout << "  A4: " << case_param.lx4 << " x " << case_param.ly4 << " x " << case_param.lz4 << "\n";
     std::cout << "Grid: " << case_param.nx1 << "x" << case_param.ny1 << "x" << case_param.nz1 << " (A1)\n";
-    std::cout << "      " << case_param.nx2 << "x" << case_param.ny2 << "x" << case_param.nz2 << " (A2)\n";
-    std::cout << "      " << case_param.nx3 << "x" << case_param.ny3 << "x" << case_param.nz3 << " (A3)\n";
-    std::cout << "      " << case_param.nx4 << "x" << case_param.ny4 << "x" << case_param.nz4 << " (A4)\n";
     std::cout << "Grid spacing: " << case_param.hx << " x " << case_param.hy << " x " << case_param.hz << "\n";
     std::cout << "Sphere: center = (" << case_param.sphere_center_x << ", " << case_param.sphere_center_y << ", "
               << case_param.sphere_center_z << "), radius = " << case_param.sphere_radius << "\n";
@@ -314,22 +239,8 @@ int main(int argc, char* argv[])
 
     Domain3DUniform A1(
         case_param.nx1, case_param.ny1, case_param.nz1, case_param.lx1, case_param.ly1, case_param.lz1, "A1");
-    Domain3DUniform A2(
-        case_param.nx2, case_param.ny2, case_param.nz2, case_param.lx2, case_param.ly2, case_param.lz2, "A2");
-    Domain3DUniform A3(
-        case_param.nx3, case_param.ny3, case_param.nz3, case_param.lx3, case_param.ly3, case_param.lz3, "A3");
-    Domain3DUniform A4(
-        case_param.nx4, case_param.ny4, case_param.nz4, case_param.lx4, case_param.ly4, case_param.lz4, "A4");
 
     geo.add_domain(&A1);
-    geo.add_domain(&A2);
-    geo.add_domain(&A3);
-    geo.add_domain(&A4);
-
-    // Construct cross connectivity
-    geo.connect(&A2, LocationType::XNegative, &A1);
-    geo.connect(&A2, LocationType::XPositive, &A3);
-    geo.connect(&A2, LocationType::YNegative, &A4);
 
     geo.axis(&A1, LocationType::XNegative);
     geo.axis(&A1, LocationType::YNegative);
@@ -344,35 +255,19 @@ int main(int argc, char* argv[])
     c.set_geometry(geo);
 
     // Fields on each domain
-    field3 u_A1, u_A2, u_A3, u_A4;
-    field3 v_A1, v_A2, v_A3, v_A4;
-    field3 w_A1, w_A2, w_A3, w_A4;
-    field3 p_A1, p_A2, p_A3, p_A4;
-    field3 c_A1, c_A2, c_A3, c_A4;
+    field3 u_A1;
+    field3 v_A1;
+    field3 w_A1;
+    field3 p_A1;
+    field3 c_A1;
 
     u.set_x_face_center_field(&A1, u_A1);
-    u.set_x_face_center_field(&A2, u_A2);
-    u.set_x_face_center_field(&A3, u_A3);
-    u.set_x_face_center_field(&A4, u_A4);
     v.set_y_face_center_field(&A1, v_A1);
-    v.set_y_face_center_field(&A2, v_A2);
-    v.set_y_face_center_field(&A3, v_A3);
-    v.set_y_face_center_field(&A4, v_A4);
     w.set_z_face_center_field(&A1, w_A1);
-    w.set_z_face_center_field(&A2, w_A2);
-    w.set_z_face_center_field(&A3, w_A3);
-    w.set_z_face_center_field(&A4, w_A4);
     p.set_center_field(&A1, p_A1);
-    p.set_center_field(&A2, p_A2);
-    p.set_center_field(&A3, p_A3);
-    p.set_center_field(&A4, p_A4);
     c.set_center_field(&A1, c_A1);
-    c.set_center_field(&A2, c_A2);
-    c.set_center_field(&A3, c_A3);
-    c.set_center_field(&A4, c_A4);
 
-    std::cout << "mesh num = " << u_A1.get_size_n() + u_A2.get_size_n() + u_A3.get_size_n() + u_A4.get_size_n()
-              << std::endl;
+    std::cout << "mesh num = " << u_A1.get_size_n() << std::endl;
 
     // Helper setters
     auto set_dirichlet_zero = [](Variable3D& var, Domain3DUniform* d, LocationType loc) {
@@ -387,7 +282,7 @@ int main(int argc, char* argv[])
     };
 
     // Default outer boundaries
-    std::vector<Domain3DUniform*> domains = {&A1, &A2, &A3, &A4};
+    std::vector<Domain3DUniform*> domains = {&A1};
     std::vector<LocationType>     dirs    = {LocationType::XNegative,
                                              LocationType::XPositive,
                                              LocationType::YNegative,
@@ -414,10 +309,8 @@ int main(int argc, char* argv[])
     // Inlet
     {
         u.has_boundary_value_map[&A1][LocationType::XNegative] = true;
-        u.has_boundary_value_map[&A3][LocationType::XPositive] = true;
 
         field2& u_inlet_buffer_xneg = *u.boundary_value_map[&A1][LocationType::XNegative];
-        field2& u_inlet_buffer_xpos = *u.boundary_value_map[&A3][LocationType::XPositive];
 
         for (int j = 0; j < u_A1.get_ny(); ++j)
         {
@@ -427,42 +320,32 @@ int main(int argc, char* argv[])
                 z /= case_param.lz1;
                 double vel                = 6.0 * (1.0 - z) * z;
                 u_inlet_buffer_xneg(j, k) = vel;
-                u_inlet_buffer_xpos(j, k) = -vel;
             }
         }
 
-        c.has_boundary_value_map[&A3][LocationType::XPositive] = true;
+        c.has_boundary_value_map[&A1][LocationType::XNegative] = true;
 
-        field2& c_inlet_buffer_xpos = *c.boundary_value_map[&A3][LocationType::XPositive];
+        field2& c_inlet_buffer_xneg = *c.boundary_value_map[&A1][LocationType::XNegative];
 
-        for (int j = 0; j < c_A3.get_ny(); ++j)
+        for (int j = 0; j < c_A1.get_ny(); ++j)
         {
-            for (int k = 0; k < c_A3.get_nz(); ++k)
+            for (int k = 0; k < c_A1.get_nz(); ++k)
             {
-                c_inlet_buffer_xpos(j, k) = 1.0;
+                c_inlet_buffer_xneg(j, k) = 1.0;
             }
         }
     }
     // Outlet
-    u.set_boundary_type(&A4, LocationType::YNegative, PDEBoundaryType::Neumann);
-    v.set_boundary_type(&A4, LocationType::YNegative, PDEBoundaryType::Neumann);
-    w.set_boundary_type(&A4, LocationType::YNegative, PDEBoundaryType::Neumann);
-    c.set_boundary_type(&A4, LocationType::YNegative, PDEBoundaryType::Neumann);
+    u.set_boundary_type(&A1, LocationType::XPositive, PDEBoundaryType::Neumann);
+    v.set_boundary_type(&A1, LocationType::XPositive, PDEBoundaryType::Neumann);
+    w.set_boundary_type(&A1, LocationType::XPositive, PDEBoundaryType::Neumann);
+    c.set_boundary_type(&A1, LocationType::XPositive, PDEBoundaryType::Neumann);
 
     add_random_number(u_A1, -0.01, 0.01, 42);
-    add_random_number(u_A2, -0.01, 0.01, 42);
-    add_random_number(u_A3, -0.01, 0.01, 42);
-    add_random_number(u_A4, -0.01, 0.01, 42);
 
     add_random_number(v_A1, -0.01, 0.01, 42);
-    add_random_number(v_A2, -0.01, 0.01, 42);
-    add_random_number(v_A3, -0.01, 0.01, 42);
-    add_random_number(v_A4, -0.01, 0.01, 42);
 
     add_random_number(w_A1, -0.01, 0.01, 42);
-    add_random_number(w_A2, -0.01, 0.01, 42);
-    add_random_number(w_A3, -0.01, 0.01, 42);
-    add_random_number(w_A4, -0.01, 0.01, 42);
 
     DifferenceSchemeType c_scheme = DifferenceSchemeType::Conv_QUICK_Diff_Center2nd;
 
@@ -516,20 +399,9 @@ int main(int argc, char* argv[])
     vtk_writer.add_scalar_as_cell_data(&c);
     vtk_writer.validate();
 
-    auto calc_MI = [&](int j) {
-        double c_mean = c_A4.mean_at_xz_plane(j);
-        double sigma  = 0.0;
-        OPENMP_PARALLEL_FOR(reduction(+ : sigma))
-        for (int i = 0; i < case_param.nx4; i++)
-            for (int k = 0; k < case_param.nz4; k++)
-                sigma += (c_A4(i, j, k) - c_mean) * (c_A4(i, j, k) - c_mean);
-        sigma = std::sqrt(sigma / (case_param.nx4 * case_param.nz4));
-        return 1 - sigma / 0.5;
-    };
-
     for (int iter = 0; iter <= time_cfg.num_iterations; iter++)
     {
-        SCOPE_TIMER("Iteration", TimeRecordType::None, iter % 100 == 0);
+        SCOPE_TIMER("Iteration", TimeRecordType::None, 1);
 
         if (iter % 100 == 0)
         {
@@ -538,42 +410,63 @@ int main(int argc, char* argv[])
             env_cfg.track_pe_solve_detail_time = true;
             env_cfg.showGmresRes               = true;
         }
-
-        ns_solver.euler_conv_diff_inner();
-        ns_solver.euler_conv_diff_outer();
-
-        // Apply Uhlmann velocity IBM solver
-        for (int ib_iter = 0; ib_iter < case_param.ibm_repeat_number; ib_iter++)
         {
-            ib_solver_vel.solve();
+            SCOPE_TIMER("NS euler", TimeRecordType::None, 1);
+            ns_solver.euler_conv_diff_inner();
+            ns_solver.euler_conv_diff_outer();
         }
+        {
+            SCOPE_TIMER("ib_solver_vel", TimeRecordType::None, 1);
+            // Apply Uhlmann velocity IBM solver
+            for (int ib_iter = 0; ib_iter < case_param.ibm_repeat_number; ib_iter++)
+            {
+                ib_solver_vel.solve();
+            }
+        }
+        {
+            SCOPE_TIMER("NS bound", TimeRecordType::None, 1);
+            ns_solver.phys_boundary_update();
+            ns_solver.nondiag_shared_boundary_update();
+            ns_solver.diag_shared_boundary_update();
+        }
+        {
+            SCOPE_TIMER("divu", TimeRecordType::None, 1);
+            // divu
+            ns_solver.velocity_div_inner();
+            ns_solver.velocity_div_outer();
+        }
+        {
+            SCOPE_TIMER("PE", TimeRecordType::None, 1);
+            // PE
+            ns_solver.normalize_pressure();
+            p_solver.solve();
+        }
+        {
+            SCOPE_TIMER("p grad", TimeRecordType::None, 1);
+            // update buffer for p
+            ns_solver.pressure_buffer_update();
 
-        ns_solver.phys_boundary_update();
-        ns_solver.nondiag_shared_boundary_update();
-        ns_solver.diag_shared_boundary_update();
-
-        // divu
-        ns_solver.velocity_div_inner();
-        ns_solver.velocity_div_outer();
-
-        // PE
-        ns_solver.normalize_pressure();
-        p_solver.solve();
-
-        // update buffer for p
-        ns_solver.pressure_buffer_update();
-
-        // p grad
-        ns_solver.add_pressure_gradient();
-
-        // Boundary update
-        ns_solver.phys_boundary_update();
-        ns_solver.nondiag_shared_boundary_update();
-        ns_solver.diag_shared_boundary_update();
-
-        solid_velocity_fixer.apply();
-        ib_solver_c.apply();
-        scalar_solver_c.solve();
+            // p grad
+            ns_solver.add_pressure_gradient();
+        }
+        {
+            SCOPE_TIMER("NS bound", TimeRecordType::None, 1);
+            ns_solver.phys_boundary_update();
+            ns_solver.nondiag_shared_boundary_update();
+            ns_solver.diag_shared_boundary_update();
+        }
+        {
+            SCOPE_TIMER("solid_velocity_fixer", TimeRecordType::None, 1);
+            solid_velocity_fixer.apply();
+        }
+        {
+            SCOPE_TIMER("ib_solver_c", TimeRecordType::None, 1);
+            ib_solver_c.apply();
+        }
+        {
+            SCOPE_TIMER("scalar_solver_c", TimeRecordType::None, 1);
+            scalar_solver_c.solve();
+        }
 
         if (iter % 100 == 0)
         {
@@ -594,16 +487,6 @@ int main(int argc, char* argv[])
 
             CSVHandler c_rms_file(case_param.root_dir + "/c_rms");
             c_rms_file.stream << calc_rms(c) << std::endl;
-
-            CSVHandler MI_file(case_param.root_dir + "/MI");
-            for (int j = case_param.ny4 - 1; j >= 0; j--)
-            {
-                MI_file.stream << calc_MI(j);
-                if (j != 0)
-                    MI_file.stream << ',';
-                else
-                    MI_file.stream << std::endl;
-            }
         }
 
         if (std::isnan(u_A1(0, 0, 0)))
