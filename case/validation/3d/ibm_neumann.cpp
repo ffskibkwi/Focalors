@@ -401,7 +401,7 @@ int main(int argc, char* argv[])
 
     for (int iter = 0; iter <= time_cfg.num_iterations; iter++)
     {
-        SCOPE_TIMER("Iteration", TimeRecordType::None, 1);
+        SCOPE_TIMER("Iteration", TimeRecordType::None, iter % 100 == 0);
 
         if (iter % 100 == 0)
         {
@@ -411,12 +411,12 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = true;
         }
         {
-            SCOPE_TIMER("NS euler", TimeRecordType::None, 1);
+            SCOPE_TIMER("NS euler", TimeRecordType::None, iter % 100 == 0);
             ns_solver.euler_conv_diff_inner();
             ns_solver.euler_conv_diff_outer();
         }
         {
-            SCOPE_TIMER("ib_solver_vel", TimeRecordType::None, 1);
+            SCOPE_TIMER("ib_solver_vel", TimeRecordType::None, iter % 100 == 0);
             // Apply Uhlmann velocity IBM solver
             for (int ib_iter = 0; ib_iter < case_param.ibm_repeat_number; ib_iter++)
             {
@@ -424,25 +424,25 @@ int main(int argc, char* argv[])
             }
         }
         {
-            SCOPE_TIMER("NS bound", TimeRecordType::None, 1);
+            SCOPE_TIMER("NS bound", TimeRecordType::None, iter % 100 == 0);
             ns_solver.phys_boundary_update();
             ns_solver.nondiag_shared_boundary_update();
             ns_solver.diag_shared_boundary_update();
         }
         {
-            SCOPE_TIMER("divu", TimeRecordType::None, 1);
+            SCOPE_TIMER("divu", TimeRecordType::None, iter % 100 == 0);
             // divu
             ns_solver.velocity_div_inner();
             ns_solver.velocity_div_outer();
         }
         {
-            SCOPE_TIMER("PE", TimeRecordType::None, 1);
+            SCOPE_TIMER("PE", TimeRecordType::None, iter % 100 == 0);
             // PE
             ns_solver.normalize_pressure();
             p_solver.solve();
         }
         {
-            SCOPE_TIMER("p grad", TimeRecordType::None, 1);
+            SCOPE_TIMER("p grad", TimeRecordType::None, iter % 100 == 0);
             // update buffer for p
             ns_solver.pressure_buffer_update();
 
@@ -450,21 +450,21 @@ int main(int argc, char* argv[])
             ns_solver.add_pressure_gradient();
         }
         {
-            SCOPE_TIMER("NS bound", TimeRecordType::None, 1);
+            SCOPE_TIMER("NS bound", TimeRecordType::None, iter % 100 == 0);
             ns_solver.phys_boundary_update();
             ns_solver.nondiag_shared_boundary_update();
             ns_solver.diag_shared_boundary_update();
         }
+        // {
+        //     SCOPE_TIMER("solid_velocity_fixer", TimeRecordType::None, iter % 100 == 0);
+        //     solid_velocity_fixer.apply();
+        // }
         {
-            SCOPE_TIMER("solid_velocity_fixer", TimeRecordType::None, 1);
-            solid_velocity_fixer.apply();
-        }
-        {
-            SCOPE_TIMER("ib_solver_c", TimeRecordType::None, 1);
+            SCOPE_TIMER("ib_solver_c", TimeRecordType::None, iter % 100 == 0);
             ib_solver_c.apply();
         }
         {
-            SCOPE_TIMER("scalar_solver_c", TimeRecordType::None, 1);
+            SCOPE_TIMER("scalar_solver_c", TimeRecordType::None, iter % 100 == 0);
             scalar_solver_c.solve();
         }
 
