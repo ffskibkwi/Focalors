@@ -7,6 +7,7 @@
 #include "base/math/random.h"
 #include "io/case_base.hpp"
 #include "io/csv_handler.h"
+#include "io/csv_writer_2d.h"
 #include "io/stat.h"
 #include "ns/ns_solver2d.h"
 #include "ns/scalar_solver2d.h"

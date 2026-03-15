@@ -9,6 +9,7 @@
 #include "ibm_Uhlmann/ib_velocity_solver_2d_Uhlmann.h"
 #include "io/case_base.hpp"
 #include "io/csv_handler.h"
+#include "io/csv_writer_2d.h"
 #include "io/stat.h"
 #include "ns/ns_solver2d.h"
 #include "ns/scalar_solver2d.h"
@@ -278,7 +279,8 @@ int main(int argc, char* argv[])
     std::cout << "      " << case_param.nx3 << "x" << case_param.ny3 << " (A3)\n";
     std::cout << "      " << case_param.nx4 << "x" << case_param.ny4 << " (A4)\n";
     std::cout << "Grid spacing: " << case_param.hx << " x " << case_param.hy << "\n";
-    std::cout << "Circle: center = (" << case_param.circle_center_x << ", " << case_param.circle_center_y << "), radius = " << case_param.circle_radius << "\n";
+    std::cout << "Circle: center = (" << case_param.circle_center_x << ", " << case_param.circle_center_y
+              << "), radius = " << case_param.circle_radius << "\n";
     std::cout << "Re = " << case_param.Reynolds_number << ", Sc = " << case_param.Schmidt_number << "\n";
     std::cout << "dt = " << case_param.dt << ", max_step = " << case_param.max_step << "\n\n";
 
@@ -414,7 +416,8 @@ int main(int argc, char* argv[])
 
     // IBM setup - Uhlmann velocity solver
     PCoordMap2D coord_map;
-    coord_map.add_cylinder(case_param.hx, case_param.circle_radius, case_param.circle_center_x, case_param.circle_center_y);
+    coord_map.add_cylinder(
+        case_param.hx, case_param.circle_radius, case_param.circle_center_x, case_param.circle_center_y);
     coord_map.generate_map(&geo);
     auto coord_map_raw = coord_map.get_map();
 
@@ -427,15 +430,18 @@ int main(int argc, char* argv[])
         auto* p_coord = kv.second;
         auto* ib_data = ib_solver_vel.get_ib_data(kv.first);
 
+        EXPOSE_PCOORD2D(p_coord)
+        EXPOSE_PIB2D(ib_data)
+
         for (int i = 0; i < p_coord->cur_n; i++)
         {
-            ib_data->U[i] = 0.0;
-            ib_data->V[i] = 0.0;
+            Up[i] = 0.0;
+            Vp[i] = 0.0;
         }
     }
 
     // MirrorPoint concentration solver (Neumann: zero flux)
-    Circle circle(case_param.circle_center_x, case_param.circle_center_y, case_param.circle_radius);
+    Circle                 circle(case_param.circle_center_x, case_param.circle_center_y, case_param.circle_radius);
     IBSolver2D_MirrorPoint ib_solver_c(&c, PDEBoundaryType::Neumann, 0.0);
     ib_solver_c.add_shape(&circle);
     ib_solver_c.build();
