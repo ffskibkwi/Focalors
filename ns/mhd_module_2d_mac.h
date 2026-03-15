@@ -47,6 +47,7 @@ public:
     ~MHDModule2D();
 
     void init(Variable2D* phi_var = nullptr);
+    void setTimeStep(double in_dt);
 
     void solveElectricPotential();
     void updateCurrentDensity();

@@ -47,6 +47,15 @@ namespace
         bool   diffusion_limited               = false;
     };
 
+    struct TimeStepSchedule
+    {
+        double base_dt        = 0.0;
+        double startup_dt     = 0.0;
+        double startup_t_end  = 0.0;
+        bool   has_startup_dt = false;
+        double initial_dt() const { return has_startup_dt ? startup_dt : base_dt; }
+    };
+
     /** @brief Select the smaller of the convective and explicit diffusion time-step limits. */
     TimeStepSelection select_time_step(double h, double dt_factor, const PhysicsConfig& physics_cfg)
     {
@@ -67,6 +76,39 @@ namespace
         selection.diffusion_limited = selection.diffusion_dt_limit < selection.convective_dt;
 
         return selection;
+    }
+
+    double compute_step_dt(double current_time, double total_time, const TimeStepSchedule& schedule)
+    {
+        const double eps = 128.0 * std::numeric_limits<double>::epsilon() * std::max(1.0, total_time);
+        if (current_time >= total_time - eps)
+            return 0.0;
+
+        const bool   in_startup_phase = schedule.has_startup_dt && current_time < schedule.startup_t_end - eps;
+        const double phase_dt         = in_startup_phase ? schedule.startup_dt : schedule.base_dt;
+        const double phase_end        = in_startup_phase ? schedule.startup_t_end : total_time;
+        const double phase_remain     = std::max(0.0, phase_end - current_time);
+        const double total_remain     = std::max(0.0, total_time - current_time);
+
+        return std::min(phase_dt, std::min(phase_remain, total_remain));
+    }
+
+    int estimate_num_steps(double total_time, const TimeStepSchedule& schedule)
+    {
+        int    step         = 0;
+        double current_time = 0.0;
+
+        while (true)
+        {
+            const double dt_step = compute_step_dt(current_time, total_time, schedule);
+            if (dt_step <= 0.0)
+                break;
+
+            current_time += dt_step;
+            ++step;
+        }
+
+        return step;
     }
 } // namespace
 /**
@@ -191,27 +233,64 @@ int main(int argc, char* argv[])
         std::cout << "Configuring Newtonian Model." << std::endl;
     }
 
-    const TimeStepSelection time_step_selection = select_time_step(h, case_param.dt_factor, physics_cfg);
-    time_cfg.dt                                 = time_step_selection.selected_dt;
-    time_cfg.set_t_max(case_param.T_total);
+    const TimeStepSelection base_time_step_selection = select_time_step(h, case_param.dt_factor, physics_cfg);
+
+    const bool        has_requested_startup_dt = case_param.startup_dt_factor > 0.0 && case_param.startup_t_end > 0.0;
+    TimeStepSelection startup_time_step_selection;
+    if (has_requested_startup_dt)
+        startup_time_step_selection = select_time_step(h, case_param.startup_dt_factor, physics_cfg);
+
+    TimeStepSchedule time_step_schedule;
+    time_step_schedule.base_dt = base_time_step_selection.selected_dt;
+    if (has_requested_startup_dt)
+    {
+        time_step_schedule.startup_dt    = startup_time_step_selection.selected_dt;
+        time_step_schedule.startup_t_end = std::min(case_param.startup_t_end, case_param.T_total);
+        time_step_schedule.has_startup_dt =
+            time_step_schedule.startup_t_end > 0.0 && time_step_schedule.startup_dt < time_step_schedule.base_dt;
+    }
+
+    const int estimated_total_steps = estimate_num_steps(case_param.T_total, time_step_schedule);
+
+    time_cfg.dt             = time_step_schedule.initial_dt();
+    time_cfg.t_max          = case_param.T_total;
+    time_cfg.num_iterations = estimated_total_steps;
     // time_cfg.num_iterations   = 10;
 
     std::cout << "Time Step Selection:" << std::endl;
-    std::cout << "  convective_dt: " << time_step_selection.convective_dt << std::endl;
-    std::cout << "  diffusion_dt_limit: " << time_step_selection.diffusion_dt_limit << std::endl;
-    std::cout << "  viscosity_upper_bound_raw: " << time_step_selection.viscosity_upper_bound_raw << std::endl;
-    std::cout << "  viscosity_upper_bound_effective: " << time_step_selection.viscosity_upper_bound_effective
+    std::cout << "  base_convective_dt: " << base_time_step_selection.convective_dt << std::endl;
+    std::cout << "  base_diffusion_dt_limit: " << base_time_step_selection.diffusion_dt_limit << std::endl;
+    std::cout << "  viscosity_upper_bound_raw: " << base_time_step_selection.viscosity_upper_bound_raw << std::endl;
+    std::cout << "  viscosity_upper_bound_effective: " << base_time_step_selection.viscosity_upper_bound_effective
               << std::endl;
-    std::cout << "  selected_dt: " << time_cfg.dt << std::endl;
-    std::cout << "  diffusion_limited: " << std::boolalpha << time_step_selection.diffusion_limited << std::noboolalpha
-              << std::endl;
+    std::cout << "  base_selected_dt: " << base_time_step_selection.selected_dt << std::endl;
+    std::cout << "  initial_dt: " << time_cfg.dt << std::endl;
+    std::cout << "  base_diffusion_limited: " << std::boolalpha << base_time_step_selection.diffusion_limited
+              << std::noboolalpha << std::endl;
+    if (has_requested_startup_dt)
+    {
+        std::cout << "  startup_convective_dt: " << startup_time_step_selection.convective_dt << std::endl;
+        std::cout << "  startup_diffusion_dt_limit: " << startup_time_step_selection.diffusion_dt_limit << std::endl;
+        std::cout << "  startup_selected_dt: " << startup_time_step_selection.selected_dt << std::endl;
+        std::cout << "  startup_t_end: " << time_step_schedule.startup_t_end << std::endl;
+        std::cout << "  startup_active: " << std::boolalpha << time_step_schedule.has_startup_dt << std::noboolalpha
+                  << std::endl;
+    }
+    std::cout << "  estimated_total_steps: " << estimated_total_steps << std::endl;
 
-    // 计算循环输出步数间隔 pv_output_step（如果未指定则使用 num_iterations/10）
-    int pv_output_step = case_param.pv_output_step > 0 ? case_param.pv_output_step : time_cfg.num_iterations / 10;
-    // 计算最终保存步数（如果未指定则使用 num_iterations）
-    int final_step_to_save = case_param.step_to_save > 0 ? case_param.step_to_save : time_cfg.num_iterations;
+    if (estimated_total_steps <= 0)
+    {
+        std::cerr << "No valid time step schedule produced for T_total=" << case_param.T_total << std::endl;
+        return -1;
+    }
 
-    case_param.max_step     = time_cfg.num_iterations;
+    // 计算循环输出步数间隔 pv_output_step（如果未指定则使用 estimated_total_steps/10）
+    int pv_output_step =
+        case_param.pv_output_step > 0 ? case_param.pv_output_step : std::max(1, estimated_total_steps / 10);
+    // 计算最终保存步数（如果未指定则使用 estimated_total_steps）
+    int final_step_to_save = case_param.step_to_save > 0 ? case_param.step_to_save : estimated_total_steps;
+
+    case_param.max_step     = estimated_total_steps;
     case_param.step_to_save = final_step_to_save;
 
     const bool should_record_paras = case_param.record_paras();
@@ -219,12 +298,22 @@ int main(int argc, char* argv[])
     {
         case_param.paras_record.record("mhd_grid", std::string("mac"))
             .record("dt", time_cfg.dt)
-            .record("dt_convective", time_step_selection.convective_dt)
-            .record("dt_diffusion_limit", time_step_selection.diffusion_dt_limit)
-            .record("viscosity_upper_bound_raw", time_step_selection.viscosity_upper_bound_raw)
-            .record("viscosity_upper_bound_effective", time_step_selection.viscosity_upper_bound_effective)
-            .record("viscosity_upper_bound", time_step_selection.viscosity_upper_bound_effective)
-            .record("dt_diffusion_limited", time_step_selection.diffusion_limited ? 1 : 0);
+            .record("dt_base", base_time_step_selection.selected_dt)
+            .record("dt_base_convective", base_time_step_selection.convective_dt)
+            .record("dt_base_diffusion_limit", base_time_step_selection.diffusion_dt_limit)
+            .record("dt_startup", has_requested_startup_dt ? startup_time_step_selection.selected_dt : 0.0)
+            .record("dt_startup_convective", has_requested_startup_dt ? startup_time_step_selection.convective_dt : 0.0)
+            .record("dt_startup_diffusion_limit",
+                    has_requested_startup_dt ? startup_time_step_selection.diffusion_dt_limit : 0.0)
+            .record("dt_startup_active", time_step_schedule.has_startup_dt ? 1 : 0)
+            .record("dt_startup_t_end", time_step_schedule.startup_t_end)
+            .record("estimated_total_steps", estimated_total_steps)
+            .record("viscosity_upper_bound_raw", base_time_step_selection.viscosity_upper_bound_raw)
+            .record("viscosity_upper_bound_effective", base_time_step_selection.viscosity_upper_bound_effective)
+            .record("viscosity_upper_bound", base_time_step_selection.viscosity_upper_bound_effective)
+            .record("dt_diffusion_limited", base_time_step_selection.diffusion_limited ? 1 : 0)
+            .record("dt_startup_diffusion_limited",
+                    has_requested_startup_dt && startup_time_step_selection.diffusion_limited ? 1 : 0);
     }
 
     double lx2 = case_param.lx_2;
@@ -475,14 +564,26 @@ int main(int argc, char* argv[])
 
     std::cout << "Starting MHD + Non-Newtonian simulation..." << std::endl;
 
+    double current_time = 0.0;
+    int    step         = 0;
+
     // Solve
-    for (int step = 1; step <= time_cfg.num_iterations; step++)
+    while (step < estimated_total_steps)
     {
+        const double dt_step = compute_step_dt(current_time, case_param.T_total, time_step_schedule);
+        if (dt_step <= 0.0)
+            break;
+
+        ++step;
+        time_cfg.dt = dt_step;
+        ns_solver.setTimeStep(dt_step);
+
         // 每200步启用计时输出
         if (step % 200 == 0)
         {
             env_cfg.showGmresRes = true;
-            std::cout << "step: " << step << "/" << time_cfg.num_iterations << "\n";
+            std::cout << "step: " << step << "/" << estimated_total_steps << ", t = " << current_time
+                      << ", dt = " << dt_step << "\n";
         }
         else
         {
@@ -494,6 +595,8 @@ int main(int argc, char* argv[])
             // Non-Newtonian solve (MHD is internally handled by ns_solver when enable_mhd=true)
             ns_solver.solve_nonnewton();
         }
+
+        current_time += dt_step;
 
         // 使用 pv_output_step 控制循环输出
         if (step % pv_output_step == 0)
@@ -517,12 +620,13 @@ int main(int argc, char* argv[])
         }
     }
     std::cout << "Simulation finished." << std::endl;
+    const int runtime_final_step = case_param.step_to_save > 0 ? case_param.step_to_save : step;
     // 使用 step_to_save 控制最终保存
-    IO::write_csv(u, nowtime_dir + "/final/u_" + std::to_string(final_step_to_save));
-    IO::write_csv(v, nowtime_dir + "/final/v_" + std::to_string(final_step_to_save));
-    IO::write_csv(p, nowtime_dir + "/final/p_" + std::to_string(final_step_to_save));
-    IO::write_csv(mu, nowtime_dir + "/final/mu_" + std::to_string(final_step_to_save));
+    IO::write_csv(u, nowtime_dir + "/final/u_" + std::to_string(runtime_final_step));
+    IO::write_csv(v, nowtime_dir + "/final/v_" + std::to_string(runtime_final_step));
+    IO::write_csv(p, nowtime_dir + "/final/p_" + std::to_string(runtime_final_step));
+    IO::write_csv(mu, nowtime_dir + "/final/mu_" + std::to_string(runtime_final_step));
     if (enable_mhd)
-        IO::write_csv(phi, nowtime_dir + "/final/phi_" + std::to_string(final_step_to_save));
+        IO::write_csv(phi, nowtime_dir + "/final/phi_" + std::to_string(runtime_final_step));
     return 0;
 }

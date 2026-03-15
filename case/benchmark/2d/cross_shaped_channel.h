@@ -51,6 +51,8 @@ public:
 
         // Time Stepping
         IO::read_number(para_map, "dt_factor", dt_factor);
+        IO::read_number(para_map, "startup_dt_factor", startup_dt_factor);
+        IO::read_number(para_map, "startup_t_end", startup_t_end);
         IO::read_number(para_map, "T_total", T_total);
         IO::read_number(para_map, "pv_output_step", pv_output_step);
 
@@ -109,6 +111,8 @@ public:
             .record("Bx", Bx)
             .record("By", By)
             .record("dt_factor", dt_factor)
+            .record("startup_dt_factor", startup_dt_factor)
+            .record("startup_t_end", startup_t_end)
             .record("T_total", T_total)
             .record("pv_output_step", pv_output_step)
             .record("gmres_m", gmres_m)
@@ -144,8 +148,8 @@ public:
     double ly_5 = 15.0;
 
     // Physics
-    double Re = 100.0;
-    double U0 = 1.0;
+    double Re       = 100.0;
+    double U0       = 1.0;
     double diameter = 0.01;
 
     // MHD Parameters
@@ -156,7 +160,10 @@ public:
     double By    = 1.0;  // Magnetic field y-component
 
     // Time Stepping
-    double dt_factor      = 0.1;   // dt = dt_factor * h
+    double dt_factor = 0.1; // dt = dt_factor * h
+    double startup_dt_factor =
+        -1.0;                    // Optional startup dt factor. Disabled when <= 0. Use a smaller value than dt_factor.
+    double startup_t_end  = 0.0; // Optional startup segment end time. Disabled when <= 0.
     double T_total        = 105.0; // 70 * 1.5
     int    pv_output_step = 0;     // 循环输出时刻间隔步数 (0 表示使用 num_iterations/10)
 

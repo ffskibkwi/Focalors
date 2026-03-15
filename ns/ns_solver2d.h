@@ -27,6 +27,7 @@ public:
     // void init();
     void variable_check();
     void init_mhd(Variable2D* in_phi_var = nullptr);
+    void setTimeStep(double in_dt);
     void solve();
     void normalize_pressure();
 
