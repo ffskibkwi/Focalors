@@ -69,6 +69,13 @@ void ConcatNSSolver2D::init_mhd(Variable2D* in_phi_var)
     mhd_module->init(in_phi_var);
 }
 
+void ConcatNSSolver2D::setTimeStep(double in_dt)
+{
+    dt = in_dt;
+    if (mhd_module)
+        mhd_module->setTimeStep(in_dt);
+}
+
 void ConcatNSSolver2D::variable_check()
 {
     if (u_var->position_type != VariablePositionType::XFace)

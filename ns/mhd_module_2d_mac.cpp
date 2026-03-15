@@ -152,6 +152,15 @@ void MHDModule2D::init(Variable2D* phi_var)
     m_initialized = true;
 }
 
+void MHDModule2D::setTimeStep(double in_dt)
+{
+    m_dt = in_dt;
+    if (m_Re != 0.0)
+        m_lorentzCoef = m_dt * (m_Ha * m_Ha) / m_Re;
+    else
+        m_lorentzCoef = 0.0;
+}
+
 void MHDModule2D::solveElectricPotential()
 {
     if (!m_initialized)
