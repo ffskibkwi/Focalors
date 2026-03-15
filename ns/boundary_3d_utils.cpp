@@ -348,3 +348,137 @@ void swap_field_data(field3& a, field3& b)
         throw std::runtime_error("swap_field_data(field3): size mismatch");
     std::swap(a.value, b.value);
 }
+
+bool isAllNeumannBoundary(const Variable3D& var)
+{
+    if (var.geometry == nullptr)
+        return false;
+
+    for (auto* domain : var.geometry->domains)
+    {
+        const auto domIt = var.boundary_type_map.find(domain);
+        if (domIt == var.boundary_type_map.end())
+            return false;
+
+        const auto& locMap = domIt->second;
+        for (const auto loc : kBoundaryLocations3D)
+        {
+            PDEBoundaryType type = PDEBoundaryType::Null;
+            if (const auto locIt = locMap.find(loc); locIt != locMap.end())
+                type = locIt->second;
+
+            if (type == PDEBoundaryType::Adjacented)
+                continue;
+            if (type == PDEBoundaryType::Neumann || type == PDEBoundaryType::Periodic)
+                continue;
+            return false;
+        }
+    }
+
+    return true;
+}
+
+double normalizeRhsForNeumannBc(const Variable3D&                                    var,
+                                const std::vector<Domain3DUniform*>&                 domains,
+                                const std::unordered_map<Domain3DUniform*, field3*>& fieldMap)
+{
+    auto requireField = [&](Domain3DUniform* domain) -> field3& {
+        const auto it = fieldMap.find(domain);
+        if (it == fieldMap.end() || it->second == nullptr)
+            throw std::runtime_error("normalizeRhsForNeumannBc(3D): fieldMap missing entry for domain");
+        return *it->second;
+    };
+
+    double totalSum  = 0.0;
+    size_t totalSize = 0;
+    for (auto* domain : domains)
+    {
+        field3& f = requireField(domain);
+        totalSum += f.sum();
+        totalSize += static_cast<size_t>(f.get_size_n());
+    }
+
+    if (totalSize == 0)
+        return 0.0;
+
+    auto sumBoundaryValue = [](const field2& boundaryValue) -> double {
+        double sum = 0.0;
+        for (int i = 0; i < boundaryValue.get_nx(); ++i)
+        {
+            for (int j = 0; j < boundaryValue.get_ny(); ++j)
+                sum += boundaryValue(i, j);
+        }
+        return sum;
+    };
+
+    double bcSum = 0.0;
+    for (auto* domain : domains)
+    {
+        const double hx = domain->get_hx();
+        const double hy = domain->get_hy();
+        const double hz = domain->get_hz();
+
+        const auto& typeMap = var.boundary_type_map.at(domain);
+
+        const auto  domHasIt  = var.has_boundary_value_map.find(domain);
+        const auto* hasMapPtr = domHasIt == var.has_boundary_value_map.end() ? nullptr : &domHasIt->second;
+
+        const auto  domValIt  = var.boundary_value_map.find(domain);
+        const auto* valMapPtr = domValIt == var.boundary_value_map.end() ? nullptr : &domValIt->second;
+
+        auto hasBoundaryValue = [&](LocationType loc) -> bool {
+            if (hasMapPtr == nullptr)
+                return false;
+            const auto it = hasMapPtr->find(loc);
+            return it != hasMapPtr->end() && it->second;
+        };
+
+        auto requireBoundaryValue = [&](LocationType loc) -> const field2& {
+            if (valMapPtr == nullptr)
+                throw std::runtime_error("normalizeRhsForNeumannBc(3D): boundary_value_map missing for domain");
+            const auto it = valMapPtr->find(loc);
+            if (it == valMapPtr->end() || it->second == nullptr)
+                throw std::runtime_error("normalizeRhsForNeumannBc(3D): missing Neumann boundary value field");
+            return *it->second;
+        };
+
+        if (typeMap.at(LocationType::XNegative) == PDEBoundaryType::Neumann &&
+            hasBoundaryValue(LocationType::XNegative))
+            bcSum += sumBoundaryValue(requireBoundaryValue(LocationType::XNegative)) / hx;
+        if (typeMap.at(LocationType::XPositive) == PDEBoundaryType::Neumann &&
+            hasBoundaryValue(LocationType::XPositive))
+            bcSum -= sumBoundaryValue(requireBoundaryValue(LocationType::XPositive)) / hx;
+        if (typeMap.at(LocationType::YNegative) == PDEBoundaryType::Neumann &&
+            hasBoundaryValue(LocationType::YNegative))
+            bcSum += sumBoundaryValue(requireBoundaryValue(LocationType::YNegative)) / hy;
+        if (typeMap.at(LocationType::YPositive) == PDEBoundaryType::Neumann &&
+            hasBoundaryValue(LocationType::YPositive))
+            bcSum -= sumBoundaryValue(requireBoundaryValue(LocationType::YPositive)) / hy;
+        if (typeMap.at(LocationType::ZNegative) == PDEBoundaryType::Neumann &&
+            hasBoundaryValue(LocationType::ZNegative))
+            bcSum += sumBoundaryValue(requireBoundaryValue(LocationType::ZNegative)) / hz;
+        if (typeMap.at(LocationType::ZPositive) == PDEBoundaryType::Neumann &&
+            hasBoundaryValue(LocationType::ZPositive))
+            bcSum -= sumBoundaryValue(requireBoundaryValue(LocationType::ZPositive)) / hz;
+    }
+
+    const double mean = (totalSum + bcSum) / static_cast<double>(totalSize);
+
+    for (auto* domain : domains)
+    {
+        field3& f  = requireField(domain);
+        int     nx = f.get_nx();
+        int     ny = f.get_ny();
+        int     nz = f.get_nz();
+        for (int i = 0; i < nx; ++i)
+        {
+            for (int j = 0; j < ny; ++j)
+            {
+                for (int k = 0; k < nz; ++k)
+                    f(i, j, k) -= mean;
+            }
+        }
+    }
+
+    return mean;
+}

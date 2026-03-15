@@ -188,24 +188,8 @@ void ConcatNSSolver3D::add_pressure_gradient()
 
 void ConcatNSSolver3D::normalize_pressure()
 {
-    double total_sum  = 0.0;
-    size_t total_size = 0;
-    for (auto& domain : domains)
-    {
-        field3& p = *p_field_map[domain];
-        total_sum += p.sum();
-        total_size += p.get_size_n();
-    }
-    double mean = total_sum / total_size;
-    for (auto& domain : domains)
-    {
-        field3& p  = *p_field_map[domain];
-        int     nx = p.get_nx();
-        int     ny = p.get_ny();
-        int     nz = p.get_nz();
-        for (int i = 0; i < nx; ++i)
-            for (int j = 0; j < ny; ++j)
-                for (int k = 0; k < nz; ++k)
-                    p(i, j, k) -= mean;
-    }
+    if (!isAllNeumannBoundary(*p_var))
+        return;
+
+    normalizeRhsForNeumannBc(*p_var, domains, p_field_map);
 }
