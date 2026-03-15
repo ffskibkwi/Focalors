@@ -582,6 +582,10 @@ int main(int argc, char* argv[])
             IO::write_csv(u, case_param.root_dir + '/' + std::to_string(iter) + "/u");
             IO::write_csv(v, case_param.root_dir + '/' + std::to_string(iter) + "/v");
             IO::write_csv(c, case_param.root_dir + '/' + std::to_string(iter) + "/v");
+
+            IO::matlab_read_var(u, case_param.root_dir + '/' + std::to_string(iter) + "/u.m");
+            IO::matlab_read_var(v, case_param.root_dir + '/' + std::to_string(iter) + "/v.m");
+            IO::matlab_read_var(c, case_param.root_dir + '/' + std::to_string(iter) + "/c.m");
         }
 
         if (iter % case_param.statistics_output_step == 0)
