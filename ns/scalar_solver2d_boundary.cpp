@@ -24,38 +24,38 @@ void ScalarSolver2D::phys_boundary_update()
                 if (loc == LocationType::XNegative)
                 {
                     if (type == PDEBoundaryType::Dirichlet)
-                        mirror_x_to_buffer(*buffer_map[loc], s, 0, bound_val, 0.0);
+                        mirror_x_to_buffer(buffer_map[loc], s, 0, bound_val, 0.0);
                     else if (type == PDEBoundaryType::Neumann)
-                        copy_x_to_buffer(*buffer_map[loc], s, 0);
+                        copy_x_to_buffer(buffer_map[loc], s, 0);
                     else if (type == PDEBoundaryType::Periodic)
-                        copy_x_to_buffer(*buffer_map[loc], s, nx - 1);
+                        copy_x_to_buffer(buffer_map[loc], s, nx - 1);
                 }
                 else if (loc == LocationType::XPositive)
                 {
                     if (type == PDEBoundaryType::Dirichlet)
-                        mirror_x_to_buffer(*buffer_map[loc], s, nx - 1, bound_val, 0.0);
+                        mirror_x_to_buffer(buffer_map[loc], s, nx - 1, bound_val, 0.0);
                     else if (type == PDEBoundaryType::Neumann)
-                        copy_x_to_buffer(*buffer_map[loc], s, nx - 1);
+                        copy_x_to_buffer(buffer_map[loc], s, nx - 1);
                     else if (type == PDEBoundaryType::Periodic)
-                        copy_x_to_buffer(*buffer_map[loc], s, 0);
+                        copy_x_to_buffer(buffer_map[loc], s, 0);
                 }
                 else if (loc == LocationType::YNegative)
                 {
                     if (type == PDEBoundaryType::Dirichlet)
-                        mirror_y_to_buffer(*buffer_map[loc], s, 0, bound_val, 0.0);
+                        mirror_y_to_buffer(buffer_map[loc], s, 0, bound_val, 0.0);
                     else if (type == PDEBoundaryType::Neumann)
-                        copy_y_to_buffer(*buffer_map[loc], s, 0);
+                        copy_y_to_buffer(buffer_map[loc], s, 0);
                     else if (type == PDEBoundaryType::Periodic)
-                        copy_y_to_buffer(*buffer_map[loc], s, ny - 1);
+                        copy_y_to_buffer(buffer_map[loc], s, ny - 1);
                 }
                 else if (loc == LocationType::YPositive)
                 {
                     if (type == PDEBoundaryType::Dirichlet)
-                        mirror_y_to_buffer(*buffer_map[loc], s, ny - 1, bound_val, 0.0);
+                        mirror_y_to_buffer(buffer_map[loc], s, ny - 1, bound_val, 0.0);
                     else if (type == PDEBoundaryType::Neumann)
-                        copy_y_to_buffer(*buffer_map[loc], s, ny - 1);
+                        copy_y_to_buffer(buffer_map[loc], s, ny - 1);
                     else if (type == PDEBoundaryType::Periodic)
-                        copy_y_to_buffer(*buffer_map[loc], s, 0);
+                        copy_y_to_buffer(buffer_map[loc], s, 0);
                 }
             }
         }
@@ -75,7 +75,7 @@ void ScalarSolver2D::nondiag_shared_boundary_update()
         {
             if (type == PDEBoundaryType::Adjacented)
             {
-                double*    s_buffer = s_buffer_map[domain][loc];
+                double* s_buffer = s_buffer_map[domain][loc];
 
                 Domain2DUniform* adj_domain = adjacency[domain][loc];
                 field2&          adj_s      = *s_field_map[adj_domain];
