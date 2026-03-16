@@ -48,6 +48,7 @@ public:
         IO::read_number(para_map, "sigma", sigma);
         IO::read_number(para_map, "Bx", Bx);
         IO::read_number(para_map, "By", By);
+        IO::read_number(para_map, "Bz", Bz);
 
         // Time Stepping
         IO::read_number(para_map, "dt_factor", dt_factor);
@@ -110,6 +111,7 @@ public:
             .record("sigma", sigma)
             .record("Bx", Bx)
             .record("By", By)
+            .record("Bz", Bz)
             .record("dt_factor", dt_factor)
             .record("startup_dt_factor", startup_dt_factor)
             .record("startup_t_end", startup_t_end)
@@ -158,6 +160,7 @@ public:
     double sigma = 0.0;  // Effective conductivity (for record only)
     double Bx    = 0.0;  // Magnetic field x-component
     double By    = 1.0;  // Magnetic field y-component
+    double Bz    = 0.0;  // Magnetic field z-component
 
     // Time Stepping
     double dt_factor = 0.1; // dt = dt_factor * h
