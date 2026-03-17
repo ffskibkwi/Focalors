@@ -228,7 +228,7 @@ public:
 
     // Physics parameters
     double Reynolds_number = 100.0;
-    double Schmidt_number  = 0.1;
+    double Schmidt_number  = 5000;
     double Pe              = 0.0;
     double nr              = 0.0;
 
