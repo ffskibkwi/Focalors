@@ -23,6 +23,9 @@ namespace
     // Keep the explicit non-Newtonian diffusion update inside a conservative
     // 2D FTCS-like stability range: dt <= C * h^2 / mu_max, with C < 0.25.
     constexpr double EXPLICIT_DIFFUSION_DT_FACTOR = 0.20;
+    // Mirror the Hartmann validation case: explicit Lorentz forcing should also
+    // obey a magnetic time-step restriction when B is active.
+    constexpr double MAGNETIC_DT_FACTOR = 0.50;
 
     /** @brief Convert the viscosity bound used in input/output units to solver units. */
     double scale_viscosity_to_solver_units(double viscosity_value, const PhysicsConfig& physics_cfg)
@@ -41,10 +44,13 @@ namespace
     {
         double convective_dt                   = 0.0;
         double diffusion_dt_limit              = std::numeric_limits<double>::infinity();
+        double magnetic_dt_limit               = std::numeric_limits<double>::infinity();
         double selected_dt                     = 0.0;
         double viscosity_upper_bound_raw       = 0.0;
         double viscosity_upper_bound_effective = 0.0;
+        double magnetic_factor_sq              = 0.0;
         bool   diffusion_limited               = false;
+        bool   magnetic_limited                = false;
     };
 
     struct TimeStepSchedule
@@ -72,8 +78,20 @@ namespace
                 EXPLICIT_DIFFUSION_DT_FACTOR * h * h / selection.viscosity_upper_bound_effective;
         }
 
-        selection.selected_dt       = std::min(selection.convective_dt, selection.diffusion_dt_limit);
-        selection.diffusion_limited = selection.diffusion_dt_limit < selection.convective_dt;
+        selection.magnetic_factor_sq = physics_cfg.Bx * physics_cfg.Bx + physics_cfg.By * physics_cfg.By +
+                                       physics_cfg.Bz * physics_cfg.Bz;
+        if (std::abs(physics_cfg.Ha) > 0.0 && selection.magnetic_factor_sq > 0.0 && physics_cfg.Re > 0.0)
+        {
+            selection.magnetic_dt_limit =
+                MAGNETIC_DT_FACTOR * physics_cfg.Re / (physics_cfg.Ha * physics_cfg.Ha * selection.magnetic_factor_sq);
+        }
+
+        selection.selected_dt =
+            std::min(selection.convective_dt, std::min(selection.diffusion_dt_limit, selection.magnetic_dt_limit));
+        selection.diffusion_limited = selection.diffusion_dt_limit < selection.convective_dt &&
+                                      selection.diffusion_dt_limit <= selection.magnetic_dt_limit;
+        selection.magnetic_limited = selection.magnetic_dt_limit < selection.convective_dt &&
+                                     selection.magnetic_dt_limit < selection.diffusion_dt_limit;
 
         return selection;
     }
@@ -260,21 +278,28 @@ int main(int argc, char* argv[])
     std::cout << "Time Step Selection:" << std::endl;
     std::cout << "  base_convective_dt: " << base_time_step_selection.convective_dt << std::endl;
     std::cout << "  base_diffusion_dt_limit: " << base_time_step_selection.diffusion_dt_limit << std::endl;
+    std::cout << "  base_magnetic_dt_limit: " << base_time_step_selection.magnetic_dt_limit << std::endl;
     std::cout << "  viscosity_upper_bound_raw: " << base_time_step_selection.viscosity_upper_bound_raw << std::endl;
     std::cout << "  viscosity_upper_bound_effective: " << base_time_step_selection.viscosity_upper_bound_effective
               << std::endl;
+    std::cout << "  magnetic_factor_sq: " << base_time_step_selection.magnetic_factor_sq << std::endl;
     std::cout << "  base_selected_dt: " << base_time_step_selection.selected_dt << std::endl;
     std::cout << "  initial_dt: " << time_cfg.dt << std::endl;
     std::cout << "  base_diffusion_limited: " << std::boolalpha << base_time_step_selection.diffusion_limited
+              << std::noboolalpha << std::endl;
+    std::cout << "  base_magnetic_limited: " << std::boolalpha << base_time_step_selection.magnetic_limited
               << std::noboolalpha << std::endl;
     if (has_requested_startup_dt)
     {
         std::cout << "  startup_convective_dt: " << startup_time_step_selection.convective_dt << std::endl;
         std::cout << "  startup_diffusion_dt_limit: " << startup_time_step_selection.diffusion_dt_limit << std::endl;
+        std::cout << "  startup_magnetic_dt_limit: " << startup_time_step_selection.magnetic_dt_limit << std::endl;
         std::cout << "  startup_selected_dt: " << startup_time_step_selection.selected_dt << std::endl;
         std::cout << "  startup_t_end: " << time_step_schedule.startup_t_end << std::endl;
         std::cout << "  startup_active: " << std::boolalpha << time_step_schedule.has_startup_dt << std::noboolalpha
                   << std::endl;
+        std::cout << "  startup_magnetic_limited: " << std::boolalpha << startup_time_step_selection.magnetic_limited
+                  << std::noboolalpha << std::endl;
     }
     std::cout << "  estimated_total_steps: " << estimated_total_steps << std::endl;
 
@@ -301,19 +326,26 @@ int main(int argc, char* argv[])
             .record("dt_base", base_time_step_selection.selected_dt)
             .record("dt_base_convective", base_time_step_selection.convective_dt)
             .record("dt_base_diffusion_limit", base_time_step_selection.diffusion_dt_limit)
+            .record("dt_base_magnetic_limit", base_time_step_selection.magnetic_dt_limit)
             .record("dt_startup", has_requested_startup_dt ? startup_time_step_selection.selected_dt : 0.0)
             .record("dt_startup_convective", has_requested_startup_dt ? startup_time_step_selection.convective_dt : 0.0)
             .record("dt_startup_diffusion_limit",
                     has_requested_startup_dt ? startup_time_step_selection.diffusion_dt_limit : 0.0)
+            .record("dt_startup_magnetic_limit",
+                    has_requested_startup_dt ? startup_time_step_selection.magnetic_dt_limit : 0.0)
             .record("dt_startup_active", time_step_schedule.has_startup_dt ? 1 : 0)
             .record("dt_startup_t_end", time_step_schedule.startup_t_end)
             .record("estimated_total_steps", estimated_total_steps)
             .record("viscosity_upper_bound_raw", base_time_step_selection.viscosity_upper_bound_raw)
             .record("viscosity_upper_bound_effective", base_time_step_selection.viscosity_upper_bound_effective)
             .record("viscosity_upper_bound", base_time_step_selection.viscosity_upper_bound_effective)
+            .record("magnetic_factor_sq", base_time_step_selection.magnetic_factor_sq)
             .record("dt_diffusion_limited", base_time_step_selection.diffusion_limited ? 1 : 0)
+            .record("dt_magnetic_limited", base_time_step_selection.magnetic_limited ? 1 : 0)
             .record("dt_startup_diffusion_limited",
-                    has_requested_startup_dt && startup_time_step_selection.diffusion_limited ? 1 : 0);
+                    has_requested_startup_dt && startup_time_step_selection.diffusion_limited ? 1 : 0)
+            .record("dt_startup_magnetic_limited",
+                    has_requested_startup_dt && startup_time_step_selection.magnetic_limited ? 1 : 0);
     }
 
     double lx2 = case_param.lx_2;
@@ -460,6 +492,7 @@ int main(int argc, char* argv[])
     };
     auto set_neumann_zero = [](Variable2D& var, Domain2DUniform* d, LocationType loc) {
         var.set_boundary_type(d, loc, PDEBoundaryType::Neumann);
+        var.set_boundary_value(d, loc, 0.0);
     };
     auto is_adjacented = [&](Domain2DUniform* d, LocationType loc) {
         return geo.adjacency.count(d) && geo.adjacency[d].count(loc);
