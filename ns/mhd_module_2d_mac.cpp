@@ -504,6 +504,13 @@ void MHDModule2D::buffer_update_j()
             return true;
         };
 
+        // For insulating boundaries we should only constrain the normal current component.
+        // X-normal boundaries constrain Jx; Y-normal boundaries constrain Jy.
+        const bool phi_xneg_insulating = is_zero_neumann(LocationType::XNegative, ny);
+        const bool phi_xpos_insulating = is_zero_neumann(LocationType::XPositive, ny);
+        const bool phi_yneg_insulating = is_zero_neumann(LocationType::YNegative, nx);
+        const bool phi_ypos_insulating = is_zero_neumann(LocationType::YPositive, nx);
+
         double* phi_xpos_buffer = m_phiVar->buffer_map[domain][LocationType::XPositive];
         double* phi_ypos_buffer = m_phiVar->buffer_map[domain][LocationType::YPositive];
 
@@ -553,9 +560,9 @@ void MHDModule2D::buffer_update_j()
                     copy_x_to_buffer(buf, adj_jx, 0);
                 }
             }
-            else if (is_zero_neumann(LocationType::XPositive, ny))
+            else if (phi_xpos_insulating)
             {
-                // Insulating wall: enforce Jn = 0
+                // Insulating x-boundary: enforce the normal current component Jx = 0.
                 assign_val_to_buffer(buf, ny, nullptr, 0.0);
             }
             else
@@ -580,9 +587,9 @@ void MHDModule2D::buffer_update_j()
                     copy_x_to_buffer(buf, adj_jx, adj_nx - 1);
                 }
             }
-            else if (is_zero_neumann(LocationType::XNegative, ny))
+            else if (phi_xneg_insulating)
             {
-                // Insulating wall: enforce Jn = 0
+                // Insulating x-boundary: enforce the normal current component Jx = 0.
                 assign_val_to_buffer(buf, ny, nullptr, 0.0);
             }
             else
@@ -607,11 +614,6 @@ void MHDModule2D::buffer_update_j()
                     copy_y_to_buffer(buf, adj_jx, adj_ny - 1);
                 }
             }
-            else if (is_zero_neumann(LocationType::YNegative, nx))
-            {
-                // Insulating wall: enforce Jn = 0
-                assign_val_to_buffer(buf, nx, nullptr, 0.0);
-            }
             else
             {
                 for (int i = 0; i < nx; ++i)
@@ -632,11 +634,6 @@ void MHDModule2D::buffer_update_j()
                     field2&          adj_jx     = *m_jxFieldMap[adj_domain];
                     copy_y_to_buffer(buf, adj_jx, 0);
                 }
-            }
-            else if (is_zero_neumann(LocationType::YPositive, nx))
-            {
-                // Insulating wall: enforce Jn = 0
-                assign_val_to_buffer(buf, nx, nullptr, 0.0);
             }
             else
             {
@@ -659,9 +656,9 @@ void MHDModule2D::buffer_update_j()
                     copy_y_to_buffer(buf, adj_jy, 0);
                 }
             }
-            else if (is_zero_neumann(LocationType::YPositive, nx))
+            else if (phi_ypos_insulating)
             {
-                // Insulating wall: enforce Jn = 0
+                // Insulating y-boundary: enforce the normal current component Jy = 0.
                 assign_val_to_buffer(buf, nx, nullptr, 0.0);
             }
             else
@@ -686,9 +683,9 @@ void MHDModule2D::buffer_update_j()
                     copy_y_to_buffer(buf, adj_jy, adj_ny - 1);
                 }
             }
-            else if (is_zero_neumann(LocationType::YNegative, nx))
+            else if (phi_yneg_insulating)
             {
-                // Insulating wall: enforce Jn = 0
+                // Insulating y-boundary: enforce the normal current component Jy = 0.
                 assign_val_to_buffer(buf, nx, nullptr, 0.0);
             }
             else
@@ -713,11 +710,6 @@ void MHDModule2D::buffer_update_j()
                     copy_x_to_buffer(buf, adj_jy, adj_nx - 1);
                 }
             }
-            else if (is_zero_neumann(LocationType::XNegative, ny))
-            {
-                // Insulating wall: enforce Jn = 0
-                assign_val_to_buffer(buf, ny, nullptr, 0.0);
-            }
             else
             {
                 for (int j = 0; j < ny; ++j)
@@ -738,11 +730,6 @@ void MHDModule2D::buffer_update_j()
                     field2&          adj_jy     = *m_jyFieldMap[adj_domain];
                     copy_x_to_buffer(buf, adj_jy, 0);
                 }
-            }
-            else if (is_zero_neumann(LocationType::XPositive, ny))
-            {
-                // Insulating wall: enforce Jn = 0
-                assign_val_to_buffer(buf, ny, nullptr, 0.0);
             }
             else
             {
@@ -820,7 +807,7 @@ void MHDModule2D::buffer_update_j()
             const bool yneg_physical = u_type_map[LocationType::YNegative] != PDEBoundaryType::Adjacented;
             if (xpos_physical || yneg_physical)
             {
-                if (is_zero_neumann(LocationType::XPositive, ny) || is_zero_neumann(LocationType::YNegative, nx))
+                if (phi_xpos_insulating)
                 {
                     m_jxVar->xpos_yneg_corner_map[domain] = 0.0;
                 }
@@ -850,7 +837,7 @@ void MHDModule2D::buffer_update_j()
             const bool up_physical   = v_type_map[LocationType::YPositive] != PDEBoundaryType::Adjacented;
             if (xneg_physical || up_physical)
             {
-                if (is_zero_neumann(LocationType::XNegative, ny) || is_zero_neumann(LocationType::YPositive, nx))
+                if (phi_ypos_insulating)
                 {
                     m_jyVar->xneg_ypos_corner_map[domain] = 0.0;
                 }
