@@ -85,6 +85,7 @@ int main(int argc, char* argv[])
     };
     auto set_neumann_zero = [](Variable2D& var, Domain2DUniform* d, LocationType loc) {
         var.set_boundary_type(d, loc, PDEBoundaryType::Neumann);
+        var.set_boundary_value(d, loc, 0.0);
     };
     auto isdjacented = [&](Domain2DUniform* d, LocationType loc) {
         return geo.adjacency.count(d) && geo.adjacency[d].count(loc);
