@@ -100,7 +100,7 @@ public:
         Pe = Schmidt_number * Reynolds_number;
         nr = 1.0 / Pe;
 
-        double mixing_channel_hydraulic_diameter = 2.0 * lx2 * ly2 / (lx2 + ly2);
+        double mixing_channel_hydraulic_diameter = Height;
         double density                           = 1e3;
         double dynamic_viscosity                 = 1.01e-3;
         double inlet_velocity  = Reynolds_number * dynamic_viscosity / (density * mixing_channel_hydraulic_diameter);
