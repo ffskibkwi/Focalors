@@ -101,6 +101,7 @@ int main(int argc, char* argv[])
     };
     auto set_neumann_zero = [](Variable3D& var, Domain3DUniform* d, LocationType loc) {
         var.set_boundary_type(d, loc, PDEBoundaryType::Neumann);
+        var.set_boundary_value(d, loc, 0.0);
     };
     auto isdjacented = [&](Domain3DUniform* d, LocationType loc) {
         return geo.adjacency.count(d) && geo.adjacency[d].count(loc);
@@ -198,7 +199,7 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = false;
         }
 
-        if (iter % static_cast<int>(1e4) == 0)
+        if (false && iter % static_cast<int>(1e4) == 0)
         {
             static int count = 0;
             vtk_writer.write(env_cfg.debugOutputDir + "/vtk/" + std::to_string(count++));

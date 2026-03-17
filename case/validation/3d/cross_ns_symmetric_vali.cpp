@@ -194,6 +194,7 @@ int main(int argc, char* argv[])
     };
     auto set_neumann_zero = [](Variable3D& var, Domain3DUniform* domain, LocationType loc) {
         var.set_boundary_type(domain, loc, PDEBoundaryType::Neumann);
+        var.set_boundary_value(domain, loc, 0.0);
     };
     auto is_adjacented = [&](Domain3DUniform* domain, LocationType loc) {
         return geo.adjacency.count(domain) && geo.adjacency[domain].count(loc);
@@ -343,7 +344,7 @@ int main(int argc, char* argv[])
 
     ns_solver.velocity_div_inner();
     ns_solver.velocity_div_outer();
-    ns_solver.pressure_buffer_update();
+    ns_solver.pressure_shared_boundary_buffer_update();
     ns_solver.add_pressure_gradient();
 
     ns_solver.phys_boundary_update();
