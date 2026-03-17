@@ -180,6 +180,7 @@ void MHDModule2D::solveElectricPotential()
         {
             m_phiFieldMap[domain]->clear(0.0);
         }
+        phys_boundary_update_phi();
         buffer_update_phi();
         return;
     }
@@ -265,6 +266,7 @@ void MHDModule2D::solveElectricPotential()
 
     // Solve Poisson equation; phi overwrites RHS in phi_var->field_map
     m_phiSolver->solve();
+    phys_boundary_update_phi();
     buffer_update_phi();
 }
 
@@ -908,159 +910,122 @@ void MHDModule2D::buffer_update_j()
     }
 }
 
-void MHDModule2D::buffer_update_phi()
+void MHDModule2D::phys_boundary_update_phi()
 {
     if (!m_initialized)
-        throw std::runtime_error("MHDModule2D::buffer_update(): module not initialized");
+        throw std::runtime_error("MHDModule2D::phys_boundary_update_phi(): module not initialized");
 
     for (auto& domain : m_domains)
     {
         field2& phi = *m_phiFieldMap[domain];
 
-        const int    nx = domain->get_nx();
-        const int    ny = domain->get_ny();
-        const double hx = domain->hx;
-        const double hy = domain->hy;
+        const int nx = domain->get_nx();
+        const int ny = domain->get_ny();
 
-        auto& type_map = m_phiVar->boundary_type_map[domain];
-        auto& has_map  = m_phiVar->has_boundary_value_map[domain];
-        auto& val_map  = m_phiVar->boundary_value_map[domain];
+        auto& type_map   = m_phiVar->boundary_type_map[domain];
+        auto& has_map    = m_phiVar->has_boundary_value_map[domain];
+        auto& val_map    = m_phiVar->boundary_value_map[domain];
+        auto& buffer_map = m_phiVar->buffer_map[domain];
 
-        // Center variable2d: buffer ownership is XNegative/YNegative only.
-        // We still compute physical-boundary ghost values for these owned buffers.
-
-        // XNegative buffer: phi(-1, j)
-        if (m_phiVar->buffer_map.count(domain) && m_phiVar->buffer_map[domain].count(LocationType::XNegative))
+        for (auto& [loc, type] : type_map)
         {
-            double*         buf  = m_phiVar->buffer_map[domain][LocationType::XNegative];
-            PDEBoundaryType type = type_map[LocationType::XNegative];
+            if (type == PDEBoundaryType::Adjacented || !buffer_map.count(loc))
+                continue;
 
-            if (type == PDEBoundaryType::Adjacented)
-            {
-                auto adj_dom_it = m_adjacency.find(domain);
-                if (adj_dom_it != m_adjacency.end() && adj_dom_it->second.count(LocationType::XNegative))
-                {
-                    Domain2DUniform* adj_domain = adj_dom_it->second[LocationType::XNegative];
-                    field2&          adj_phi    = *m_phiFieldMap[adj_domain];
-                    const int        adj_nx     = adj_phi.get_nx();
-                    copy_x_to_buffer(buf, adj_phi, adj_nx - 1);
-                    continue;
-                }
-            }
+            auto    has_it = has_map.find(loc);
+            auto    val_it = val_map.find(loc);
+            double* bound_val =
+                (has_it != has_map.end() && has_it->second && val_it != val_map.end()) ? val_it->second : nullptr;
 
-            if (type == PDEBoundaryType::Dirichlet)
+            switch (loc)
             {
-                double* g_ptr = (has_map[LocationType::XNegative] ? val_map[LocationType::XNegative] : nullptr);
-                mirror_x_to_buffer(buf, phi, 0, g_ptr, 0.0);
-            }
-            else if (type == PDEBoundaryType::Neumann)
-            {
-                double* q_ptr = (has_map[LocationType::XNegative] ? val_map[LocationType::XNegative] : nullptr);
-                neumann_x_to_buffer(buf, phi, 0, q_ptr, 0.0, hx, -1.0);
-            }
-            else
-            {
-                // Default fallback: zero-gradient.
-                copy_x_to_buffer(buf, phi, 0);
+                case LocationType::XNegative:
+                    if (type == PDEBoundaryType::Dirichlet)
+                        mirror_x_to_buffer(buffer_map[loc], phi, 0, bound_val, 0.0);
+                    else if (type == PDEBoundaryType::Neumann)
+                        neumann_x_to_buffer(buffer_map[loc], phi, 0, bound_val, 0.0, domain->hx, -1.0);
+                    else if (type == PDEBoundaryType::Periodic)
+                        copy_x_to_buffer(buffer_map[loc], phi, nx - 1);
+                    else
+                        copy_x_to_buffer(buffer_map[loc], phi, 0);
+                    break;
+                case LocationType::XPositive:
+                    if (type == PDEBoundaryType::Dirichlet)
+                        mirror_x_to_buffer(buffer_map[loc], phi, nx - 1, bound_val, 0.0);
+                    else if (type == PDEBoundaryType::Neumann)
+                        neumann_x_to_buffer(buffer_map[loc], phi, nx - 1, bound_val, 0.0, domain->hx, +1.0);
+                    else if (type == PDEBoundaryType::Periodic)
+                        copy_x_to_buffer(buffer_map[loc], phi, 0);
+                    else
+                        copy_x_to_buffer(buffer_map[loc], phi, nx - 1);
+                    break;
+                case LocationType::YNegative:
+                    if (type == PDEBoundaryType::Dirichlet)
+                        mirror_y_to_buffer(buffer_map[loc], phi, 0, bound_val, 0.0);
+                    else if (type == PDEBoundaryType::Neumann)
+                        neumann_y_to_buffer(buffer_map[loc], phi, 0, bound_val, 0.0, domain->hy, -1.0);
+                    else if (type == PDEBoundaryType::Periodic)
+                        copy_y_to_buffer(buffer_map[loc], phi, ny - 1);
+                    else
+                        copy_y_to_buffer(buffer_map[loc], phi, 0);
+                    break;
+                case LocationType::YPositive:
+                    if (type == PDEBoundaryType::Dirichlet)
+                        mirror_y_to_buffer(buffer_map[loc], phi, ny - 1, bound_val, 0.0);
+                    else if (type == PDEBoundaryType::Neumann)
+                        neumann_y_to_buffer(buffer_map[loc], phi, ny - 1, bound_val, 0.0, domain->hy, +1.0);
+                    else if (type == PDEBoundaryType::Periodic)
+                        copy_y_to_buffer(buffer_map[loc], phi, 0);
+                    else
+                        copy_y_to_buffer(buffer_map[loc], phi, ny - 1);
+                    break;
+                default:
+                    throw std::runtime_error("MHDModule2D::phys_boundary_update_phi(): invalid location type");
             }
         }
+    }
+}
 
-        // XPositive buffer: phi(nx, j)
-        if (m_phiVar->buffer_map.count(domain) && m_phiVar->buffer_map[domain].count(LocationType::XPositive))
+void MHDModule2D::buffer_update_phi()
+{
+    if (!m_initialized)
+        throw std::runtime_error("MHDModule2D::buffer_update_phi(): module not initialized");
+
+    for (auto& domain : m_domains)
+    {
+        auto& type_map   = m_phiVar->boundary_type_map[domain];
+        auto& buffer_map = m_phiVar->buffer_map[domain];
+        auto  adj_dom_it = m_adjacency.find(domain);
+
+        for (auto& [loc, type] : type_map)
         {
-            double*         buf  = m_phiVar->buffer_map[domain][LocationType::XPositive];
-            PDEBoundaryType type = type_map[LocationType::XPositive];
-
-            if (type == PDEBoundaryType::Adjacented)
+            if (type != PDEBoundaryType::Adjacented || !buffer_map.count(loc) || adj_dom_it == m_adjacency.end() ||
+                !adj_dom_it->second.count(loc))
             {
-                auto adj_dom_it = m_adjacency.find(domain);
-                if (adj_dom_it != m_adjacency.end() && adj_dom_it->second.count(LocationType::XPositive))
-                {
-                    Domain2DUniform* adj_domain = adj_dom_it->second[LocationType::XPositive];
-                    field2&          adj_phi    = *m_phiFieldMap[adj_domain];
-                    copy_x_to_buffer(buf, adj_phi, 0);
-                }
-            }
-            else if (type == PDEBoundaryType::Dirichlet)
-            {
-                double* g_ptr = (has_map[LocationType::XPositive] ? val_map[LocationType::XPositive] : nullptr);
-                mirror_x_to_buffer(buf, phi, nx - 1, g_ptr, 0.0);
-            }
-            else if (type == PDEBoundaryType::Neumann)
-            {
-                double* q_ptr = (has_map[LocationType::XPositive] ? val_map[LocationType::XPositive] : nullptr);
-                neumann_x_to_buffer(buf, phi, nx - 1, q_ptr, 0.0, hx, +1.0);
-            }
-            else
-            {
-                copy_x_to_buffer(buf, phi, nx - 1);
-            }
-        }
-
-        // YNegative buffer: phi(i, -1)
-        if (m_phiVar->buffer_map.count(domain) && m_phiVar->buffer_map[domain].count(LocationType::YNegative))
-        {
-            double*         buf  = m_phiVar->buffer_map[domain][LocationType::YNegative];
-            PDEBoundaryType type = type_map[LocationType::YNegative];
-
-            if (type == PDEBoundaryType::Adjacented)
-            {
-                auto adj_dom_it = m_adjacency.find(domain);
-                if (adj_dom_it != m_adjacency.end() && adj_dom_it->second.count(LocationType::YNegative))
-                {
-                    Domain2DUniform* adj_domain = adj_dom_it->second[LocationType::YNegative];
-                    field2&          adj_phi    = *m_phiFieldMap[adj_domain];
-                    const int        adj_ny     = adj_phi.get_ny();
-                    copy_y_to_buffer(buf, adj_phi, adj_ny - 1);
-                    continue;
-                }
+                continue;
             }
 
-            if (type == PDEBoundaryType::Dirichlet)
-            {
-                double* g_ptr = (has_map[LocationType::YNegative] ? val_map[LocationType::YNegative] : nullptr);
-                mirror_y_to_buffer(buf, phi, 0, g_ptr, 0.0);
-            }
-            else if (type == PDEBoundaryType::Neumann)
-            {
-                double* q_ptr = (has_map[LocationType::YNegative] ? val_map[LocationType::YNegative] : nullptr);
-                neumann_y_to_buffer(buf, phi, 0, q_ptr, 0.0, hy, -1.0);
-            }
-            else
-            {
-                copy_y_to_buffer(buf, phi, 0);
-            }
-        }
+            Domain2DUniform* adj_domain = adj_dom_it->second[loc];
+            field2&          adj_phi    = *m_phiFieldMap[adj_domain];
+            const int        adj_nx     = adj_phi.get_nx();
+            const int        adj_ny     = adj_phi.get_ny();
 
-        // YPositive buffer: phi(i, ny)
-        if (m_phiVar->buffer_map.count(domain) && m_phiVar->buffer_map[domain].count(LocationType::YPositive))
-        {
-            double*         buf  = m_phiVar->buffer_map[domain][LocationType::YPositive];
-            PDEBoundaryType type = type_map[LocationType::YPositive];
-
-            if (type == PDEBoundaryType::Adjacented)
+            switch (loc)
             {
-                auto adj_dom_it = m_adjacency.find(domain);
-                if (adj_dom_it != m_adjacency.end() && adj_dom_it->second.count(LocationType::YPositive))
-                {
-                    Domain2DUniform* adj_domain = adj_dom_it->second[LocationType::YPositive];
-                    field2&          adj_phi    = *m_phiFieldMap[adj_domain];
-                    copy_y_to_buffer(buf, adj_phi, 0);
-                }
-            }
-            else if (type == PDEBoundaryType::Dirichlet)
-            {
-                double* g_ptr = (has_map[LocationType::YPositive] ? val_map[LocationType::YPositive] : nullptr);
-                mirror_y_to_buffer(buf, phi, ny - 1, g_ptr, 0.0);
-            }
-            else if (type == PDEBoundaryType::Neumann)
-            {
-                double* q_ptr = (has_map[LocationType::YPositive] ? val_map[LocationType::YPositive] : nullptr);
-                neumann_y_to_buffer(buf, phi, ny - 1, q_ptr, 0.0, hy, +1.0);
-            }
-            else
-            {
-                copy_y_to_buffer(buf, phi, ny - 1);
+                case LocationType::XNegative:
+                    copy_x_to_buffer(buffer_map[loc], adj_phi, adj_nx - 1);
+                    break;
+                case LocationType::XPositive:
+                    copy_x_to_buffer(buffer_map[loc], adj_phi, 0);
+                    break;
+                case LocationType::YNegative:
+                    copy_y_to_buffer(buffer_map[loc], adj_phi, adj_ny - 1);
+                    break;
+                case LocationType::YPositive:
+                    copy_y_to_buffer(buffer_map[loc], adj_phi, 0);
+                    break;
+                default:
+                    throw std::runtime_error("MHDModule2D::buffer_update_phi(): invalid location type");
             }
         }
     }

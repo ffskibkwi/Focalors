@@ -54,6 +54,7 @@ public:
     void applyLorentzForce();
 
 private:
+    void phys_boundary_update_phi();
     void buffer_update_phi();
     void buffer_update_j();
 
