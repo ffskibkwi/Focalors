@@ -154,14 +154,14 @@ int main(int argc, char* argv[])
 
     // MHD parameters (must be set before MHDModule2D initialization)
     physics_cfg.Ha = case_param.Ha;
-    physics_cfg.Bx = case_param.Bx;
-    physics_cfg.By = case_param.By;
+    physics_cfg.set_magnetic_field(case_param.Bx, case_param.By, case_param.Bz);
 
     std::cout << "MHD Parameters:" << std::endl;
     std::cout << "  enable_mhd: " << enable_mhd << std::endl;
     std::cout << "  Ha: " << case_param.Ha << std::endl;
     std::cout << "  Bx: " << case_param.Bx << std::endl;
     std::cout << "  By: " << case_param.By << std::endl;
+    std::cout << "  Bz: " << case_param.Bz << std::endl;
 
     // Set Non-Newtonian parameters based on model type
     physics_cfg.set_model_type(case_param.model_type);
