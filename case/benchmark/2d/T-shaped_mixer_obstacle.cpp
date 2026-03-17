@@ -118,7 +118,7 @@ public:
         circle_center_x = (lx1 + lx2 + lx3) / 2.0;
         circle_center_y = circle_center_y_ratio * Height - ly2;
 
-        double mixing_channel_hydraulic_diameter = 2.0 * lx2 * ly2 / (lx2 + ly2);
+        double mixing_channel_hydraulic_diameter = Height;
         double density                           = 1e3;
         double dynamic_viscosity                 = 1.01e-3;
         double inlet_velocity  = Reynolds_number * dynamic_viscosity / (density * mixing_channel_hydraulic_diameter);
