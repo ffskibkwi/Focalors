@@ -186,7 +186,7 @@ public:
 
     // Physics parameters
     double Reynolds_number = 100.0;
-    double Schmidt_number  = 0.1;
+    double Schmidt_number  = 5000;
     double Pe              = 0.0;
     double nr              = 0.0;
 
@@ -400,9 +400,9 @@ int main(int argc, char* argv[])
         // Calculate normal vectors (pointing outward from sphere center)
         for (int i = 0; i < p_coord->cur_n; i++)
         {
-            double dx = X[i] - case_param.sphere_center_x;
-            double dy = Y[i] - case_param.sphere_center_y;
-            double dz = Z[i] - case_param.sphere_center_z;
+            double dx   = X[i] - case_param.sphere_center_x;
+            double dy   = Y[i] - case_param.sphere_center_y;
+            double dz   = Z[i] - case_param.sphere_center_z;
             double norm = std::sqrt(dx * dx + dy * dy + dz * dz);
 
             if (norm > 1e-10)
