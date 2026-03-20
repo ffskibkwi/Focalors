@@ -401,16 +401,21 @@ double normalizeRhsForNeumannBc(const Variable3D&                               
     if (totalSize == 0)
         return 0.0;
 
-    auto sumBoundaryValue = [](const field2& boundaryValue) -> double {
+    auto sumBoundaryBuffer = [](const field2& boundaryBuffer) -> double {
         double sum = 0.0;
-        for (int i = 0; i < boundaryValue.get_nx(); ++i)
+        for (int i = 0; i < boundaryBuffer.get_nx(); ++i)
         {
-            for (int j = 0; j < boundaryValue.get_ny(); ++j)
-                sum += boundaryValue(i, j);
+            for (int j = 0; j < boundaryBuffer.get_ny(); ++j)
+                sum += boundaryBuffer(i, j);
         }
         return sum;
     };
 
+    // For pure Neumann Poisson problems, the solvability condition is:
+    //   sum(RHS_with_bc) == 0 (discrete orthogonality to constant nullspace).
+    // RHS_with_bc means the RHS after ConcatPoissonSolver3D::boundary_assembly()
+    // adds Neumann flux terms. We compensate this by including the same boundary
+    // contributions in the global mean.
     double bcSum = 0.0;
     for (auto* domain : domains)
     {
@@ -420,46 +425,38 @@ double normalizeRhsForNeumannBc(const Variable3D&                               
 
         const auto& typeMap = var.boundary_type_map.at(domain);
 
-        const auto  domHasIt  = var.has_boundary_value_map.find(domain);
-        const auto* hasMapPtr = domHasIt == var.has_boundary_value_map.end() ? nullptr : &domHasIt->second;
+        const auto  domBufIt  = var.buffer_map.find(domain);
+        const auto* bufMapPtr = domBufIt == var.buffer_map.end() ? nullptr : &domBufIt->second;
 
-        const auto  domValIt  = var.boundary_value_map.find(domain);
-        const auto* valMapPtr = domValIt == var.boundary_value_map.end() ? nullptr : &domValIt->second;
-
-        auto hasBoundaryValue = [&](LocationType loc) -> bool {
-            if (hasMapPtr == nullptr)
-                return false;
-            const auto it = hasMapPtr->find(loc);
-            return it != hasMapPtr->end() && it->second;
-        };
-
-        auto requireBoundaryValue = [&](LocationType loc) -> const field2& {
-            if (valMapPtr == nullptr)
-                throw std::runtime_error("normalizeRhsForNeumannBc(3D): boundary_value_map missing for domain");
-            const auto it = valMapPtr->find(loc);
-            if (it == valMapPtr->end() || it->second == nullptr)
-                throw std::runtime_error("normalizeRhsForNeumannBc(3D): missing Neumann boundary value field");
+        auto requireBoundaryBuffer = [&](LocationType loc) -> const field2& {
+            if (bufMapPtr == nullptr)
+                throw std::runtime_error("normalizeRhsForNeumannBc(3D): buffer_map missing for domain");
+            const auto it = bufMapPtr->find(loc);
+            if (it == bufMapPtr->end() || it->second == nullptr)
+                throw std::runtime_error("normalizeRhsForNeumannBc(3D): buffer_map missing entry for Neumann bc");
             return *it->second;
         };
 
-        if (typeMap.at(LocationType::XNegative) == PDEBoundaryType::Neumann &&
-            hasBoundaryValue(LocationType::XNegative))
-            bcSum += sumBoundaryValue(requireBoundaryValue(LocationType::XNegative)) / hx;
-        if (typeMap.at(LocationType::XPositive) == PDEBoundaryType::Neumann &&
-            hasBoundaryValue(LocationType::XPositive))
-            bcSum -= sumBoundaryValue(requireBoundaryValue(LocationType::XPositive)) / hx;
-        if (typeMap.at(LocationType::YNegative) == PDEBoundaryType::Neumann &&
-            hasBoundaryValue(LocationType::YNegative))
-            bcSum += sumBoundaryValue(requireBoundaryValue(LocationType::YNegative)) / hy;
-        if (typeMap.at(LocationType::YPositive) == PDEBoundaryType::Neumann &&
-            hasBoundaryValue(LocationType::YPositive))
-            bcSum -= sumBoundaryValue(requireBoundaryValue(LocationType::YPositive)) / hy;
-        if (typeMap.at(LocationType::ZNegative) == PDEBoundaryType::Neumann &&
-            hasBoundaryValue(LocationType::ZNegative))
-            bcSum += sumBoundaryValue(requireBoundaryValue(LocationType::ZNegative)) / hz;
-        if (typeMap.at(LocationType::ZPositive) == PDEBoundaryType::Neumann &&
-            hasBoundaryValue(LocationType::ZPositive))
-            bcSum -= sumBoundaryValue(requireBoundaryValue(LocationType::ZPositive)) / hz;
+        const auto xnegType = typeMap.at(LocationType::XNegative);
+        const auto xposType = typeMap.at(LocationType::XPositive);
+        const auto ynegType = typeMap.at(LocationType::YNegative);
+        const auto yposType = typeMap.at(LocationType::YPositive);
+        const auto znegType = typeMap.at(LocationType::ZNegative);
+        const auto zposType = typeMap.at(LocationType::ZPositive);
+
+        // Neumann contributions follow ConcatPoissonSolver3D::boundary_assembly() sign conventions.
+        if (xnegType == PDEBoundaryType::Neumann)
+            bcSum += sumBoundaryBuffer(requireBoundaryBuffer(LocationType::XNegative)) / hx;
+        if (xposType == PDEBoundaryType::Neumann)
+            bcSum -= sumBoundaryBuffer(requireBoundaryBuffer(LocationType::XPositive)) / hx;
+        if (ynegType == PDEBoundaryType::Neumann)
+            bcSum += sumBoundaryBuffer(requireBoundaryBuffer(LocationType::YNegative)) / hy;
+        if (yposType == PDEBoundaryType::Neumann)
+            bcSum -= sumBoundaryBuffer(requireBoundaryBuffer(LocationType::YPositive)) / hy;
+        if (znegType == PDEBoundaryType::Neumann)
+            bcSum += sumBoundaryBuffer(requireBoundaryBuffer(LocationType::ZNegative)) / hz;
+        if (zposType == PDEBoundaryType::Neumann)
+            bcSum -= sumBoundaryBuffer(requireBoundaryBuffer(LocationType::ZPositive)) / hz;
     }
 
     const double mean = (totalSum + bcSum) / static_cast<double>(totalSize);
