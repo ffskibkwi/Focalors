@@ -89,7 +89,7 @@ void MHDModule2D::init(Variable2D* phi_var)
                 std::unique_ptr<field2>(new field2(domain->get_nx(), domain->get_ny(), "phi_" + domain->name));
             m_phiVar->set_center_field(domain, *m_phiFieldStorage[domain]);
 
-            // Electric insulation (recommended): physical boundaries use Neumann=0.
+            // Electric insulation (recommended): physical boundaries use Neumann.
             // For adjacented faces, keep Adjacented type.
             for (LocationType loc :
                  {LocationType::XNegative, LocationType::XPositive, LocationType::YNegative, LocationType::YPositive})
@@ -258,6 +258,8 @@ void MHDModule2D::solveElectricPotential()
         }
     }
 
+    phys_boundary_update_phi();
+
     // For pure Neumann/Periodic Poisson problems, RHS must satisfy the global solvability condition.
     if (isAllNeumannBoundary(*m_phiVar))
     {
@@ -290,6 +292,7 @@ void MHDModule2D::updateCurrentDensity()
         const double hx = domain->hx;
         const double hy = domain->hy;
 
+        auto& phi_type_map = m_phiVar->boundary_type_map[domain];
         double* phi_xneg_buffer = m_phiVar->buffer_map[domain][LocationType::XNegative];
         double* phi_yneg_buffer = m_phiVar->buffer_map[domain][LocationType::YNegative];
 
@@ -319,14 +322,38 @@ void MHDModule2D::updateCurrentDensity()
             for (int j = 0; j < ny; j++)
             {
                 // Jx at XFace (collocated with u)
-                double phi_im1 = (i == 0) ? phi_xneg_buffer[j] : phi(i - 1, j);
-                double dphi_dx = (phi(i, j) - phi_im1) / hx;
+                double dphi_dx = 0.0;
+                if (i == 0 && phi_type_map[LocationType::XNegative] == PDEBoundaryType::Neumann)
+                {
+                    dphi_dx = phi_xneg_buffer[j];
+                }
+                else if (i == 0 && phi_type_map[LocationType::XNegative] == PDEBoundaryType::Dirichlet)
+                {
+                    dphi_dx = 2.0 * (phi(i, j) - phi_xneg_buffer[j]) / hx;
+                }
+                else
+                {
+                    double phi_im1 = (i == 0) ? phi_xneg_buffer[j] : phi(i - 1, j);
+                    dphi_dx        = (phi(i, j) - phi_im1) / hx;
+                }
                 double v_on_u  = 0.25 * (get_v(i - 1, j) + get_v(i, j) + get_v(i - 1, j + 1) + get_v(i, j + 1));
                 jx(i, j)       = -dphi_dx + v_on_u * m_Bz;
 
                 // Jy at YFace (collocated with v)
-                double phi_jm1 = (j == 0) ? phi_yneg_buffer[i] : phi(i, j - 1);
-                double dphi_dy = (phi(i, j) - phi_jm1) / hy;
+                double dphi_dy = 0.0;
+                if (j == 0 && phi_type_map[LocationType::YNegative] == PDEBoundaryType::Neumann)
+                {
+                    dphi_dy = phi_yneg_buffer[i];
+                }
+                else if (j == 0 && phi_type_map[LocationType::YNegative] == PDEBoundaryType::Dirichlet)
+                {
+                    dphi_dy = 2.0 * (phi(i, j) - phi_yneg_buffer[i]) / hy;
+                }
+                else
+                {
+                    double phi_jm1 = (j == 0) ? phi_yneg_buffer[i] : phi(i, j - 1);
+                    dphi_dy        = (phi(i, j) - phi_jm1) / hy;
+                }
                 double u_on_v  = 0.25 * (get_u(i, j - 1) + get_u(i + 1, j - 1) + get_u(i, j) + get_u(i + 1, j));
                 jy(i, j)       = -dphi_dy - u_on_v * m_Bz;
 
@@ -483,35 +510,9 @@ void MHDModule2D::buffer_update_j()
         double  xpos_yneg_corner = m_vVar->xpos_yneg_corner_map[domain];
         double  xneg_ypos_corner = m_uVar->xneg_ypos_corner_map[domain];
 
-        auto& u_type_map = m_uVar->boundary_type_map[domain];
-        auto& v_type_map = m_vVar->boundary_type_map[domain];
-
+        auto& u_type_map   = m_uVar->boundary_type_map[domain];
+        auto& v_type_map   = m_vVar->boundary_type_map[domain];
         auto& phi_type_map = m_phiVar->boundary_type_map[domain];
-        auto& phi_has_map  = m_phiVar->has_boundary_value_map[domain];
-        auto& phi_val_map  = m_phiVar->boundary_value_map[domain];
-
-        auto is_zero_neumann = [&](LocationType loc, int len) -> bool {
-            if (phi_type_map[loc] != PDEBoundaryType::Neumann)
-                return false;
-            if (!phi_has_map[loc])
-                return true;
-            double* val = phi_val_map[loc];
-            if (val == nullptr)
-                return true;
-            for (int i = 0; i < len; ++i)
-            {
-                if (std::abs(val[i]) > 1e-12)
-                    return false;
-            }
-            return true;
-        };
-
-        // For insulating boundaries we should only constrain the normal current component.
-        // X-normal boundaries constrain Jx; Y-normal boundaries constrain Jy.
-        const bool phi_xneg_insulating = is_zero_neumann(LocationType::XNegative, ny);
-        const bool phi_xpos_insulating = is_zero_neumann(LocationType::XPositive, ny);
-        const bool phi_yneg_insulating = is_zero_neumann(LocationType::YNegative, nx);
-        const bool phi_ypos_insulating = is_zero_neumann(LocationType::YPositive, nx);
 
         double* phi_xpos_buffer = m_phiVar->buffer_map[domain][LocationType::XPositive];
         double* phi_ypos_buffer = m_phiVar->buffer_map[domain][LocationType::YPositive];
@@ -536,13 +537,55 @@ void MHDModule2D::buffer_update_j()
             return phi_ypos_buffer[i_idx];
         };
         auto calc_jx_face = [&](int i_face, int j_face) -> double {
-            double dphi_dx = (get_phi(i_face, j_face) - get_phi(i_face - 1, j_face)) / hx;
+            const int j_clamped = std::clamp(j_face, 0, ny - 1);
+            double dphi_dx = 0.0;
+            if (i_face == 0 && phi_type_map[LocationType::XNegative] == PDEBoundaryType::Neumann)
+            {
+                dphi_dx = phi_xneg_buffer[j_clamped];
+            }
+            else if (i_face == 0 && phi_type_map[LocationType::XNegative] == PDEBoundaryType::Dirichlet)
+            {
+                dphi_dx = 2.0 * (phi(0, j_clamped) - phi_xneg_buffer[j_clamped]) / hx;
+            }
+            else if (i_face == nx && phi_type_map[LocationType::XPositive] == PDEBoundaryType::Neumann)
+            {
+                dphi_dx = phi_xpos_buffer[j_clamped];
+            }
+            else if (i_face == nx && phi_type_map[LocationType::XPositive] == PDEBoundaryType::Dirichlet)
+            {
+                dphi_dx = 2.0 * (phi_xpos_buffer[j_clamped] - phi(nx - 1, j_clamped)) / hx;
+            }
+            else
+            {
+                dphi_dx = (get_phi(i_face, j_face) - get_phi(i_face - 1, j_face)) / hx;
+            }
             double v_on_u  = 0.25 * (get_v(i_face - 1, j_face) + get_v(i_face, j_face) + get_v(i_face - 1, j_face + 1) +
                                     get_v(i_face, j_face + 1));
             return -dphi_dx + v_on_u * m_Bz;
         };
         auto calc_jy_face = [&](int i_face, int j_face) -> double {
-            double dphi_dy = (get_phi(i_face, j_face) - get_phi(i_face, j_face - 1)) / hy;
+            const int i_clamped = std::clamp(i_face, 0, nx - 1);
+            double dphi_dy = 0.0;
+            if (j_face == 0 && phi_type_map[LocationType::YNegative] == PDEBoundaryType::Neumann)
+            {
+                dphi_dy = phi_yneg_buffer[i_clamped];
+            }
+            else if (j_face == 0 && phi_type_map[LocationType::YNegative] == PDEBoundaryType::Dirichlet)
+            {
+                dphi_dy = 2.0 * (phi(i_clamped, 0) - phi_yneg_buffer[i_clamped]) / hy;
+            }
+            else if (j_face == ny && phi_type_map[LocationType::YPositive] == PDEBoundaryType::Neumann)
+            {
+                dphi_dy = phi_ypos_buffer[i_clamped];
+            }
+            else if (j_face == ny && phi_type_map[LocationType::YPositive] == PDEBoundaryType::Dirichlet)
+            {
+                dphi_dy = 2.0 * (phi_ypos_buffer[i_clamped] - phi(i_clamped, ny - 1)) / hy;
+            }
+            else
+            {
+                dphi_dy = (get_phi(i_face, j_face) - get_phi(i_face, j_face - 1)) / hy;
+            }
             double u_on_v  = 0.25 * (get_u(i_face, j_face - 1) + get_u(i_face + 1, j_face - 1) + get_u(i_face, j_face) +
                                     get_u(i_face + 1, j_face));
             return -dphi_dy - u_on_v * m_Bz;
@@ -561,11 +604,6 @@ void MHDModule2D::buffer_update_j()
                     field2&          adj_jx     = *m_jxFieldMap[adj_domain];
                     copy_x_to_buffer(buf, adj_jx, 0);
                 }
-            }
-            else if (phi_xpos_insulating)
-            {
-                // Insulating x-boundary: enforce the normal current component Jx = 0.
-                assign_val_to_buffer(buf, ny, nullptr, 0.0);
             }
             else
             {
@@ -588,11 +626,6 @@ void MHDModule2D::buffer_update_j()
                     const int        adj_nx     = adj_jx.get_nx();
                     copy_x_to_buffer(buf, adj_jx, adj_nx - 1);
                 }
-            }
-            else if (phi_xneg_insulating)
-            {
-                // Insulating x-boundary: enforce the normal current component Jx = 0.
-                assign_val_to_buffer(buf, ny, nullptr, 0.0);
             }
             else
             {
@@ -658,11 +691,6 @@ void MHDModule2D::buffer_update_j()
                     copy_y_to_buffer(buf, adj_jy, 0);
                 }
             }
-            else if (phi_ypos_insulating)
-            {
-                // Insulating y-boundary: enforce the normal current component Jy = 0.
-                assign_val_to_buffer(buf, nx, nullptr, 0.0);
-            }
             else
             {
                 for (int i = 0; i < nx; ++i)
@@ -684,11 +712,6 @@ void MHDModule2D::buffer_update_j()
                     const int        adj_ny     = adj_jy.get_ny();
                     copy_y_to_buffer(buf, adj_jy, adj_ny - 1);
                 }
-            }
-            else if (phi_yneg_insulating)
-            {
-                // Insulating y-boundary: enforce the normal current component Jy = 0.
-                assign_val_to_buffer(buf, nx, nullptr, 0.0);
             }
             else
             {
@@ -809,27 +832,28 @@ void MHDModule2D::buffer_update_j()
             const bool yneg_physical = u_type_map[LocationType::YNegative] != PDEBoundaryType::Adjacented;
             if (xpos_physical || yneg_physical)
             {
-                if (phi_xpos_insulating)
+                double dphi_dx = 0.0;
+                if (phi_type_map[LocationType::XPositive] == PDEBoundaryType::Neumann)
                 {
-                    m_jxVar->xpos_yneg_corner_map[domain] = 0.0;
+                    dphi_dx = phi_xpos_buffer[0];
                 }
-                else
+                else if (phi_type_map[LocationType::XPositive] == PDEBoundaryType::Dirichlet)
                 {
-                    double dphi_dx = 0.0;
-                    if (nx >= 3)
-                    {
-                        dphi_dx = (2.0 * phi(nx - 1, 0) - 3.0 * phi(nx - 2, 0) + phi(nx - 3, 0)) / hx;
-                    }
-                    else if (nx >= 2)
-                    {
-                        dphi_dx = (phi(nx - 1, 0) - phi(nx - 2, 0)) / hx;
-                    }
+                    dphi_dx = 2.0 * (phi_xpos_buffer[0] - phi(nx - 1, 0)) / hx;
+                }
+                else if (nx >= 3)
+                {
+                    dphi_dx = (2.0 * phi(nx - 1, 0) - 3.0 * phi(nx - 2, 0) + phi(nx - 3, 0)) / hx;
+                }
+                else if (nx >= 2)
+                {
+                    dphi_dx = (phi(nx - 1, 0) - phi(nx - 2, 0)) / hx;
+                }
 
-                    const double v_yneg                   = (nx > 0) ? v_yneg_buffer[nx - 1] : 0.0;
-                    const double v_xpos                   = (ny > 0) ? v_xpos_buffer[0] : 0.0;
-                    const double v_on_u                   = 0.5 * (v_yneg + v_xpos);
-                    m_jxVar->xpos_yneg_corner_map[domain] = -dphi_dx + v_on_u * m_Bz;
-                }
+                const double v_yneg                   = (nx > 0) ? v_yneg_buffer[nx - 1] : 0.0;
+                const double v_xpos                   = (ny > 0) ? v_xpos_buffer[0] : 0.0;
+                const double v_on_u                   = 0.5 * (v_yneg + v_xpos);
+                m_jxVar->xpos_yneg_corner_map[domain] = -dphi_dx + v_on_u * m_Bz;
             }
         }
 
@@ -839,27 +863,28 @@ void MHDModule2D::buffer_update_j()
             const bool up_physical   = v_type_map[LocationType::YPositive] != PDEBoundaryType::Adjacented;
             if (xneg_physical || up_physical)
             {
-                if (phi_ypos_insulating)
+                double dphi_dy = 0.0;
+                if (phi_type_map[LocationType::YPositive] == PDEBoundaryType::Neumann)
                 {
-                    m_jyVar->xneg_ypos_corner_map[domain] = 0.0;
+                    dphi_dy = phi_ypos_buffer[0];
                 }
-                else
+                else if (phi_type_map[LocationType::YPositive] == PDEBoundaryType::Dirichlet)
                 {
-                    double dphi_dy = 0.0;
-                    if (ny >= 3)
-                    {
-                        dphi_dy = (2.0 * phi(0, ny - 1) - 3.0 * phi(0, ny - 2) + phi(0, ny - 3)) / hy;
-                    }
-                    else if (ny >= 2)
-                    {
-                        dphi_dy = (phi(0, ny - 1) - phi(0, ny - 2)) / hy;
-                    }
+                    dphi_dy = 2.0 * (phi_ypos_buffer[0] - phi(0, ny - 1)) / hy;
+                }
+                else if (ny >= 3)
+                {
+                    dphi_dy = (2.0 * phi(0, ny - 1) - 3.0 * phi(0, ny - 2) + phi(0, ny - 3)) / hy;
+                }
+                else if (ny >= 2)
+                {
+                    dphi_dy = (phi(0, ny - 1) - phi(0, ny - 2)) / hy;
+                }
 
-                    const double u_xneg                   = (ny > 0) ? u_xneg_buffer[ny - 1] : 0.0;
-                    const double u_ypos                   = (nx > 0) ? u_ypos_buffer[0] : 0.0;
-                    const double u_on_v                   = 0.5 * (u_xneg + u_ypos);
-                    m_jyVar->xneg_ypos_corner_map[domain] = -dphi_dy - u_on_v * m_Bz;
-                }
+                const double u_xneg                   = (ny > 0) ? u_xneg_buffer[ny - 1] : 0.0;
+                const double u_ypos                   = (nx > 0) ? u_ypos_buffer[0] : 0.0;
+                const double u_on_v                   = 0.5 * (u_xneg + u_ypos);
+                m_jyVar->xneg_ypos_corner_map[domain] = -dphi_dy - u_on_v * m_Bz;
             }
         }
 
@@ -917,6 +942,8 @@ void MHDModule2D::phys_boundary_update_phi()
 
     for (auto& domain : m_domains)
     {
+        field2& u   = *m_uFieldMap[domain];
+        field2& v   = *m_vFieldMap[domain];
         field2& phi = *m_phiFieldMap[domain];
 
         const int nx = domain->get_nx();
@@ -927,23 +954,56 @@ void MHDModule2D::phys_boundary_update_phi()
         auto& val_map    = m_phiVar->boundary_value_map[domain];
         auto& buffer_map = m_phiVar->buffer_map[domain];
 
+        double* u_xneg_buffer    = m_uVar->buffer_map[domain][LocationType::XNegative];
+        double* u_xpos_buffer    = m_uVar->buffer_map[domain][LocationType::XPositive];
+        double* u_yneg_buffer    = m_uVar->buffer_map[domain][LocationType::YNegative];
+        double* u_ypos_buffer    = m_uVar->buffer_map[domain][LocationType::YPositive];
+        double* v_xneg_buffer    = m_vVar->buffer_map[domain][LocationType::XNegative];
+        double* v_xpos_buffer    = m_vVar->buffer_map[domain][LocationType::XPositive];
+        double* v_yneg_buffer    = m_vVar->buffer_map[domain][LocationType::YNegative];
+        double* v_ypos_buffer    = m_vVar->buffer_map[domain][LocationType::YPositive];
+        double  xpos_yneg_corner = m_vVar->xpos_yneg_corner_map[domain];
+        double  xneg_ypos_corner = m_uVar->xneg_ypos_corner_map[domain];
+
+        auto get_u = [&](int i_idx, int j_idx) -> double {
+            return get_u_with_boundary(
+                i_idx, j_idx, nx, ny, u, u_xneg_buffer, u_xpos_buffer, u_yneg_buffer, u_ypos_buffer, xpos_yneg_corner);
+        };
+        auto get_v = [&](int i_idx, int j_idx) -> double {
+            return get_v_with_boundary(
+                i_idx, j_idx, nx, ny, v, v_xneg_buffer, v_xpos_buffer, v_yneg_buffer, v_ypos_buffer, xneg_ypos_corner);
+        };
+        auto get_bound_val = [&](LocationType loc, int idx) -> double {
+            auto has_it = has_map.find(loc);
+            auto val_it = val_map.find(loc);
+            if (has_it != has_map.end() && has_it->second && val_it != val_map.end() && val_it->second != nullptr)
+            {
+                return val_it->second[idx];
+            }
+            return 0.0;
+        };
+
         for (auto& [loc, type] : type_map)
         {
             if (type == PDEBoundaryType::Adjacented || !buffer_map.count(loc))
                 continue;
 
-            auto    has_it = has_map.find(loc);
-            auto    val_it = val_map.find(loc);
-            double* bound_val =
-                (has_it != has_map.end() && has_it->second && val_it != val_map.end()) ? val_it->second : nullptr;
-
             switch (loc)
             {
                 case LocationType::XNegative:
                     if (type == PDEBoundaryType::Dirichlet)
-                        mirror_x_to_buffer(buffer_map[loc], phi, 0, bound_val, 0.0);
+                    {
+                        for (int j = 0; j < ny; ++j)
+                            buffer_map[loc][j] = get_bound_val(loc, j);
+                    }
                     else if (type == PDEBoundaryType::Neumann)
-                        neumann_x_to_buffer(buffer_map[loc], phi, 0, bound_val, 0.0, domain->hx, -1.0);
+                    {
+                        for (int j = 0; j < ny; ++j)
+                        {
+                            const double v_on_u = 0.25 * (get_v(-1, j) + get_v(0, j) + get_v(-1, j + 1) + get_v(0, j + 1));
+                            buffer_map[loc][j]  = v_on_u * m_Bz;
+                        }
+                    }
                     else if (type == PDEBoundaryType::Periodic)
                         copy_x_to_buffer(buffer_map[loc], phi, nx - 1);
                     else
@@ -951,9 +1011,19 @@ void MHDModule2D::phys_boundary_update_phi()
                     break;
                 case LocationType::XPositive:
                     if (type == PDEBoundaryType::Dirichlet)
-                        mirror_x_to_buffer(buffer_map[loc], phi, nx - 1, bound_val, 0.0);
+                    {
+                        for (int j = 0; j < ny; ++j)
+                            buffer_map[loc][j] = get_bound_val(loc, j);
+                    }
                     else if (type == PDEBoundaryType::Neumann)
-                        neumann_x_to_buffer(buffer_map[loc], phi, nx - 1, bound_val, 0.0, domain->hx, +1.0);
+                    {
+                        for (int j = 0; j < ny; ++j)
+                        {
+                            const double v_on_u =
+                                0.25 * (get_v(nx - 1, j) + get_v(nx, j) + get_v(nx - 1, j + 1) + get_v(nx, j + 1));
+                            buffer_map[loc][j] = v_on_u * m_Bz;
+                        }
+                    }
                     else if (type == PDEBoundaryType::Periodic)
                         copy_x_to_buffer(buffer_map[loc], phi, 0);
                     else
@@ -961,9 +1031,18 @@ void MHDModule2D::phys_boundary_update_phi()
                     break;
                 case LocationType::YNegative:
                     if (type == PDEBoundaryType::Dirichlet)
-                        mirror_y_to_buffer(buffer_map[loc], phi, 0, bound_val, 0.0);
+                    {
+                        for (int i = 0; i < nx; ++i)
+                            buffer_map[loc][i] = get_bound_val(loc, i);
+                    }
                     else if (type == PDEBoundaryType::Neumann)
-                        neumann_y_to_buffer(buffer_map[loc], phi, 0, bound_val, 0.0, domain->hy, -1.0);
+                    {
+                        for (int i = 0; i < nx; ++i)
+                        {
+                            const double u_on_v = 0.25 * (get_u(i, -1) + get_u(i + 1, -1) + get_u(i, 0) + get_u(i + 1, 0));
+                            buffer_map[loc][i]  = -u_on_v * m_Bz;
+                        }
+                    }
                     else if (type == PDEBoundaryType::Periodic)
                         copy_y_to_buffer(buffer_map[loc], phi, ny - 1);
                     else
@@ -971,9 +1050,19 @@ void MHDModule2D::phys_boundary_update_phi()
                     break;
                 case LocationType::YPositive:
                     if (type == PDEBoundaryType::Dirichlet)
-                        mirror_y_to_buffer(buffer_map[loc], phi, ny - 1, bound_val, 0.0);
+                    {
+                        for (int i = 0; i < nx; ++i)
+                            buffer_map[loc][i] = get_bound_val(loc, i);
+                    }
                     else if (type == PDEBoundaryType::Neumann)
-                        neumann_y_to_buffer(buffer_map[loc], phi, ny - 1, bound_val, 0.0, domain->hy, +1.0);
+                    {
+                        for (int i = 0; i < nx; ++i)
+                        {
+                            const double u_on_v =
+                                0.25 * (get_u(i, ny - 1) + get_u(i + 1, ny - 1) + get_u(i, ny) + get_u(i + 1, ny));
+                            buffer_map[loc][i] = -u_on_v * m_Bz;
+                        }
+                    }
                     else if (type == PDEBoundaryType::Periodic)
                         copy_y_to_buffer(buffer_map[loc], phi, 0);
                     else
