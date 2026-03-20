@@ -557,7 +557,7 @@ int main(int argc, char* argv[])
         p_solver.solve();
 
         // update buffer for p
-        ns_solver.pressure_shared_boundary_buffer_update();
+        ns_solver.pressure_buffer_update();
 
         // p grad
         ns_solver.add_pressure_gradient();
