@@ -344,7 +344,7 @@ int main(int argc, char* argv[])
 
     ns_solver.velocity_div_inner();
     ns_solver.velocity_div_outer();
-    ns_solver.pressure_shared_boundary_buffer_update();
+    ns_solver.pressure_buffer_update();
     ns_solver.add_pressure_gradient();
 
     ns_solver.phys_boundary_update();

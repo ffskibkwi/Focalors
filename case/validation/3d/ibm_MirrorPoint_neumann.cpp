@@ -445,7 +445,7 @@ int main(int argc, char* argv[])
         {
             SCOPE_TIMER("p grad", TimeRecordType::None, iter % 100 == 0);
             // update buffer for p
-            ns_solver.pressure_shared_boundary_buffer_update();
+            ns_solver.pressure_buffer_update();
 
             // p grad
             ns_solver.add_pressure_gradient();
