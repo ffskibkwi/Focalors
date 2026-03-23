@@ -7,6 +7,7 @@ namespace IO
     bool write_csv(double** value, int nx, int ny, const std::string& filename);
 
     bool write_csv(field2& field, const std::string& filename);
+    bool write_csv(field2& field, double* buffer, const std::string& filename, VariablePositionType pos_type);
 
     bool read_csv(field2& field, const std::string& filename);
 
