@@ -2,7 +2,6 @@
 
 #include "base/parallel/omp/enable_openmp.h"
 #include "boundary_2d_utils.h"
-#include <algorithm>
 #include <cmath>
 #include <stdexcept>
 
@@ -108,19 +107,6 @@ void MHDModule2D::init(Variable2D* phi_var)
             m_phiFieldStorage[domain]->clear(0.0);
         }
 
-        // Ensure phi has XPositive/YPositive buffers for MHD-specific usage.
-        auto& phi_buffer_map = m_phiVar->buffer_map[domain];
-        if (!phi_buffer_map.count(LocationType::XPositive))
-        {
-            phi_buffer_map[LocationType::XPositive] = new double[domain->get_ny()];
-            std::fill_n(phi_buffer_map[LocationType::XPositive], static_cast<std::size_t>(domain->get_ny()), 0.0);
-        }
-        if (!phi_buffer_map.count(LocationType::YPositive))
-        {
-            phi_buffer_map[LocationType::YPositive] = new double[domain->get_nx()];
-            std::fill_n(phi_buffer_map[LocationType::YPositive], static_cast<std::size_t>(domain->get_nx()), 0.0);
-        }
-
         // Zero initialize jx, jy, jz fields
         m_jxFieldStorage[domain]->clear(0.0);
         m_jyFieldStorage[domain]->clear(0.0);
@@ -217,27 +203,6 @@ void MHDModule2D::solveElectricPotential()
             return get_v_with_boundary(
                 i, j, nx, ny, v, v_xneg_buffer, v_xpos_buffer, v_yneg_buffer, v_ypos_buffer, xneg_ypos_corner);
         };
-        // // Helper lambda for du/dx at (i, j_row) where u is defined
-        // auto calc_du_dx_row = [&](int i_idx, int j_idx) -> double {
-        //     if (i_idx > 0 && i_idx < nx)
-        //         return (get_u(i_idx + 1, j_idx) - get_u(i_idx - 1, j_idx)) / (2.0 * hx);
-        //     else if (i_idx == 0)
-        //         return (-3 * get_u(0, j_idx) + 4 * get_u(1, j_idx) - get_u(2, j_idx)) /
-        //                hx; // Forward difference at 2 order accuaracy
-        //     else           // i_idx == nx
-        //         return (3 * get_u(nx, j_idx) - 4 * get_u(nx - 1, j_idx) + get_u(nx - 2, j_idx)) /
-        //                hx; // Backward difference at 2 order accuaracy
-        // };
-        // auto calc_dv_dx_row = [&](int i_idx, int j_idx) -> double {
-        //     if (i_idx > 0 && i_idx < nx)
-        //         return (get_v(i_idx + 1, j_idx) - get_v(i_idx - 1, j_idx)) / (2.0 * hx);
-        //     else if (i_idx == 0)
-        //         return (-3 * get_v(0, j_idx) + 4 * get_v(1, j_idx) - get_v(2, j_idx)) /
-        //                hx; // Forward difference at 2 order accuaracy
-        //     else           // i_idx == nx
-        //         return (3 * get_v(nx, j_idx) - 4 * get_v(nx - 1, j_idx) + get_v(nx - 2, j_idx)) /
-        //                hx; // Backward difference at 2 order accuaracy
-        // };
         OPENMP_PARALLEL_FOR()
         for (int i = 0; i < nx; i++)
         {
