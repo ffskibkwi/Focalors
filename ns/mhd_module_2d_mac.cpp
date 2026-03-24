@@ -257,7 +257,7 @@ void MHDModule2D::updateCurrentDensity()
         const double hx = domain->hx;
         const double hy = domain->hy;
 
-        auto& phi_type_map = m_phiVar->boundary_type_map[domain];
+        auto&   phi_type_map    = m_phiVar->boundary_type_map[domain];
         double* phi_xneg_buffer = m_phiVar->buffer_map[domain][LocationType::XNegative];
         double* phi_yneg_buffer = m_phiVar->buffer_map[domain][LocationType::YNegative];
 
@@ -301,8 +301,8 @@ void MHDModule2D::updateCurrentDensity()
                     double phi_im1 = (i == 0) ? phi_xneg_buffer[j] : phi(i - 1, j);
                     dphi_dx        = (phi(i, j) - phi_im1) / hx;
                 }
-                double v_on_u  = 0.25 * (get_v(i - 1, j) + get_v(i, j) + get_v(i - 1, j + 1) + get_v(i, j + 1));
-                jx(i, j)       = -dphi_dx + v_on_u * m_Bz;
+                double v_on_u = 0.25 * (get_v(i - 1, j) + get_v(i, j) + get_v(i - 1, j + 1) + get_v(i, j + 1));
+                jx(i, j)      = -dphi_dx + v_on_u * m_Bz;
 
                 // Jy at YFace (collocated with v)
                 double dphi_dy = 0.0;
@@ -319,8 +319,8 @@ void MHDModule2D::updateCurrentDensity()
                     double phi_jm1 = (j == 0) ? phi_yneg_buffer[i] : phi(i, j - 1);
                     dphi_dy        = (phi(i, j) - phi_jm1) / hy;
                 }
-                double u_on_v  = 0.25 * (get_u(i, j - 1) + get_u(i + 1, j - 1) + get_u(i, j) + get_u(i + 1, j));
-                jy(i, j)       = -dphi_dy - u_on_v * m_Bz;
+                double u_on_v = 0.25 * (get_u(i, j - 1) + get_u(i + 1, j - 1) + get_u(i, j) + get_u(i + 1, j));
+                jy(i, j)      = -dphi_dy - u_on_v * m_Bz;
 
                 // Jz at center
                 double u_c = 0.5 * (get_u(i, j) + get_u(i + 1, j));
@@ -490,248 +490,397 @@ void MHDModule2D::buffer_update_j()
             return get_v_with_boundary(
                 i_idx, j_idx, nx, ny, v, v_xneg_buffer, v_xpos_buffer, v_yneg_buffer, v_ypos_buffer, xneg_ypos_corner);
         };
-        auto get_phi = [&](int i_idx, int j_idx) -> double {
+        auto nearest_phi_row = [&](int j_face) -> int {
+            if (j_face < 0)
+                return 0;
+            if (j_face >= ny)
+                return ny - 1;
+            return j_face;
+        };
+        auto nearest_phi_col = [&](int i_face) -> int {
+            if (i_face < 0)
+                return 0;
+            if (i_face >= nx)
+                return nx - 1;
+            return i_face;
+        };
+        auto phi_aux_xneg = [&](int j_aux) -> double {
+            // Raw phi buffers on physical Dirichlet/Neumann sides store BC data
+            // (value or normal derivative), not a ghost-center scalar.
+            // Reconstruct the left ghost-center scalar before taking tangential
+            // differences on jy_xneg_buffer or other outer auxiliary lines.
+            const PDEBoundaryType bc = phi_type_map[LocationType::XNegative];
+            if (bc == PDEBoundaryType::Adjacented || bc == PDEBoundaryType::Periodic)
+                return phi_xneg_buffer[j_aux];
+            if (bc == PDEBoundaryType::Dirichlet)
+                return 2.0 * phi_xneg_buffer[j_aux] - phi(0, j_aux);
+            if (bc == PDEBoundaryType::Neumann)
+                return phi(0, j_aux) - phi_xneg_buffer[j_aux] * hx;
+            return phi_xneg_buffer[j_aux];
+        };
+        auto phi_aux_xpos = [&](int j_aux) -> double {
+            const PDEBoundaryType bc = phi_type_map[LocationType::XPositive];
+            if (bc == PDEBoundaryType::Adjacented || bc == PDEBoundaryType::Periodic)
+                return phi_xpos_buffer[j_aux];
+            if (bc == PDEBoundaryType::Dirichlet)
+                return 2.0 * phi_xpos_buffer[j_aux] - phi(nx - 1, j_aux);
+            if (bc == PDEBoundaryType::Neumann)
+                return phi(nx - 1, j_aux) + phi_xpos_buffer[j_aux] * hx;
+            return phi_xpos_buffer[j_aux];
+        };
+        auto phi_aux_yneg = [&](int i_aux) -> double {
+            // Symmetric to phi_aux_xneg(): rebuild the bottom ghost-center scalar
+            // before using phi on jx_yneg_buffer or other outer auxiliary lines.
+            const PDEBoundaryType bc = phi_type_map[LocationType::YNegative];
+            if (bc == PDEBoundaryType::Adjacented || bc == PDEBoundaryType::Periodic)
+                return phi_yneg_buffer[i_aux];
+            if (bc == PDEBoundaryType::Dirichlet)
+                return 2.0 * phi_yneg_buffer[i_aux] - phi(i_aux, 0);
+            if (bc == PDEBoundaryType::Neumann)
+                return phi(i_aux, 0) - phi_yneg_buffer[i_aux] * hy;
+            return phi_yneg_buffer[i_aux];
+        };
+        auto phi_aux_ypos = [&](int i_aux) -> double {
+            const PDEBoundaryType bc = phi_type_map[LocationType::YPositive];
+            if (bc == PDEBoundaryType::Adjacented || bc == PDEBoundaryType::Periodic)
+                return phi_ypos_buffer[i_aux];
+            if (bc == PDEBoundaryType::Dirichlet)
+                return 2.0 * phi_ypos_buffer[i_aux] - phi(i_aux, ny - 1);
+            if (bc == PDEBoundaryType::Neumann)
+                return phi(i_aux, ny - 1) + phi_ypos_buffer[i_aux] * hy;
+            return phi_ypos_buffer[i_aux];
+        };
+        auto get_phi_aux = [&](int i_idx, int j_idx) -> double {
             if (i_idx >= 0 && i_idx < nx && j_idx >= 0 && j_idx < ny)
                 return phi(i_idx, j_idx);
             if (i_idx < 0)
-                return phi_xneg_buffer[j_idx];
+                return phi_aux_xneg(nearest_phi_row(j_idx));
             if (i_idx >= nx)
-                return phi_xpos_buffer[j_idx];
+                return phi_aux_xpos(nearest_phi_row(j_idx));
             if (j_idx < 0)
-                return phi_yneg_buffer[i_idx];
-            return phi_ypos_buffer[i_idx];
+                return phi_aux_yneg(nearest_phi_col(i_idx));
+            return phi_aux_ypos(nearest_phi_col(i_idx));
+        };
+        auto u_aux_xneg = [&](int j_aux) -> double {
+            // Left-side auxiliary value used by:
+            //   1) jy_xneg_buffer[0];
+            //   2) the left-top jy corner.
+            // Case 1 only happens when XNegative is not Adjacented.
+            // Case 2 can still happen when XNegative is Adjacented but YPositive is physical,
+            // so keep the Adjacented branch for that mixed corner case.
+            // On a physical/Periodic XNegative side, the boundary-maintained value is stored
+            // in field column i=0, not in u_xneg_buffer.
+            if (u_type_map[LocationType::XNegative] == PDEBoundaryType::Adjacented)
+                return u_xneg_buffer[j_aux];
+            return u(0, j_aux);
+        };
+        auto v_aux_yneg = [&](int i_aux) -> double {
+            // Bottom-side auxiliary value used by:
+            //   1) jx_yneg_buffer[0];
+            //   2) the right-bottom jx corner.
+            // Case 1 only happens when YNegative is not Adjacented.
+            // Case 2 can still happen when YNegative is Adjacented but XPositive is physical,
+            // so keep the Adjacented branch for that mixed corner case.
+            // On a physical/Periodic YNegative side, the boundary-maintained value is stored
+            // in field row j=0, not in v_yneg_buffer.
+            if (v_type_map[LocationType::YNegative] == PDEBoundaryType::Adjacented)
+                return v_yneg_buffer[i_aux];
+            return v(i_aux, 0);
+        };
+        auto calc_v_on_u = [&](int i_face, int j_face) -> double {
+            // Only three jx boundary points are actually read later by applyLorentzForce():
+            //   jx_yneg_buffer[0]      -> calc_jx_face(0,  -1)
+            //   jx_xpos_buffer[ny - 1] -> calc_jx_face(nx, ny - 1)
+            //   jx_xpos_yneg_corner    -> calc_jx_face(nx, -1)
+            // These are the actual outer auxiliary points queried by applyLorentzForce().
+            // Use a direct diagonal average of those two auxiliary values. When one side
+            // does not maintain a physical buffer (notably v on YNegative), supplement the
+            // needed auxiliary point from the boundary-maintained field value first.
+            // Other outer endpoints such as jx_xneg_buffer[ny - 1] / jx_ypos_buffer[0]
+            // are not queried by applyLorentzForce(), so keep their generic auxiliary
+            // semantics instead of imposing an extra closure.
+            if (i_face == 0 && j_face == -1)
+                return 0.5 * (v_xneg_buffer[0] + v_aux_yneg(0));
+            if (i_face == nx && j_face == ny - 1)
+                return 0.5 * (v_xpos_buffer[ny - 1] + v_ypos_buffer[nx - 1]);
+            if (i_face == nx && j_face == -1)
+                return 0.5 * (v_xpos_buffer[0] + v_aux_yneg(nx - 1));
+            return 0.25 * (get_v(i_face - 1, j_face) + get_v(i_face, j_face) + get_v(i_face - 1, j_face + 1) +
+                           get_v(i_face, j_face + 1));
+        };
+        auto calc_u_on_v = [&](int i_face, int j_face) -> double {
+            // Symmetric to calc_v_on_u(): the two jy dual-boundary endpoints plus the
+            // left-top jy corner use a direct diagonal average of the two actual
+            // auxiliary values. When XNegative has no physical buffer for u, supplement
+            // that outer auxiliary point from the maintained field value.
+            // The remaining outer endpoints stay generic.
+            if (i_face == -1 && j_face == 0)
+                return 0.5 * (u_aux_xneg(0) + u_yneg_buffer[0]);
+            if (i_face == nx - 1 && j_face == ny)
+                return 0.5 * (u_xpos_buffer[ny - 1] + u_ypos_buffer[nx - 1]);
+            if (i_face == -1 && j_face == ny)
+                return 0.5 * (u_aux_xneg(ny - 1) + u_ypos_buffer[0]);
+            return 0.25 * (get_u(i_face, j_face - 1) + get_u(i_face + 1, j_face - 1) + get_u(i_face, j_face) +
+                           get_u(i_face + 1, j_face));
         };
         auto calc_jx_face = [&](int i_face, int j_face) -> double {
-            const int j_clamped = std::clamp(j_face, 0, ny - 1);
-            double dphi_dx = 0.0;
-            if (i_face == 0 && phi_type_map[LocationType::XNegative] == PDEBoundaryType::Neumann)
+            const int    j_bound = nearest_phi_row(j_face);
+            const double v_on_u  = calc_v_on_u(i_face, j_face);
+            double       dphi_dx = 0.0;
+            if (i_face == 0 && j_face < 0 && phi_type_map[LocationType::XNegative] == PDEBoundaryType::Neumann)
             {
-                dphi_dx = phi_xneg_buffer[j_clamped];
+                // jx_yneg_buffer[0] needs an x-directed phi gradient. On an XNegative
+                // Neumann side, use that normal-flux relation directly at this dual-
+                // boundary point instead of rebuilding a symmetric phi corner value.
+                dphi_dx = m_Bz * v_on_u;
+            }
+            else if (i_face == 0 && j_face < 0 && phi_type_map[LocationType::XNegative] == PDEBoundaryType::Dirichlet)
+            {
+                dphi_dx = 2.0 * (phi_aux_yneg(0) - phi_xneg_buffer[0]) / hx;
+            }
+            else if (i_face == nx && j_face < 0 && phi_type_map[LocationType::XPositive] == PDEBoundaryType::Neumann)
+            {
+                // Symmetric right-bottom jx corner: still use the x-directed flux
+                // relation directly, with v already closed on the two outer auxiliary
+                // points.
+                dphi_dx = m_Bz * v_on_u;
+            }
+            else if (i_face == nx && j_face < 0 && phi_type_map[LocationType::XPositive] == PDEBoundaryType::Dirichlet)
+            {
+                dphi_dx = 2.0 * (phi_xpos_buffer[0] - phi_aux_yneg(nx - 1)) / hx;
+            }
+            else if (i_face == 0 && phi_type_map[LocationType::XNegative] == PDEBoundaryType::Neumann)
+            {
+                dphi_dx = phi_xneg_buffer[j_bound];
             }
             else if (i_face == 0 && phi_type_map[LocationType::XNegative] == PDEBoundaryType::Dirichlet)
             {
-                dphi_dx = 2.0 * (phi(0, j_clamped) - phi_xneg_buffer[j_clamped]) / hx;
+                dphi_dx = 2.0 * (phi(0, j_bound) - phi_xneg_buffer[j_bound]) / hx;
             }
             else if (i_face == nx && phi_type_map[LocationType::XPositive] == PDEBoundaryType::Neumann)
             {
-                dphi_dx = phi_xpos_buffer[j_clamped];
+                dphi_dx = phi_xpos_buffer[j_bound];
             }
             else if (i_face == nx && phi_type_map[LocationType::XPositive] == PDEBoundaryType::Dirichlet)
             {
-                dphi_dx = 2.0 * (phi_xpos_buffer[j_clamped] - phi(nx - 1, j_clamped)) / hx;
+                dphi_dx = 2.0 * (phi_xpos_buffer[j_bound] - phi(nx - 1, j_bound)) / hx;
             }
             else
             {
-                dphi_dx = (get_phi(i_face, j_face) - get_phi(i_face - 1, j_face)) / hx;
+                dphi_dx = (get_phi_aux(i_face, j_face) - get_phi_aux(i_face - 1, j_face)) / hx;
             }
-            double v_on_u  = 0.25 * (get_v(i_face - 1, j_face) + get_v(i_face, j_face) + get_v(i_face - 1, j_face + 1) +
-                                    get_v(i_face, j_face + 1));
             return -dphi_dx + v_on_u * m_Bz;
         };
         auto calc_jy_face = [&](int i_face, int j_face) -> double {
-            const int i_clamped = std::clamp(i_face, 0, nx - 1);
-            double dphi_dy = 0.0;
-            if (j_face == 0 && phi_type_map[LocationType::YNegative] == PDEBoundaryType::Neumann)
+            const int    i_bound = nearest_phi_col(i_face);
+            const double u_on_v  = calc_u_on_v(i_face, j_face);
+            double       dphi_dy = 0.0;
+            if (j_face == 0 && i_face < 0 && phi_type_map[LocationType::YNegative] == PDEBoundaryType::Neumann)
             {
-                dphi_dy = phi_yneg_buffer[i_clamped];
+                dphi_dy = -m_Bz * u_on_v;
+            }
+            else if (j_face == 0 && i_face < 0 && phi_type_map[LocationType::YNegative] == PDEBoundaryType::Dirichlet)
+            {
+                dphi_dy = 2.0 * (phi_aux_xneg(0) - phi_yneg_buffer[0]) / hy;
+            }
+            else if (j_face == ny && i_face < 0 && phi_type_map[LocationType::YPositive] == PDEBoundaryType::Neumann)
+            {
+                dphi_dy = -m_Bz * u_on_v;
+            }
+            else if (j_face == ny && i_face < 0 && phi_type_map[LocationType::YPositive] == PDEBoundaryType::Dirichlet)
+            {
+                dphi_dy = 2.0 * (phi_ypos_buffer[0] - phi_aux_xneg(ny - 1)) / hy;
+            }
+            else if (j_face == 0 && phi_type_map[LocationType::YNegative] == PDEBoundaryType::Neumann)
+            {
+                dphi_dy = phi_yneg_buffer[i_bound];
             }
             else if (j_face == 0 && phi_type_map[LocationType::YNegative] == PDEBoundaryType::Dirichlet)
             {
-                dphi_dy = 2.0 * (phi(i_clamped, 0) - phi_yneg_buffer[i_clamped]) / hy;
+                dphi_dy = 2.0 * (phi(i_bound, 0) - phi_yneg_buffer[i_bound]) / hy;
             }
             else if (j_face == ny && phi_type_map[LocationType::YPositive] == PDEBoundaryType::Neumann)
             {
-                dphi_dy = phi_ypos_buffer[i_clamped];
+                dphi_dy = phi_ypos_buffer[i_bound];
             }
             else if (j_face == ny && phi_type_map[LocationType::YPositive] == PDEBoundaryType::Dirichlet)
             {
-                dphi_dy = 2.0 * (phi_ypos_buffer[i_clamped] - phi(i_clamped, ny - 1)) / hy;
+                dphi_dy = 2.0 * (phi_ypos_buffer[i_bound] - phi(i_bound, ny - 1)) / hy;
             }
             else
             {
-                dphi_dy = (get_phi(i_face, j_face) - get_phi(i_face, j_face - 1)) / hy;
+                dphi_dy = (get_phi_aux(i_face, j_face) - get_phi_aux(i_face, j_face - 1)) / hy;
             }
-            double u_on_v  = 0.25 * (get_u(i_face, j_face - 1) + get_u(i_face + 1, j_face - 1) + get_u(i_face, j_face) +
-                                    get_u(i_face + 1, j_face));
             return -dphi_dy - u_on_v * m_Bz;
         };
 
-        // XPositive buffer for jx (i = nx)
-        if (m_jxVar->buffer_map.count(domain) && m_jxVar->buffer_map[domain].count(LocationType::XPositive))
-        {
+        auto adj_it = m_adjacency.find(domain);
+
+        auto update_jx_xpos_buffer = [&]() {
+            if (!m_jxVar->buffer_map.count(domain) || !m_jxVar->buffer_map[domain].count(LocationType::XPositive))
+                return;
             double* buf = m_jxVar->buffer_map[domain][LocationType::XPositive];
             if (u_type_map[LocationType::XPositive] == PDEBoundaryType::Adjacented)
             {
-                auto adj_dom_it = m_adjacency.find(domain);
-                if (adj_dom_it != m_adjacency.end() && adj_dom_it->second.count(LocationType::XPositive))
+                if (adj_it != m_adjacency.end() && adj_it->second.count(LocationType::XPositive))
                 {
-                    Domain2DUniform* adj_domain = adj_dom_it->second[LocationType::XPositive];
+                    Domain2DUniform* adj_domain = adj_it->second[LocationType::XPositive];
                     field2&          adj_jx     = *m_jxFieldMap[adj_domain];
                     copy_x_to_buffer(buf, adj_jx, 0);
                 }
+                return;
             }
-            else
-            {
-                for (int j = 0; j < ny; ++j)
-                    buf[j] = calc_jx_face(nx, j);
-            }
-        }
-
-        // XNegative buffer for jx (i = -1)
-        if (m_jxVar->buffer_map.count(domain) && m_jxVar->buffer_map[domain].count(LocationType::XNegative))
-        {
+            for (int j = 0; j < ny; ++j)
+                buf[j] = calc_jx_face(nx, j);
+        };
+        auto update_jx_xneg_buffer = [&]() {
+            if (!m_jxVar->buffer_map.count(domain) || !m_jxVar->buffer_map[domain].count(LocationType::XNegative))
+                return;
             double* buf = m_jxVar->buffer_map[domain][LocationType::XNegative];
             if (u_type_map[LocationType::XNegative] == PDEBoundaryType::Adjacented)
             {
-                auto adj_dom_it = m_adjacency.find(domain);
-                if (adj_dom_it != m_adjacency.end() && adj_dom_it->second.count(LocationType::XNegative))
+                if (adj_it != m_adjacency.end() && adj_it->second.count(LocationType::XNegative))
                 {
-                    Domain2DUniform* adj_domain = adj_dom_it->second[LocationType::XNegative];
+                    Domain2DUniform* adj_domain = adj_it->second[LocationType::XNegative];
                     field2&          adj_jx     = *m_jxFieldMap[adj_domain];
                     const int        adj_nx     = adj_jx.get_nx();
                     copy_x_to_buffer(buf, adj_jx, adj_nx - 1);
                 }
+                return;
             }
-            else
-            {
-                for (int j = 0; j < ny; ++j)
-                    buf[j] = calc_jx_face(-1, j);
-            }
-        }
-
-        // YNegative buffer for jx (j = -1)
-        if (m_jxVar->buffer_map.count(domain) && m_jxVar->buffer_map[domain].count(LocationType::YNegative))
-        {
+            for (int j = 0; j < ny; ++j)
+                buf[j] = calc_jx_face(-1, j);
+        };
+        auto update_jx_yneg_buffer = [&]() {
+            if (!m_jxVar->buffer_map.count(domain) || !m_jxVar->buffer_map[domain].count(LocationType::YNegative))
+                return;
             double* buf = m_jxVar->buffer_map[domain][LocationType::YNegative];
             if (u_type_map[LocationType::YNegative] == PDEBoundaryType::Adjacented)
             {
-                auto adj_dom_it = m_adjacency.find(domain);
-                if (adj_dom_it != m_adjacency.end() && adj_dom_it->second.count(LocationType::YNegative))
+                if (adj_it != m_adjacency.end() && adj_it->second.count(LocationType::YNegative))
                 {
-                    Domain2DUniform* adj_domain = adj_dom_it->second[LocationType::YNegative];
+                    Domain2DUniform* adj_domain = adj_it->second[LocationType::YNegative];
                     field2&          adj_jx     = *m_jxFieldMap[adj_domain];
                     const int        adj_ny     = adj_jx.get_ny();
                     copy_y_to_buffer(buf, adj_jx, adj_ny - 1);
                 }
+                return;
             }
-            else
-            {
-                for (int i = 0; i < nx; ++i)
-                    buf[i] = calc_jx_face(i, -1);
-            }
-        }
-
-        // YPositive buffer for jx (j = ny)
-        if (m_jxVar->buffer_map.count(domain) && m_jxVar->buffer_map[domain].count(LocationType::YPositive))
-        {
+            for (int i = 0; i < nx; ++i)
+                buf[i] = calc_jx_face(i, -1);
+        };
+        auto update_jx_ypos_buffer = [&]() {
+            if (!m_jxVar->buffer_map.count(domain) || !m_jxVar->buffer_map[domain].count(LocationType::YPositive))
+                return;
             double* buf = m_jxVar->buffer_map[domain][LocationType::YPositive];
             if (u_type_map[LocationType::YPositive] == PDEBoundaryType::Adjacented)
             {
-                auto adj_dom_it = m_adjacency.find(domain);
-                if (adj_dom_it != m_adjacency.end() && adj_dom_it->second.count(LocationType::YPositive))
+                if (adj_it != m_adjacency.end() && adj_it->second.count(LocationType::YPositive))
                 {
-                    Domain2DUniform* adj_domain = adj_dom_it->second[LocationType::YPositive];
+                    Domain2DUniform* adj_domain = adj_it->second[LocationType::YPositive];
                     field2&          adj_jx     = *m_jxFieldMap[adj_domain];
                     copy_y_to_buffer(buf, adj_jx, 0);
                 }
+                return;
             }
-            else
-            {
-                for (int i = 0; i < nx; ++i)
-                    buf[i] = calc_jx_face(i, ny);
-            }
-        }
-
-        // YPositive buffer for jy (j = ny)
-        if (m_jyVar->buffer_map.count(domain) && m_jyVar->buffer_map[domain].count(LocationType::YPositive))
-        {
+            for (int i = 0; i < nx; ++i)
+                buf[i] = calc_jx_face(i, ny);
+        };
+        auto update_jy_ypos_buffer = [&]() {
+            if (!m_jyVar->buffer_map.count(domain) || !m_jyVar->buffer_map[domain].count(LocationType::YPositive))
+                return;
             double* buf = m_jyVar->buffer_map[domain][LocationType::YPositive];
             if (v_type_map[LocationType::YPositive] == PDEBoundaryType::Adjacented)
             {
-                auto adj_dom_it = m_adjacency.find(domain);
-                if (adj_dom_it != m_adjacency.end() && adj_dom_it->second.count(LocationType::YPositive))
+                if (adj_it != m_adjacency.end() && adj_it->second.count(LocationType::YPositive))
                 {
-                    Domain2DUniform* adj_domain = adj_dom_it->second[LocationType::YPositive];
+                    Domain2DUniform* adj_domain = adj_it->second[LocationType::YPositive];
                     field2&          adj_jy     = *m_jyFieldMap[adj_domain];
                     copy_y_to_buffer(buf, adj_jy, 0);
                 }
+                return;
             }
-            else
-            {
-                for (int i = 0; i < nx; ++i)
-                    buf[i] = calc_jy_face(i, ny);
-            }
-        }
-
-        // YNegative buffer for jy (j = -1)
-        if (m_jyVar->buffer_map.count(domain) && m_jyVar->buffer_map[domain].count(LocationType::YNegative))
-        {
+            for (int i = 0; i < nx; ++i)
+                buf[i] = calc_jy_face(i, ny);
+        };
+        auto update_jy_yneg_buffer = [&]() {
+            if (!m_jyVar->buffer_map.count(domain) || !m_jyVar->buffer_map[domain].count(LocationType::YNegative))
+                return;
             double* buf = m_jyVar->buffer_map[domain][LocationType::YNegative];
             if (v_type_map[LocationType::YNegative] == PDEBoundaryType::Adjacented)
             {
-                auto adj_dom_it = m_adjacency.find(domain);
-                if (adj_dom_it != m_adjacency.end() && adj_dom_it->second.count(LocationType::YNegative))
+                if (adj_it != m_adjacency.end() && adj_it->second.count(LocationType::YNegative))
                 {
-                    Domain2DUniform* adj_domain = adj_dom_it->second[LocationType::YNegative];
+                    Domain2DUniform* adj_domain = adj_it->second[LocationType::YNegative];
                     field2&          adj_jy     = *m_jyFieldMap[adj_domain];
                     const int        adj_ny     = adj_jy.get_ny();
                     copy_y_to_buffer(buf, adj_jy, adj_ny - 1);
                 }
+                return;
             }
-            else
-            {
-                for (int i = 0; i < nx; ++i)
-                    buf[i] = calc_jy_face(i, -1);
-            }
-        }
-
-        // XNegative buffer for jy (i = -1)
-        if (m_jyVar->buffer_map.count(domain) && m_jyVar->buffer_map[domain].count(LocationType::XNegative))
-        {
+            for (int i = 0; i < nx; ++i)
+                buf[i] = calc_jy_face(i, -1);
+        };
+        auto update_jy_xneg_buffer = [&]() {
+            if (!m_jyVar->buffer_map.count(domain) || !m_jyVar->buffer_map[domain].count(LocationType::XNegative))
+                return;
             double* buf = m_jyVar->buffer_map[domain][LocationType::XNegative];
             if (v_type_map[LocationType::XNegative] == PDEBoundaryType::Adjacented)
             {
-                auto adj_dom_it = m_adjacency.find(domain);
-                if (adj_dom_it != m_adjacency.end() && adj_dom_it->second.count(LocationType::XNegative))
+                if (adj_it != m_adjacency.end() && adj_it->second.count(LocationType::XNegative))
                 {
-                    Domain2DUniform* adj_domain = adj_dom_it->second[LocationType::XNegative];
+                    Domain2DUniform* adj_domain = adj_it->second[LocationType::XNegative];
                     field2&          adj_jy     = *m_jyFieldMap[adj_domain];
                     const int        adj_nx     = adj_jy.get_nx();
                     copy_x_to_buffer(buf, adj_jy, adj_nx - 1);
                 }
+                return;
             }
-            else
-            {
-                for (int j = 0; j < ny; ++j)
-                    buf[j] = calc_jy_face(-1, j);
-            }
-        }
-
-        // XPositive buffer for jy (i = nx)
-        if (m_jyVar->buffer_map.count(domain) && m_jyVar->buffer_map[domain].count(LocationType::XPositive))
-        {
+            for (int j = 0; j < ny; ++j)
+                buf[j] = calc_jy_face(-1, j);
+        };
+        auto update_jy_xpos_buffer = [&]() {
+            if (!m_jyVar->buffer_map.count(domain) || !m_jyVar->buffer_map[domain].count(LocationType::XPositive))
+                return;
             double* buf = m_jyVar->buffer_map[domain][LocationType::XPositive];
             if (v_type_map[LocationType::XPositive] == PDEBoundaryType::Adjacented)
             {
-                auto adj_dom_it = m_adjacency.find(domain);
-                if (adj_dom_it != m_adjacency.end() && adj_dom_it->second.count(LocationType::XPositive))
+                if (adj_it != m_adjacency.end() && adj_it->second.count(LocationType::XPositive))
                 {
-                    Domain2DUniform* adj_domain = adj_dom_it->second[LocationType::XPositive];
+                    Domain2DUniform* adj_domain = adj_it->second[LocationType::XPositive];
                     field2&          adj_jy     = *m_jyFieldMap[adj_domain];
                     copy_x_to_buffer(buf, adj_jy, 0);
                 }
+                return;
             }
-            else
-            {
-                for (int j = 0; j < ny; ++j)
-                    buf[j] = calc_jy_face(nx, j);
-            }
-        }
+            for (int j = 0; j < ny; ++j)
+                buf[j] = calc_jy_face(nx, j);
+        };
+
+        // ---- jx/jy buffers consumed by applyLorentzForce() ----
+        // Current MAC Lorentz interpolation reads:
+        //   jx: XPositive, YNegative, xpos_yneg corner;
+        //   jy: XNegative, YPositive, xneg_ypos corner.
+        // Keep these physically relevant paths together so the closure used by the
+        // force term is easy to inspect.
+        update_jx_xpos_buffer();
+        update_jx_yneg_buffer();
+        update_jy_xneg_buffer();
+        update_jy_ypos_buffer();
+
+        // ---- compatibility-only jx/jy buffers ----
+        // These outer lines are kept populated because Variable2D still exposes the
+        // full four-sided buffer layout, but applyLorentzForce() does not currently
+        // consume them. Leave them in a separate block so they do not obscure the
+        // main MHD closure paths above.
+        update_jx_xneg_buffer();
+        update_jx_ypos_buffer();
+        update_jy_yneg_buffer();
+        update_jy_xpos_buffer();
 
         // Corner values for jx/jy (follow u/v diagonal adjacency logic)
         bool jx_corner_set = false;
         bool jy_corner_set = false;
-        auto adj_it        = m_adjacency.find(domain);
         if (adj_it != m_adjacency.end())
         {
             if (u_type_map[LocationType::YNegative] == PDEBoundaryType::Adjacented &&
@@ -797,28 +946,7 @@ void MHDModule2D::buffer_update_j()
             const bool yneg_physical = u_type_map[LocationType::YNegative] != PDEBoundaryType::Adjacented;
             if (xpos_physical || yneg_physical)
             {
-                double dphi_dx = 0.0;
-                if (phi_type_map[LocationType::XPositive] == PDEBoundaryType::Neumann)
-                {
-                    dphi_dx = phi_xpos_buffer[0];
-                }
-                else if (phi_type_map[LocationType::XPositive] == PDEBoundaryType::Dirichlet)
-                {
-                    dphi_dx = 2.0 * (phi_xpos_buffer[0] - phi(nx - 1, 0)) / hx;
-                }
-                else if (nx >= 3)
-                {
-                    dphi_dx = (2.0 * phi(nx - 1, 0) - 3.0 * phi(nx - 2, 0) + phi(nx - 3, 0)) / hx;
-                }
-                else if (nx >= 2)
-                {
-                    dphi_dx = (phi(nx - 1, 0) - phi(nx - 2, 0)) / hx;
-                }
-
-                const double v_yneg                   = (nx > 0) ? v_yneg_buffer[nx - 1] : 0.0;
-                const double v_xpos                   = (ny > 0) ? v_xpos_buffer[0] : 0.0;
-                const double v_on_u                   = 0.5 * (v_yneg + v_xpos);
-                m_jxVar->xpos_yneg_corner_map[domain] = -dphi_dx + v_on_u * m_Bz;
+                m_jxVar->xpos_yneg_corner_map[domain] = calc_jx_face(nx, -1);
             }
         }
 
@@ -828,28 +956,7 @@ void MHDModule2D::buffer_update_j()
             const bool up_physical   = v_type_map[LocationType::YPositive] != PDEBoundaryType::Adjacented;
             if (xneg_physical || up_physical)
             {
-                double dphi_dy = 0.0;
-                if (phi_type_map[LocationType::YPositive] == PDEBoundaryType::Neumann)
-                {
-                    dphi_dy = phi_ypos_buffer[0];
-                }
-                else if (phi_type_map[LocationType::YPositive] == PDEBoundaryType::Dirichlet)
-                {
-                    dphi_dy = 2.0 * (phi_ypos_buffer[0] - phi(0, ny - 1)) / hy;
-                }
-                else if (ny >= 3)
-                {
-                    dphi_dy = (2.0 * phi(0, ny - 1) - 3.0 * phi(0, ny - 2) + phi(0, ny - 3)) / hy;
-                }
-                else if (ny >= 2)
-                {
-                    dphi_dy = (phi(0, ny - 1) - phi(0, ny - 2)) / hy;
-                }
-
-                const double u_xneg                   = (ny > 0) ? u_xneg_buffer[ny - 1] : 0.0;
-                const double u_ypos                   = (nx > 0) ? u_ypos_buffer[0] : 0.0;
-                const double u_on_v                   = 0.5 * (u_xneg + u_ypos);
-                m_jyVar->xneg_ypos_corner_map[domain] = -dphi_dy - u_on_v * m_Bz;
+                m_jyVar->xneg_ypos_corner_map[domain] = calc_jy_face(-1, ny);
             }
         }
 
@@ -965,8 +1072,9 @@ void MHDModule2D::phys_boundary_update_phi()
                     {
                         for (int j = 0; j < ny; ++j)
                         {
-                            const double v_on_u = 0.25 * (get_v(-1, j) + get_v(0, j) + get_v(-1, j + 1) + get_v(0, j + 1));
-                            buffer_map[loc][j]  = v_on_u * m_Bz;
+                            const double v_on_u =
+                                0.25 * (get_v(-1, j) + get_v(0, j) + get_v(-1, j + 1) + get_v(0, j + 1));
+                            buffer_map[loc][j] = v_on_u * m_Bz;
                         }
                     }
                     else if (type == PDEBoundaryType::Periodic)
@@ -1004,8 +1112,9 @@ void MHDModule2D::phys_boundary_update_phi()
                     {
                         for (int i = 0; i < nx; ++i)
                         {
-                            const double u_on_v = 0.25 * (get_u(i, -1) + get_u(i + 1, -1) + get_u(i, 0) + get_u(i + 1, 0));
-                            buffer_map[loc][i]  = -u_on_v * m_Bz;
+                            const double u_on_v =
+                                0.25 * (get_u(i, -1) + get_u(i + 1, -1) + get_u(i, 0) + get_u(i + 1, 0));
+                            buffer_map[loc][i] = -u_on_v * m_Bz;
                         }
                     }
                     else if (type == PDEBoundaryType::Periodic)
