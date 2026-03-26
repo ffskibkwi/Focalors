@@ -22,6 +22,7 @@ public:
                    double               _nr,
                    DifferenceSchemeType _scheme);
 
+    void setTimeStep(double in_dt);
     void variable_check();
     void solve();
 

@@ -52,6 +52,8 @@ ScalarSolver2D::ScalarSolver2D(Variable2D*          in_u_var,
     nondiag_shared_boundary_update();
 }
 
+void ScalarSolver2D::setTimeStep(double in_dt) { dt = in_dt; }
+
 void ScalarSolver2D::variable_check()
 {
     if (u_var->position_type != VariablePositionType::XFace)

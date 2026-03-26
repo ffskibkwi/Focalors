@@ -56,6 +56,8 @@ ScalarSolver3D::ScalarSolver3D(Variable3D*          in_u_var,
     nondiag_shared_boundary_update();
 }
 
+void ScalarSolver3D::setTimeStep(double in_dt) { dt = in_dt; }
+
 void ScalarSolver3D::variable_check()
 {
     if (u_var->position_type != VariablePositionType::XFace)
