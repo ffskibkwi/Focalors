@@ -9,13 +9,16 @@
 #include "io/csv_writer_2d.h"
 #include "ns/mhd_module_2d_mac.h"
 #include "ns/ns_solver2d.h"
+#include "ns/scalar_solver2d.h"
 #include <algorithm>
 #include <cassert>
+#include <cctype>
 #include <chrono>
 #include <cmath>
 #include <iomanip>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <string>
 
 namespace
@@ -128,6 +131,30 @@ namespace
 
         return step;
     }
+
+    std::string to_lower(std::string text)
+    {
+        std::transform(text.begin(),
+                       text.end(),
+                       text.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        return text;
+    }
+
+    DifferenceSchemeType parse_scalar_scheme(const std::string& scheme_name)
+    {
+        const std::string key = to_lower(scheme_name);
+        if (key == "cd2" || key == "center" || key == "central" || key == "conv_center2nd_diff_center2nd")
+            return DifferenceSchemeType::Conv_Center2nd_Diff_Center2nd;
+        if (key == "uw1" || key == "upwind" || key == "upwind1st" || key == "conv_upwind1st_diff_center2nd")
+            return DifferenceSchemeType::Conv_Upwind1st_Diff_Center2nd;
+        if (key == "quick" || key == "conv_quick_diff_center2nd")
+            return DifferenceSchemeType::Conv_QUICK_Diff_Center2nd;
+        if (key == "tvd" || key == "vanleer" || key == "tvd_vanleer" || key == "conv_tvd_vanleer_diff_center2nd")
+            return DifferenceSchemeType::Conv_TVD_VanLeer_Diff_Center2nd;
+
+        throw std::runtime_error("Unknown scalar scheme: " + scheme_name);
+    }
 } // namespace
 /**
  *
@@ -157,6 +184,17 @@ int main(int argc, char* argv[])
     CrossShapedChannel2DCase case_param(argc, argv);
     case_param.read_paras();
 
+    double      Sc                 = 0.0;
+    std::string scalar_scheme_name = "quick";
+    IO::read_number(case_param.para_map, "Sc", Sc);
+    IO::read_string(case_param.para_map, "scalar_scheme", scalar_scheme_name);
+    const bool                 enable_scalar_transport = Sc > 0.0;
+    const double               Pe                      = enable_scalar_transport ? case_param.Re * Sc : 0.0;
+    const double               nr                      = enable_scalar_transport ? 1.0 / Pe : 0.0;
+    const DifferenceSchemeType scalar_scheme          = parse_scalar_scheme(scalar_scheme_name);
+    if (enable_scalar_transport && Pe <= 0.0)
+        throw std::runtime_error("Scalar transport requires Re * Sc > 0");
+
     Geometry2D geo;
     double     h = case_param.h;
 
@@ -180,6 +218,15 @@ int main(int argc, char* argv[])
     std::cout << "  Bx: " << case_param.Bx << std::endl;
     std::cout << "  By: " << case_param.By << std::endl;
     std::cout << "  Bz: " << case_param.Bz << std::endl;
+    std::cout << "Scalar Transport Parameters:" << std::endl;
+    std::cout << "  enable_scalar_transport: " << enable_scalar_transport << std::endl;
+    std::cout << "  Sc: " << Sc << std::endl;
+    if (enable_scalar_transport)
+    {
+        std::cout << "  Pe: " << Pe << std::endl;
+        std::cout << "  nr: " << nr << std::endl;
+    }
+    std::cout << "  scalar_scheme: " << scalar_scheme << std::endl;
 
     // Set Non-Newtonian parameters based on model type
     physics_cfg.set_model_type(case_param.model_type);
@@ -345,7 +392,12 @@ int main(int argc, char* argv[])
             .record("dt_startup_diffusion_limited",
                     has_requested_startup_dt && startup_time_step_selection.diffusion_limited ? 1 : 0)
             .record("dt_startup_magnetic_limited",
-                    has_requested_startup_dt && startup_time_step_selection.magnetic_limited ? 1 : 0);
+                    has_requested_startup_dt && startup_time_step_selection.magnetic_limited ? 1 : 0)
+            .record("scalar_transport_enabled", enable_scalar_transport ? 1 : 0)
+            .record("Sc", Sc)
+            .record("Pe", Pe)
+            .record("nr", nr)
+            .record("scalar_scheme", scalar_scheme_name);
     }
 
     double lx2 = case_param.lx_2;
@@ -416,6 +468,10 @@ int main(int argc, char* argv[])
     if (enable_mhd)
         phi.set_geometry(geo);
 
+    Variable2D c("c");
+    if (enable_scalar_transport)
+        c.set_geometry(geo);
+
     // Non-Newtonian Variable2Ds
     Variable2D mu("mu"), tau_xx("tau_xx"), tau_yy("tau_yy"), tau_xy("tau_xy");
     mu.set_geometry(geo);
@@ -453,6 +509,16 @@ int main(int argc, char* argv[])
         phi.set_center_field(&A3, phi_A3);
         phi.set_center_field(&A4, phi_A4);
         phi.set_center_field(&A5, phi_A5);
+    }
+
+    field2 c_A1("c_A1"), c_A2("c_A2"), c_A3("c_A3"), c_A4("c_A4"), c_A5("c_A5");
+    if (enable_scalar_transport)
+    {
+        c.set_center_field(&A1, c_A1);
+        c.set_center_field(&A2, c_A2);
+        c.set_center_field(&A3, c_A3);
+        c.set_center_field(&A4, c_A4);
+        c.set_center_field(&A5, c_A5);
     }
 
     // Non-Newtonian Fields
@@ -513,6 +579,8 @@ int main(int argc, char* argv[])
             set_dirichlet_zero(v, d, loc);
             // pressure: default Neumann (zero gradient)
             set_neumann_zero(p, d, loc);
+            if (enable_scalar_transport)
+                set_neumann_zero(c, d, loc);
         }
     }
 
@@ -555,6 +623,17 @@ int main(int argc, char* argv[])
         phi.has_boundary_value_map[&A5][LocationType::YPositive] = true;
     }
 
+    if (enable_scalar_transport)
+    {
+        set_dirichlet_zero(c, &A1, LocationType::XNegative);
+        c.set_boundary_type(&A3, LocationType::XPositive, PDEBoundaryType::Dirichlet);
+        c.set_boundary_value(&A3, LocationType::XPositive, 1.0);
+        c.has_boundary_value_map[&A3][LocationType::XPositive] = true;
+
+        set_neumann_zero(c, &A4, LocationType::YNegative);
+        set_neumann_zero(c, &A5, LocationType::YPositive);
+    }
+
     // Uniform inlet velocity to match the paper setup (nondimensional amplitude = 1.0)
 
     u.set_boundary_type(&A1, LocationType::XNegative, PDEBoundaryType::Dirichlet);
@@ -589,6 +668,9 @@ int main(int argc, char* argv[])
     ConcatPoissonSolver2D p_solver(&p);
     ConcatNSSolver2D      ns_solver(&u, &v, &p, &p_solver);
     ns_solver.init_nonnewton(&mu, &tau_xx, &tau_yy, &tau_xy, enable_mhd ? &phi : nullptr);
+    std::unique_ptr<ScalarSolver2D> scalar_solver;
+    if (enable_scalar_transport)
+        scalar_solver = std::make_unique<ScalarSolver2D>(&u, &v, &c, nr, scalar_scheme);
 
     ns_solver.p_solver->set_parameter(case_param.gmres_m, case_param.gmres_tol, case_param.gmres_max_iter);
 
@@ -610,6 +692,8 @@ int main(int argc, char* argv[])
         ++step;
         time_cfg.dt = dt_step;
         ns_solver.setTimeStep(dt_step);
+        if (scalar_solver)
+            scalar_solver->setTimeStep(dt_step);
 
         // 每200步启用计时输出
         if (step % 200 == 0)
@@ -627,6 +711,8 @@ int main(int argc, char* argv[])
             Timer step_timer("step_time", TimeRecordType::None, step % 200 == 0);
             // Non-Newtonian solve (MHD is internally handled by ns_solver when enable_mhd=true)
             ns_solver.solve_nonnewton();
+            if (scalar_solver)
+                scalar_solver->solve();
         }
 
         current_time += dt_step;
@@ -645,10 +731,17 @@ int main(int argc, char* argv[])
             IO::write_csv(mu, nowtime_dir + "/mu/mu_" + std::to_string(step));
             if (enable_mhd)
                 IO::write_csv(phi, nowtime_dir + "/phi/phi_" + std::to_string(step));
+            if (enable_scalar_transport)
+                IO::write_csv(c, nowtime_dir + "/c/c_" + std::to_string(step));
         }
         if (std::isnan(u_A1(1, 1)))
         {
             std::cout << "=== DIVERGENCE ===" << std::endl;
+            return -1;
+        }
+        if (enable_scalar_transport && std::isnan(c_A1(1, 1)))
+        {
+            std::cout << "=== SCALAR DIVERGENCE ===" << std::endl;
             return -1;
         }
     }
@@ -661,5 +754,7 @@ int main(int argc, char* argv[])
     IO::write_csv(mu, nowtime_dir + "/final/mu_" + std::to_string(runtime_final_step));
     if (enable_mhd)
         IO::write_csv(phi, nowtime_dir + "/final/phi_" + std::to_string(runtime_final_step));
+    if (enable_scalar_transport)
+        IO::write_csv(c, nowtime_dir + "/final/c_" + std::to_string(runtime_final_step));
     return 0;
 }
