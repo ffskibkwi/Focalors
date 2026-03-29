@@ -2,6 +2,8 @@
 #include "common.h"
 
 #include <fstream>
+#include <sstream>
+#include <vector>
 
 namespace IO
 {
@@ -166,6 +168,206 @@ namespace IO
         }
 
         infile.close();
+        return true;
+    }
+
+    bool read_csv(Variable2D& var, const std::string& filename)
+    {
+        if (!var.geometry)
+        {
+            std::cerr << "[read_csv] Error: variable has no geometry" << std::endl;
+            return false;
+        }
+
+        auto read_matrix = [](const std::string& file_path, std::vector<std::vector<double>>& rows) -> bool {
+            std::ifstream infile(file_path);
+            if (!infile.is_open())
+            {
+                std::cerr << "Failed to open file: " << file_path << std::endl;
+                return false;
+            }
+
+            rows.clear();
+            std::string line;
+            while (std::getline(infile, line))
+            {
+                std::stringstream      ss(line);
+                std::string            value;
+                std::vector<double>    row;
+                while (std::getline(ss, value, ','))
+                {
+                    try
+                    {
+                        row.push_back(std::stod(value));
+                    }
+                    catch (const std::exception&)
+                    {
+                        std::cerr << "[read_csv] Invalid number in " << file_path << ": " << value << std::endl;
+                        return false;
+                    }
+                }
+                rows.push_back(std::move(row));
+            }
+
+            if (!infile.good() && !infile.eof())
+            {
+                std::cerr << "[read_csv] Failed while reading file: " << file_path << std::endl;
+                return false;
+            }
+            return true;
+        };
+
+        auto zero_buffers = [](Variable2D& in_var, Domain2DUniform* domain) {
+            auto buffer_it = in_var.buffer_map.find(domain);
+            if (buffer_it == in_var.buffer_map.end())
+                return;
+
+            const int nx = domain->get_nx();
+            const int ny = domain->get_ny();
+
+            auto zero_if_present = [&](LocationType loc, int count) {
+                const auto it = buffer_it->second.find(loc);
+                if (it == buffer_it->second.end() || it->second == nullptr)
+                    return;
+                std::fill(it->second, it->second + count, 0.0);
+            };
+
+            switch (in_var.position_type)
+            {
+                case VariablePositionType::Center:
+                case VariablePositionType::XFace:
+                case VariablePositionType::YFace:
+                    zero_if_present(LocationType::XNegative, ny);
+                    zero_if_present(LocationType::XPositive, ny);
+                    zero_if_present(LocationType::YNegative, nx);
+                    zero_if_present(LocationType::YPositive, nx);
+                    break;
+                case VariablePositionType::Corner:
+                    zero_if_present(LocationType::XNegative, ny + 1);
+                    zero_if_present(LocationType::XPositive, ny + 1);
+                    zero_if_present(LocationType::YNegative, nx + 1);
+                    zero_if_present(LocationType::YPositive, nx + 1);
+                    break;
+                default:
+                    break;
+            }
+        };
+
+        for (auto* domain : var.geometry->domains)
+        {
+            try
+            {
+                field2& field = *var.field_map.at(domain);
+                zero_buffers(var, domain);
+
+                const std::string file_path = filename + "_" + domain->name + ".csv";
+                std::vector<std::vector<double>> rows;
+                if (!read_matrix(file_path, rows))
+                    return false;
+
+                const int field_nx = field.get_nx();
+                const int field_ny = field.get_ny();
+
+                auto require_uniform_cols = [&](int expected_cols) -> bool {
+                    for (std::size_t i = 0; i < rows.size(); ++i)
+                    {
+                        if (static_cast<int>(rows[i].size()) != expected_cols)
+                        {
+                            std::cerr << "[read_csv] Column-count mismatch in " << file_path << " at row " << i
+                                      << ": expected " << expected_cols << ", got " << rows[i].size() << std::endl;
+                            return false;
+                        }
+                    }
+                    return true;
+                };
+
+                if (var.position_type == VariablePositionType::Center || var.position_type == VariablePositionType::Corner)
+                {
+                    if (static_cast<int>(rows.size()) != field_nx)
+                    {
+                        std::cerr << "[read_csv] Row-count mismatch in " << file_path << ": expected " << field_nx
+                                  << ", got " << rows.size() << std::endl;
+                        return false;
+                    }
+                    if (!require_uniform_cols(field_ny))
+                        return false;
+
+                    for (int i = 0; i < field_nx; ++i)
+                        for (int j = 0; j < field_ny; ++j)
+                            field(i, j) = rows[static_cast<std::size_t>(i)][static_cast<std::size_t>(j)];
+
+                    continue;
+                }
+
+                if (var.position_type == VariablePositionType::XFace)
+                {
+                    const auto& boundary_type = var.boundary_type_map.at(domain);
+                    const bool  has_xpos_buffer =
+                        boundary_type.at(LocationType::XPositive) != PDEBoundaryType::Adjacented;
+                    const int expected_rows = field_nx + (has_xpos_buffer ? 1 : 0);
+                    if (static_cast<int>(rows.size()) != expected_rows)
+                    {
+                        std::cerr << "[read_csv] Row-count mismatch in " << file_path << ": expected " << expected_rows
+                                  << ", got " << rows.size() << std::endl;
+                        return false;
+                    }
+                    if (!require_uniform_cols(field_ny))
+                        return false;
+
+                    for (int i = 0; i < field_nx; ++i)
+                        for (int j = 0; j < field_ny; ++j)
+                            field(i, j) = rows[static_cast<std::size_t>(i)][static_cast<std::size_t>(j)];
+
+                    if (has_xpos_buffer)
+                    {
+                        double* xpos_buffer = var.buffer_map.at(domain).at(LocationType::XPositive);
+                        for (int j = 0; j < field_ny; ++j)
+                            xpos_buffer[j] = rows[static_cast<std::size_t>(field_nx)][static_cast<std::size_t>(j)];
+                    }
+
+                    continue;
+                }
+
+                if (var.position_type == VariablePositionType::YFace)
+                {
+                    const auto& boundary_type = var.boundary_type_map.at(domain);
+                    const bool  has_ypos_buffer =
+                        boundary_type.at(LocationType::YPositive) != PDEBoundaryType::Adjacented;
+                    const int expected_cols = field_ny + (has_ypos_buffer ? 1 : 0);
+                    if (static_cast<int>(rows.size()) != field_nx)
+                    {
+                        std::cerr << "[read_csv] Row-count mismatch in " << file_path << ": expected " << field_nx
+                                  << ", got " << rows.size() << std::endl;
+                        return false;
+                    }
+                    if (!require_uniform_cols(expected_cols))
+                        return false;
+
+                    for (int i = 0; i < field_nx; ++i)
+                    {
+                        for (int j = 0; j < field_ny; ++j)
+                            field(i, j) = rows[static_cast<std::size_t>(i)][static_cast<std::size_t>(j)];
+
+                        if (has_ypos_buffer)
+                        {
+                            double* ypos_buffer = var.buffer_map.at(domain).at(LocationType::YPositive);
+                            ypos_buffer[i]      = rows[static_cast<std::size_t>(i)][static_cast<std::size_t>(field_ny)];
+                        }
+                    }
+
+                    continue;
+                }
+
+                std::cerr << "[read_csv] Unsupported VariablePositionType for variable " << var.name << std::endl;
+                return false;
+            }
+            catch (const std::exception& e)
+            {
+                std::cerr << "[read_csv] Error: " << e.what() << std::endl;
+                return false;
+            }
+        }
+
         return true;
     }
 

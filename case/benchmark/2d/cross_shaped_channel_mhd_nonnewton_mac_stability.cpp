@@ -5,6 +5,7 @@
 #include "base/field/field2.h"
 #include "base/location_boundary.h"
 #include "cross_shaped_channel.h"
+#include "cross_shaped_channel_restart_utils.h"
 #include "io/common.h"
 #include "io/csv_writer_2d.h"
 #include "ns/mhd_module_2d_mac.h"
@@ -785,6 +786,9 @@ int main(int argc, char* argv[])
             .record("nr", nr)
             .record("scalar_scheme", scalar_scheme_name);
     }
+    const auto restart_info = CrossSlotRestart::resolve_final_field_restart(case_param);
+    if (should_record_paras)
+        CrossSlotRestart::record_restart_metadata(case_param.paras_record, restart_info);
 
     const double lx2 = case_param.lx_2;
     const double ly2 = case_param.ly_2;
@@ -1020,10 +1024,26 @@ int main(int argc, char* argv[])
 
     ns_solver.p_solver->set_parameter(case_param.gmres_m, case_param.gmres_tol, case_param.gmres_max_iter);
 
-    apply_local_streamfunction_perturbation(case_param, u, v, reference_domain_width, geometry_center_x, geometry_center_y);
+    if (restart_info.enabled)
+    {
+        std::cout << "Warm-start from final field: source=" << restart_info.source_root
+                  << ", step=" << restart_info.step << std::endl;
+        CrossSlotRestart::warm_start_from_final_field(
+            restart_info, u, v, p, enable_mhd ? &phi : nullptr, enable_scalar_transport ? &c : nullptr);
+    }
+    else
+    {
+        apply_local_streamfunction_perturbation(
+            case_param, u, v, reference_domain_width, geometry_center_x, geometry_center_y);
+    }
     ns_solver.phys_boundary_update();
     ns_solver.nondiag_shared_boundary_update();
     ns_solver.diag_shared_boundary_update();
+    if (scalar_solver)
+    {
+        scalar_solver->phys_boundary_update();
+        scalar_solver->nondiag_shared_boundary_update();
+    }
 
     std::ofstream stability_history(case_param.root_dir + "/stability_history.csv");
     if (!stability_history.is_open())
