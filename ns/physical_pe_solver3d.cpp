@@ -84,6 +84,7 @@ PhysicalPESolver3D::~PhysicalPESolver3D()
 void PhysicalPESolver3D::solve()
 {
     phys_boundary_update();
+    nondiag_shared_boundary_update();
     diag_shared_boundary_update();
     calc_rhs();
     p_solver->solve();

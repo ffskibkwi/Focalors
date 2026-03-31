@@ -4,22 +4,6 @@
 
 void PhysicalPESolver2D::phys_boundary_update()
 {
-    auto update_corner_from_buffer = [](double&         corner,
-                                        PDEBoundaryType type,
-                                        const double*   buffer,
-                                        int             idx_periodic,
-                                        int             idx_neumann,
-                                        const double*   bound_val,
-                                        int             idx_dirichlet,
-                                        double          dirichlet_default) {
-        if (type == PDEBoundaryType::Dirichlet)
-            corner = bound_val ? bound_val[idx_dirichlet] : dirichlet_default;
-        else if (type == PDEBoundaryType::Neumann)
-            corner = buffer[idx_neumann];
-        else if (type == PDEBoundaryType::Periodic)
-            corner = buffer[idx_periodic];
-    };
-
     for (auto* domain : domains)
     {
         field2& u = *u_var->field_map[domain];
@@ -55,23 +39,6 @@ void PhysicalPESolver2D::phys_boundary_update()
                         copy_x_to_buffer(buffer_map[loc], u, nx - 1);
                     else if (type == PDEBoundaryType::Periodic)
                         copy_x_to_buffer(buffer_map[loc], u, 1);
-
-                    update_corner_from_buffer(u_var->xpos_yneg_corner_map[domain],
-                                              type,
-                                              buffer_map[LocationType::YNegative],
-                                              1,
-                                              nx - 1,
-                                              bound_val,
-                                              0,
-                                              0.0);
-                    update_corner_from_buffer(u_xpos_ypos_corner_map[domain],
-                                              type,
-                                              buffer_map[LocationType::YPositive],
-                                              1,
-                                              nx - 1,
-                                              bound_val,
-                                              ny - 1,
-                                              0.0);
                 }
                 else if (loc == LocationType::YNegative)
                 {
@@ -81,15 +48,6 @@ void PhysicalPESolver2D::phys_boundary_update()
                         copy_y_to_buffer(buffer_map[loc], u, 0);
                     else if (type == PDEBoundaryType::Periodic)
                         copy_y_to_buffer(buffer_map[loc], u, ny - 1);
-
-                    update_corner_from_buffer(u_var->xpos_yneg_corner_map[domain],
-                                              type,
-                                              buffer_map[LocationType::XPositive],
-                                              ny - 1,
-                                              0,
-                                              bound_val,
-                                              nx - 1,
-                                              0.0);
                 }
                 else if (loc == LocationType::YPositive)
                 {
@@ -99,16 +57,51 @@ void PhysicalPESolver2D::phys_boundary_update()
                         copy_y_to_buffer(buffer_map[loc], u, ny - 1);
                     else if (type == PDEBoundaryType::Periodic)
                         copy_y_to_buffer(buffer_map[loc], u, 0);
-
-                    update_corner_from_buffer(u_xpos_ypos_corner_map[domain],
-                                              type,
-                                              buffer_map[LocationType::XPositive],
-                                              0,
-                                              ny - 1,
-                                              bound_val,
-                                              nx - 1,
-                                              0.0);
                 }
+            }
+
+            const PDEBoundaryType xpos_type = bound_type_map.count(LocationType::XPositive) ?
+                                                  bound_type_map.at(LocationType::XPositive) :
+                                                  PDEBoundaryType::Null;
+            const PDEBoundaryType yneg_type = bound_type_map.count(LocationType::YNegative) ?
+                                                  bound_type_map.at(LocationType::YNegative) :
+                                                  PDEBoundaryType::Null;
+            const PDEBoundaryType ypos_type = bound_type_map.count(LocationType::YPositive) ?
+                                                  bound_type_map.at(LocationType::YPositive) :
+                                                  PDEBoundaryType::Null;
+
+            const bool xpos_physical = xpos_type != PDEBoundaryType::Adjacented && xpos_type != PDEBoundaryType::Null;
+            const bool yneg_physical = yneg_type != PDEBoundaryType::Adjacented && yneg_type != PDEBoundaryType::Null;
+            const bool ypos_physical = ypos_type != PDEBoundaryType::Adjacented && ypos_type != PDEBoundaryType::Null;
+
+            // NS does not materialize physical corner ghosts here. PPE does,
+            // because calc_rhs() reads xpos_yneg directly at the lower-right cell.
+            if (xpos_physical)
+            {
+                double* xpos_buffer = buffer_map[LocationType::XPositive];
+                if (ny == 1)
+                    u_var->xpos_yneg_corner_map[domain] = xpos_buffer[0];
+                else
+                    u_var->xpos_yneg_corner_map[domain] = 2.0 * xpos_buffer[0] - xpos_buffer[1];
+            }
+            else if (yneg_physical)
+            {
+                double* yneg_buffer = buffer_map[LocationType::YNegative];
+                if (nx == 1)
+                    u_var->xpos_yneg_corner_map[domain] = yneg_buffer[nx - 1];
+                else
+                    u_var->xpos_yneg_corner_map[domain] = 2.0 * yneg_buffer[nx - 1] - yneg_buffer[nx - 2];
+            }
+
+            // PPE-only upper-right ghost: rhs(dudy) needs u(i+1,j+1) at the
+            // top-right cell, while NS has no corresponding corner storage.
+            if (xpos_physical && ypos_physical)
+            {
+                double* xpos_buffer = buffer_map[LocationType::XPositive];
+                if (ny == 1)
+                    u_xpos_ypos_corner_map[domain] = xpos_buffer[ny - 1];
+                else
+                    u_xpos_ypos_corner_map[domain] = 2.0 * xpos_buffer[ny - 1] - xpos_buffer[ny - 2];
             }
         }
 
@@ -130,15 +123,6 @@ void PhysicalPESolver2D::phys_boundary_update()
                         copy_x_to_buffer(buffer_map[loc], v, 0);
                     else if (type == PDEBoundaryType::Periodic)
                         copy_x_to_buffer(buffer_map[loc], v, nx - 1);
-
-                    update_corner_from_buffer(v_var->xneg_ypos_corner_map[domain],
-                                              type,
-                                              buffer_map[LocationType::YPositive],
-                                              nx - 1,
-                                              0,
-                                              bound_val,
-                                              ny - 1,
-                                              0.0);
                 }
                 else if (loc == LocationType::XPositive)
                 {
@@ -148,15 +132,6 @@ void PhysicalPESolver2D::phys_boundary_update()
                         copy_x_to_buffer(buffer_map[loc], v, nx - 1);
                     else if (type == PDEBoundaryType::Periodic)
                         copy_x_to_buffer(buffer_map[loc], v, 0);
-
-                    update_corner_from_buffer(v_xpos_ypos_corner_map[domain],
-                                              type,
-                                              buffer_map[LocationType::YPositive],
-                                              0,
-                                              nx - 1,
-                                              bound_val,
-                                              ny - 1,
-                                              0.0);
                 }
                 else if (loc == LocationType::YNegative)
                 {
@@ -175,24 +150,121 @@ void PhysicalPESolver2D::phys_boundary_update()
                         copy_y_to_buffer(buffer_map[loc], v, ny - 1);
                     else if (type == PDEBoundaryType::Periodic)
                         copy_y_to_buffer(buffer_map[loc], v, 1);
-
-                    update_corner_from_buffer(v_var->xneg_ypos_corner_map[domain],
-                                              type,
-                                              buffer_map[LocationType::XNegative],
-                                              1,
-                                              ny - 1,
-                                              bound_val,
-                                              0,
-                                              0.0);
-                    update_corner_from_buffer(v_xpos_ypos_corner_map[domain],
-                                              type,
-                                              buffer_map[LocationType::XPositive],
-                                              1,
-                                              ny - 1,
-                                              bound_val,
-                                              nx - 1,
-                                              0.0);
                 }
+            }
+
+            const PDEBoundaryType xneg_type = bound_type_map.count(LocationType::XNegative) ?
+                                                  bound_type_map.at(LocationType::XNegative) :
+                                                  PDEBoundaryType::Null;
+            const PDEBoundaryType xpos_type = bound_type_map.count(LocationType::XPositive) ?
+                                                  bound_type_map.at(LocationType::XPositive) :
+                                                  PDEBoundaryType::Null;
+            const PDEBoundaryType ypos_type = bound_type_map.count(LocationType::YPositive) ?
+                                                  bound_type_map.at(LocationType::YPositive) :
+                                                  PDEBoundaryType::Null;
+
+            const bool xneg_physical = xneg_type != PDEBoundaryType::Adjacented && xneg_type != PDEBoundaryType::Null;
+            const bool xpos_physical = xpos_type != PDEBoundaryType::Adjacented && xpos_type != PDEBoundaryType::Null;
+            const bool ypos_physical = ypos_type != PDEBoundaryType::Adjacented && ypos_type != PDEBoundaryType::Null;
+
+            // NS does not materialize physical corner ghosts here. PPE does,
+            // because calc_rhs() reads xneg_ypos directly at the upper-left cell.
+            if (ypos_physical)
+            {
+                double* ypos_buffer = buffer_map[LocationType::YPositive];
+                if (nx == 1)
+                    v_var->xneg_ypos_corner_map[domain] = ypos_buffer[0];
+                else
+                    v_var->xneg_ypos_corner_map[domain] = 2.0 * ypos_buffer[0] - ypos_buffer[1];
+            }
+            else if (xneg_physical)
+            {
+                double* xneg_buffer = buffer_map[LocationType::XNegative];
+                if (ny == 1)
+                    v_var->xneg_ypos_corner_map[domain] = xneg_buffer[ny - 1];
+                else
+                    v_var->xneg_ypos_corner_map[domain] = 2.0 * xneg_buffer[ny - 1] - xneg_buffer[ny - 2];
+            }
+
+            // PPE-only upper-right ghost: rhs(dvdx) needs v(i+1,j+1) at the
+            // top-right cell, while NS has no corresponding corner storage.
+            if (xpos_physical && ypos_physical)
+            {
+                double* ypos_buffer = buffer_map[LocationType::YPositive];
+                if (nx == 1)
+                    v_xpos_ypos_corner_map[domain] = ypos_buffer[nx - 1];
+                else
+                    v_xpos_ypos_corner_map[domain] = 2.0 * ypos_buffer[nx - 1] - ypos_buffer[nx - 2];
+            }
+        }
+    }
+}
+
+void PhysicalPESolver2D::nondiag_shared_boundary_update()
+{
+    for (auto* domain : domains)
+    {
+        for (auto& [loc, type] : u_var->boundary_type_map[domain])
+        {
+            if (type != PDEBoundaryType::Adjacented)
+                continue;
+
+            double* u_buffer = u_var->buffer_map[domain][loc];
+            double* v_buffer = v_var->buffer_map[domain][loc];
+
+            Domain2DUniform* adj_domain = adjacency[domain][loc];
+            field2&          adj_u      = *u_var->field_map[adj_domain];
+            field2&          adj_v      = *v_var->field_map[adj_domain];
+            const int        adj_nx     = adj_u.get_nx();
+            const int        adj_ny     = adj_u.get_ny();
+            auto&            adj_bound_type_map = u_var->boundary_type_map[adj_domain];
+
+            switch (loc)
+            {
+                case LocationType::XNegative:
+                    copy_x_to_buffer(u_buffer, adj_u, adj_nx - 1);
+                    copy_x_to_buffer(v_buffer, adj_v, adj_nx - 1);
+                    v_var->xneg_ypos_corner_map[domain] =
+                        v_var->buffer_map[adj_domain][LocationType::YPositive][adj_nx - 1];
+                    break;
+                case LocationType::XPositive:
+                    copy_x_to_buffer(u_buffer, adj_u, 0);
+                    copy_x_to_buffer(v_buffer, adj_v, 0);
+                    // Unlike NS, PPE must also supply the new upper-right
+                    // ghost when the orthogonal neighbor owns the physical top boundary.
+                    if (adj_bound_type_map[LocationType::YPositive] != PDEBoundaryType::Adjacented &&
+                        adj_bound_type_map[LocationType::YPositive] != PDEBoundaryType::Null)
+                    {
+                        double* adj_u_ypos_buffer = u_var->buffer_map[adj_domain][LocationType::YPositive];
+                        double* adj_v_ypos_buffer = v_var->buffer_map[adj_domain][LocationType::YPositive];
+
+                        u_xpos_ypos_corner_map[domain] = adj_u_ypos_buffer[0];
+                        v_xpos_ypos_corner_map[domain] = adj_v_ypos_buffer[0];
+                    }
+                    break;
+                case LocationType::YNegative:
+                    copy_y_to_buffer(u_buffer, adj_u, adj_ny - 1);
+                    copy_y_to_buffer(v_buffer, adj_v, adj_ny - 1);
+                    u_var->xpos_yneg_corner_map[domain] =
+                        u_var->buffer_map[adj_domain][LocationType::XPositive][adj_ny - 1];
+                    break;
+                case LocationType::YPositive:
+                    copy_y_to_buffer(u_buffer, adj_u, 0);
+                    copy_y_to_buffer(v_buffer, adj_v, 0);
+                    // Symmetric PPE-only case: no diagonal domain, so the
+                    // upper-right ghost comes from the orthogonal right neighbor.
+                    if (adj_bound_type_map[LocationType::XPositive] != PDEBoundaryType::Adjacented &&
+                        adj_bound_type_map[LocationType::XPositive] != PDEBoundaryType::Null)
+                    {
+                        double* adj_u_xpos_buffer = u_var->buffer_map[adj_domain][LocationType::XPositive];
+                        double* adj_v_xpos_buffer = v_var->buffer_map[adj_domain][LocationType::XPositive];
+
+                        u_xpos_ypos_corner_map[domain] = adj_u_xpos_buffer[0];
+                        v_xpos_ypos_corner_map[domain] = adj_v_xpos_buffer[0];
+                    }
+                    break;
+                default:
+                    throw std::runtime_error("PhysicalPESolver2D: invalid location type");
             }
         }
     }
@@ -212,37 +284,9 @@ void PhysicalPESolver2D::diag_shared_boundary_update()
 
             if (loc == LocationType::XNegative)
             {
-                if (adj_bound_type_map[LocationType::YNegative] == PDEBoundaryType::Adjacented)
-                {
-                    Domain2DUniform* diag_domain  = adjacency[adj_domain][LocationType::YNegative];
-                    double*          diag_buffer  = u_var->buffer_map[diag_domain][LocationType::XPositive];
-                    double*          local_buffer = u_var->buffer_map[domain][LocationType::YNegative];
-
-                    local_buffer[0] = diag_buffer[diag_domain->get_ny() - 1];
-                }
-                else
-                {
-                    double* adj_buffer   = u_var->buffer_map[adj_domain][LocationType::YNegative];
-                    double* local_buffer = u_var->buffer_map[domain][LocationType::YNegative];
-
-                    local_buffer[0] = adj_buffer[0];
-                }
-
-                if (adj_bound_type_map[LocationType::YPositive] == PDEBoundaryType::Adjacented)
-                {
-                    Domain2DUniform* diag_domain  = adjacency[adj_domain][LocationType::YPositive];
-                    double*          diag_buffer  = u_var->buffer_map[diag_domain][LocationType::XPositive];
-                    double*          local_buffer = u_var->buffer_map[domain][LocationType::YPositive];
-
-                    local_buffer[0] = diag_buffer[0];
-                }
-                else
-                {
-                    double* adj_buffer   = u_var->buffer_map[adj_domain][LocationType::YPositive];
-                    double* local_buffer = u_var->buffer_map[domain][LocationType::YPositive];
-
-                    local_buffer[0] = adj_buffer[0];
-                }
+                // Unlike NS, PPE does not let diag overwrite shared-face
+                // endpoints here. calc_rhs() should see the face values copied
+                // by nondiag_shared_boundary_update(), and diag only repairs corners.
             }
             else if (loc == LocationType::XPositive)
             {
@@ -259,6 +303,8 @@ void PhysicalPESolver2D::diag_shared_boundary_update()
                     u_var->xpos_yneg_corner_map[domain] = adj_buffer[0];
                 }
 
+                // PPE-only upper-right corner: when a true diagonal domain exists,
+                // rhs reads the ghost from that diagonal field instead of an edge buffer.
                 if (adj_bound_type_map[LocationType::YPositive] == PDEBoundaryType::Adjacented)
                 {
                     Domain2DUniform* diag_domain = adjacency[adj_domain][LocationType::YPositive];
@@ -268,48 +314,12 @@ void PhysicalPESolver2D::diag_shared_boundary_update()
                     u_xpos_ypos_corner_map[domain] = diag_u(0, 0);
                     v_xpos_ypos_corner_map[domain] = diag_v(0, 0);
                 }
-                else
-                {
-                    double* adj_u_buffer = u_var->buffer_map[adj_domain][LocationType::YPositive];
-                    double* adj_v_buffer = v_var->buffer_map[adj_domain][LocationType::YPositive];
-
-                    u_xpos_ypos_corner_map[domain] = adj_u_buffer[0];
-                    v_xpos_ypos_corner_map[domain] = adj_v_buffer[0];
-                }
             }
             else if (loc == LocationType::YNegative)
             {
-                if (adj_bound_type_map[LocationType::XNegative] == PDEBoundaryType::Adjacented)
-                {
-                    Domain2DUniform* diag_domain  = adjacency[adj_domain][LocationType::XNegative];
-                    double*          diag_buffer  = v_var->buffer_map[diag_domain][LocationType::YPositive];
-                    double*          local_buffer = v_var->buffer_map[domain][LocationType::XNegative];
-
-                    local_buffer[0] = diag_buffer[diag_domain->get_nx() - 1];
-                }
-                else
-                {
-                    double* adj_buffer   = v_var->buffer_map[adj_domain][LocationType::XNegative];
-                    double* local_buffer = v_var->buffer_map[domain][LocationType::XNegative];
-
-                    local_buffer[0] = adj_buffer[0];
-                }
-
-                if (adj_bound_type_map[LocationType::XPositive] == PDEBoundaryType::Adjacented)
-                {
-                    Domain2DUniform* diag_domain  = adjacency[adj_domain][LocationType::XPositive];
-                    double*          diag_buffer  = v_var->buffer_map[diag_domain][LocationType::YPositive];
-                    double*          local_buffer = v_var->buffer_map[domain][LocationType::XPositive];
-
-                    local_buffer[0] = diag_buffer[0];
-                }
-                else
-                {
-                    double* adj_buffer   = v_var->buffer_map[adj_domain][LocationType::XPositive];
-                    double* local_buffer = v_var->buffer_map[domain][LocationType::XPositive];
-
-                    local_buffer[0] = adj_buffer[0];
-                }
+                // Unlike NS, PPE does not let diag overwrite shared-face
+                // endpoints here. calc_rhs() should see the face values copied
+                // by nondiag_shared_boundary_update(), and diag only repairs corners.
             }
             else if (loc == LocationType::YPositive)
             {
@@ -326,6 +336,7 @@ void PhysicalPESolver2D::diag_shared_boundary_update()
                     v_var->xneg_ypos_corner_map[domain] = adj_buffer[0];
                 }
 
+                // Symmetric PPE-only upper-right corner from the true diagonal domain.
                 if (adj_bound_type_map[LocationType::XPositive] == PDEBoundaryType::Adjacented)
                 {
                     Domain2DUniform* diag_domain = adjacency[adj_domain][LocationType::XPositive];
@@ -334,14 +345,6 @@ void PhysicalPESolver2D::diag_shared_boundary_update()
 
                     u_xpos_ypos_corner_map[domain] = diag_u(0, 0);
                     v_xpos_ypos_corner_map[domain] = diag_v(0, 0);
-                }
-                else
-                {
-                    double* adj_u_buffer = u_var->buffer_map[adj_domain][LocationType::XPositive];
-                    double* adj_v_buffer = v_var->buffer_map[adj_domain][LocationType::XPositive];
-
-                    u_xpos_ypos_corner_map[domain] = adj_u_buffer[0];
-                    v_xpos_ypos_corner_map[domain] = adj_v_buffer[0];
                 }
             }
         }

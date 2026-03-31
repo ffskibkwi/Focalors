@@ -56,6 +56,10 @@ PhysicalPESolver2D::~PhysicalPESolver2D()
 void PhysicalPESolver2D::solve()
 {
     phys_boundary_update();
+    // Unlike the NS pressure-correction path, PPE assembles rhs directly from
+    // shared-face buffers and corner ghosts, so the full phys/nondiag/diag
+    // chain must finish before calc_rhs().
+    nondiag_shared_boundary_update();
     diag_shared_boundary_update();
     calc_rhs();
 

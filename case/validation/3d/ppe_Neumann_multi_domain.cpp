@@ -4,7 +4,6 @@
 #include "base/domain/variable3d.h"
 #include "base/field/field3.h"
 #include "base/location_boundary.h"
-#include "ns/ns_solver3d.h"
 #include "ns/physical_pe_solver3d.h"
 #include "pe/concat/concat_solver3d.h"
 
@@ -95,11 +94,6 @@ int main(int argc, char* argv[])
     p.set_center_field(&A2, p_A2);
     p.set_center_field(&A3, p_A3);
     p.set_center_field(&A4, p_A4);
-
-    auto is_shared = [&](Domain3DUniform* domain, LocationType loc) {
-        const auto domain_it = geo.adjacency.find(domain);
-        return domain_it != geo.adjacency.end() && domain_it->second.count(loc) != 0;
-    };
 
     const double kx    = pi;
     const double ky    = pi;
@@ -311,88 +305,6 @@ int main(int argc, char* argv[])
 
     ConcatPoissonSolver3D p_solver(&p);
     PhysicalPESolver3D    ppe_solver(&u, &v, &w, &p, &p_solver, rho);
-    ConcatNSSolver3D      ns_solver(&u, &v, &w, &p, &p_solver);
-
-    auto clear_extra_corner_map = [&]() {
-        for (auto* domain : domains)
-        {
-            std::fill_n(ppe_solver.u_xpos_ypos_corner_map.at(domain), domain->get_nz(), 0.0);
-            std::fill_n(ppe_solver.u_xpos_zpos_corner_map.at(domain), domain->get_ny(), 0.0);
-            std::fill_n(ppe_solver.v_xpos_ypos_corner_map.at(domain), domain->get_nz(), 0.0);
-            std::fill_n(ppe_solver.v_ypos_zpos_corner_map.at(domain), domain->get_nx(), 0.0);
-            std::fill_n(ppe_solver.w_xpos_zpos_corner_map.at(domain), domain->get_ny(), 0.0);
-            std::fill_n(ppe_solver.w_ypos_zpos_corner_map.at(domain), domain->get_nx(), 0.0);
-        }
-    };
-
-    auto set_physical_extra_corners = [&]() {
-        for (auto* domain : domains)
-        {
-            double ox = domain->get_offset_x();
-            double oy = domain->get_offset_y();
-            double oz = domain->get_offset_z();
-            double hx = domain->get_hx();
-            double hy = domain->get_hy();
-            double hz = domain->get_hz();
-            int    nx = domain->get_nx();
-            int    ny = domain->get_ny();
-            int    nz = domain->get_nz();
-
-            if (!is_shared(domain, LocationType::XPositive))
-            {
-                double x = ox + nx * hx;
-
-                for (int k = 0; k < nz; k++)
-                {
-                    double z                                        = oz + (k + 0.5) * hz;
-                    ppe_solver.u_xpos_ypos_corner_map.at(domain)[k] = calc_u(x, oy + (ny + 0.5) * hy, z);
-                }
-
-                for (int j = 0; j < ny; j++)
-                {
-                    double y                                        = oy + (j + 0.5) * hy;
-                    ppe_solver.u_xpos_zpos_corner_map.at(domain)[j] = calc_u(x, y, oz + (nz + 0.5) * hz);
-                }
-            }
-
-            if (!is_shared(domain, LocationType::YPositive))
-            {
-                double y = oy + ny * hy;
-
-                for (int k = 0; k < nz; k++)
-                {
-                    double z                                        = oz + (k + 0.5) * hz;
-                    ppe_solver.v_xpos_ypos_corner_map.at(domain)[k] = calc_v(ox + (nx + 0.5) * hx, y, z);
-                }
-
-                for (int i = 0; i < nx; i++)
-                {
-                    double x                                        = ox + (i + 0.5) * hx;
-                    ppe_solver.v_ypos_zpos_corner_map.at(domain)[i] = calc_v(x, y, oz + (nz + 0.5) * hz);
-                }
-            }
-
-            if (!is_shared(domain, LocationType::ZPositive))
-            {
-                double z = oz + nz * hz;
-
-                for (int j = 0; j < ny; j++)
-                {
-                    double y                                        = oy + (j + 0.5) * hy;
-                    ppe_solver.w_xpos_zpos_corner_map.at(domain)[j] = calc_w(ox + (nx + 0.5) * hx, y, z);
-                }
-
-                for (int i = 0; i < nx; i++)
-                {
-                    double x                                        = ox + (i + 0.5) * hx;
-                    ppe_solver.w_ypos_zpos_corner_map.at(domain)[i] = calc_w(x, oy + (ny + 0.5) * hy, z);
-                }
-            }
-        }
-    };
-
-    clear_extra_corner_map();
-    set_physical_extra_corners();
 
     p.set_value(calc_laplacian_p);
     normalize_rhs();
@@ -400,7 +312,8 @@ int main(int argc, char* argv[])
     normalize_pressure();
     calc_error_centered("p_from_exact_rhs", p.field_map, calc_p);
 
-    ns_solver.nondiag_shared_boundary_update();
+    ppe_solver.phys_boundary_update();
+    ppe_solver.nondiag_shared_boundary_update();
     ppe_solver.diag_shared_boundary_update();
     ppe_solver.calc_rhs();
 

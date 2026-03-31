@@ -7,7 +7,6 @@
 #include "base/math/compare.h"
 #include "io/csv_handler.h"
 #include "io/vtk_writer.h"
-#include "ns/ns_solver3d.h"
 #include "ns/physical_pe_solver3d.h"
 #include "pe/concat/concat_solver3d.h"
 
@@ -264,55 +263,6 @@ int main(int argc, char* argv[])
     ConcatPoissonSolver3D p_solver(&p);
     PhysicalPESolver3D    ppe_solver(&u, &v, &w, &p, &p_solver, rho);
 
-    {
-        double x = A1.nx * hx;
-        double y = (A1.ny + 0.5) * hy;
-
-        double* corner = ppe_solver.u_xpos_ypos_corner_map[&A1];
-        for (int k = 0; k < A1.nz; k++)
-            corner[k] = calc_u(x, y, (k + 0.5) * hz);
-    }
-    {
-        double x = A1.nx * hx;
-        double z = (A1.nz + 0.5) * hz;
-
-        double* corner = ppe_solver.u_xpos_zpos_corner_map[&A1];
-        for (int j = 0; j < A1.ny; j++)
-            corner[j] = calc_u(x, (j + 0.5) * hy, z);
-    }
-    {
-        double x = (A1.nx + 0.5) * hx;
-        double y = A1.ny * hy;
-
-        double* corner = ppe_solver.v_xpos_ypos_corner_map[&A1];
-        for (int k = 0; k < A1.nz; k++)
-            corner[k] = calc_v(x, y, (k + 0.5) * hz);
-    }
-    {
-        double y = A1.ny * hy;
-        double z = (A1.nz + 0.5) * hz;
-
-        double* corner = ppe_solver.v_ypos_zpos_corner_map[&A1];
-        for (int i = 0; i < A1.nx; i++)
-            corner[i] = calc_v((i + 0.5) * hx, y, z);
-    }
-    {
-        double x = (A1.nx + 0.5) * hx;
-        double z = A1.nz * hz;
-
-        double* corner = ppe_solver.w_xpos_zpos_corner_map[&A1];
-        for (int j = 0; j < A1.ny; j++)
-            corner[j] = calc_w(x, (j + 0.5) * hy, z);
-    }
-    {
-        double y = (A1.ny + 0.5) * hy;
-        double z = A1.nz * hz;
-
-        double* corner = ppe_solver.w_ypos_zpos_corner_map[&A1];
-        for (int i = 0; i < A1.nx; i++)
-            corner[i] = calc_w((i + 0.5) * hx, y, z);
-    }
-
     // The following pe solve validates that pe solver is correct.
 
     p.set_value(calc_laplacian_p);
@@ -321,8 +271,8 @@ int main(int argc, char* argv[])
 
     calc_error_centered("p_from_exact_rhs", p_A1, calc_p);
 
-    ConcatNSSolver3D ns_solver(&u, &v, &w, &p, &p_solver);
-
+    ppe_solver.phys_boundary_update();
+    ppe_solver.nondiag_shared_boundary_update();
     ppe_solver.diag_shared_boundary_update();
     ppe_solver.calc_rhs();
 

@@ -176,9 +176,8 @@ int main(int argc, char* argv[])
     u.set_boundary_value(&A1, LocationType::XPositive, 0.0);
     v.set_boundary_type(&A1, LocationType::XPositive, PDEBoundaryType::Neumann);
     v.set_boundary_value(&A1, LocationType::XPositive, 0.0);
-    ConcatPoissonSolver2D p_solver(&p);
-    ConcatNSSolver2D      ns_solver(&u, &v, &p, &p_solver);
-    PhysicalPESolver2D    ppe_solver(&u, &v, &p, &p_solver, density);
+    ConcatPoissonSolver2D ns_p_solver(&p);
+    ConcatNSSolver2D      ns_solver(&u, &v, &p, &ns_p_solver);
 
     std::unordered_map<Domain2DUniform*, field2> prev_u;
     std::unordered_map<Domain2DUniform*, field2> prev_v;
@@ -220,12 +219,23 @@ int main(int argc, char* argv[])
         }
     }
 
-    for (int j = 0; j < ny1; ++j)
-    {
-        p.boundary_value_map[&A1][LocationType::XNegative][j] = -dpdx_theory;
-        p.boundary_value_map[&A1][LocationType::XPositive][j] = dpdx_theory;
-    }
+    const auto calc_pressure = [&](double x, double) { return dpdx_theory * x; };
 
+    // Use the same physical-pressure pattern as the validated 3D straight-channel
+    // case: streamwise Dirichlet pressure on inlet/outlet and zero-Neumann on walls.
+    p.set_boundary_type(&A1, LocationType::XNegative, PDEBoundaryType::Dirichlet);
+    p.set_boundary_type(&A1, LocationType::XPositive, PDEBoundaryType::Dirichlet);
+    p.set_boundary_value(&A1, LocationType::XNegative, calc_pressure);
+    p.set_boundary_value(&A1, LocationType::XPositive, calc_pressure);
+    p.set_buffer_value(&A1, LocationType::XNegative, calc_pressure);
+    p.set_buffer_value(&A1, LocationType::XPositive, calc_pressure);
+    p.set_value(calc_pressure);
+
+    // Physical PPE uses streamwise Dirichlet pressure boundaries, which differ
+    // from the NS pressure-correction stage. Build a dedicated Poisson solver
+    // after the physical pressure BC types are finalized.
+    ConcatPoissonSolver2D physical_p_solver(&p);
+    PhysicalPESolver2D    ppe_solver(&u, &v, &p, &physical_p_solver, density);
     ppe_solver.solve();
 
     const double x_inlet_center       = 0.5 * hx;

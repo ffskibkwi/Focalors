@@ -20,6 +20,7 @@ public:
     void solve();
 
     void phys_boundary_update();
+    void nondiag_shared_boundary_update();
     void diag_shared_boundary_update();
     void calc_rhs();
 
