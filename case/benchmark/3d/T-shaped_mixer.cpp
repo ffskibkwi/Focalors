@@ -197,7 +197,7 @@ public:
     // Geometry parameters
     double Height       = 1e-3;
     double lx1_ratio    = 10.0;
-    double lx2_ratio    = 1.0;
+    double lx2_ratio    = 2.0;
     double ly4_ratio    = 20.0;
     int    mesh_density = 20;
 
@@ -470,16 +470,6 @@ int main(int argc, char* argv[])
 
             CSVHandler c_rms_file(case_param.root_dir + "/c_rms");
             c_rms_file.stream << calc_rms(c) << std::endl;
-
-            CSVHandler MI_file(case_param.root_dir + "/MI");
-            for (int j = case_param.ny4 - 1; j >= 0; j--)
-            {
-                MI_file.stream << calc_MI(j);
-                if (j != 0)
-                    MI_file.stream << ',';
-                else
-                    MI_file.stream << std::endl;
-            }
         }
 
         if (std::isnan(u_A1(0, 0, 0)))

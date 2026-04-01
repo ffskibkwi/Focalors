@@ -47,7 +47,7 @@ build_purempi/
 *.sln
 
 # Log file
-.log
+*.log
 log_*
 
 result/

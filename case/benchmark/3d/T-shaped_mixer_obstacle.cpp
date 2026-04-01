@@ -5,10 +5,11 @@
 #include "base/field/field3.h"
 #include "base/location_boundary.h"
 #include "base/math/random.h"
-#include "ibm_MirrorPoint/ib_solver_3d_mirror_point.h"
+#include "ibm_Uhlmann/ib_scalar_solver_3d_Uhlmann.h"
 #include "ibm_Uhlmann/ib_velocity_solver_3d_Uhlmann.h"
 #include "io/case_base.hpp"
 #include "io/csv_handler.h"
+#include "io/savepoint_3d.h"
 #include "io/stat.h"
 #include "io/vtk_writer.h"
 #include "ns/ns_solver3d.h"
@@ -125,7 +126,7 @@ public:
         // Sphere parameters
         sphere_radius   = sphere_radius_ratio * Height;
         sphere_center_x = (lx1 + lx2 + lx3) / 2.0;
-        sphere_center_y = sphere_center_y_ratio * Height - ly2;
+        sphere_center_y = -sphere_center_y_ratio * Height + ly2;
         sphere_center_z = lz1 / 2.0;
 
         double mixing_channel_hydraulic_diameter = 2.0 * lx2 * ly2 / (lx2 + ly2);
@@ -231,7 +232,7 @@ public:
     // Geometry parameters
     double Height       = 1e-3;
     double lx1_ratio    = 10.0;
-    double lx2_ratio    = 1.0;
+    double lx2_ratio    = 2.0;
     double ly4_ratio    = 20.0;
     int    mesh_density = 20;
 
@@ -430,18 +431,6 @@ int main(int argc, char* argv[])
                 u_inlet_buffer_xpos(j, k) = -vel;
             }
         }
-
-        c.has_boundary_value_map[&A3][LocationType::XPositive] = true;
-
-        field2& c_inlet_buffer_xpos = *c.boundary_value_map[&A3][LocationType::XPositive];
-
-        for (int j = 0; j < c_A3.get_ny(); ++j)
-        {
-            for (int k = 0; k < c_A3.get_nz(); ++k)
-            {
-                c_inlet_buffer_xpos(j, k) = 1.0;
-            }
-        }
     }
     // Outlet
     u.set_boundary_type(&A4, LocationType::YNegative, PDEBoundaryType::Neumann);
@@ -500,12 +489,71 @@ int main(int argc, char* argv[])
         }
     }
 
-    // MirrorPoint concentration solver (Neumann: zero flux)
-    Sphere sphere(
-        case_param.sphere_center_x, case_param.sphere_center_y, case_param.sphere_center_z, case_param.sphere_radius);
-    IBSolver3D_MirrorPoint ib_solver_c(&c, PDEBoundaryType::Neumann, 0.0);
-    ib_solver_c.add_shape(&sphere);
-    ib_solver_c.build();
+    // Uhlmann concentration solver (Neumann: zero flux)
+    // Create normal map for Neumann boundary
+    std::unordered_map<Domain3DUniform*, PIBNormal*> normal_map;
+
+    for (auto& kv : coord_map_raw)
+    {
+        Domain3DUniform* domain  = kv.first;
+        PCoord3D*        p_coord = kv.second;
+
+        // Create PIBNormal for this domain
+        PIBNormal* p_normal = new PIBNormal(p_coord->cur_n);
+
+        EXPOSE_PCOORD3D(p_coord)
+        EXPOSE_PIBNORMAL(p_normal)
+
+        // Calculate normal vectors (pointing outward from sphere center)
+        for (int i = 0; i < p_coord->cur_n; i++)
+        {
+            double dx   = X[i] - case_param.sphere_center_x;
+            double dy   = Y[i] - case_param.sphere_center_y;
+            double dz   = Z[i] - case_param.sphere_center_z;
+            double norm = std::sqrt(dx * dx + dy * dy + dz * dz);
+
+            if (norm > 1e-10)
+            {
+                Nx[i] = dx / norm;
+                Ny[i] = dy / norm;
+                Nz[i] = dz / norm;
+            }
+            else
+            {
+                // Default normal (should not happen for surface points)
+                Nx[i] = 1.0;
+                Ny[i] = 0.0;
+                Nz[i] = 0.0;
+            }
+        }
+
+        normal_map[domain] = p_normal;
+    }
+
+    // Create Uhlmann scalar solver for concentration with Neumann BC
+    IBScalarSolver3D_Uhlmann ib_solver_c(&c, coord_map_raw, normal_map);
+    ib_solver_c.set_parameters(coord_map.get_h(), case_param.hx);
+    ib_solver_c.set_pde_type(PDEBoundaryType::Dirichlet);
+
+    for (auto& kv : ib_solver_c.get_ib_map())
+    {
+        Domain3DUniform* domain  = kv.first;
+        PIBScalar*       ib_data = kv.second;
+
+        EXPOSE_PIBSCALAR(ib_data)
+        for (int i = 0; i < ib_data->cur_n; i++)
+        {
+            Sp[i] = 1.0; // source term
+        }
+    }
+
+    if (case_param.savepoint_root_to_read != "invalid")
+    {
+        read_savepoint(u, case_param.savepoint_root_to_read + "/savepoint/0/u");
+        read_savepoint(v, case_param.savepoint_root_to_read + "/savepoint/0/v");
+        read_savepoint(w, case_param.savepoint_root_to_read + "/savepoint/0/w");
+        read_savepoint(c, case_param.savepoint_root_to_read + "/savepoint/0/c");
+    }
 
     VTKWriter vtk_writer;
     vtk_writer.add_vector_as_cell_data(&u, &v, &w, "velocity");
@@ -567,7 +615,7 @@ int main(int argc, char* argv[])
         ns_solver.nondiag_shared_boundary_update();
         ns_solver.diag_shared_boundary_update();
 
-        ib_solver_c.apply();
+        ib_solver_c.solve();
         scalar_solver_c.solve();
 
         if (iter % 100 == 0)
@@ -576,7 +624,7 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = false;
         }
 
-        if (iter % static_cast<int>(1e4) == 0)
+        if (iter % static_cast<int>(5e3) == 0)
         {
             static int count = 0;
             vtk_writer.write(case_param.root_dir + "/vtk/" + std::to_string(count++));
@@ -589,16 +637,14 @@ int main(int argc, char* argv[])
 
             CSVHandler c_rms_file(case_param.root_dir + "/c_rms");
             c_rms_file.stream << calc_rms(c) << std::endl;
+        }
 
-            CSVHandler MI_file(case_param.root_dir + "/MI");
-            for (int j = case_param.ny4 - 1; j >= 0; j--)
-            {
-                MI_file.stream << calc_MI(j);
-                if (j != 0)
-                    MI_file.stream << ',';
-                else
-                    MI_file.stream << std::endl;
-            }
+        if (iter % case_param.step_to_save == 0)
+        {
+            write_savepoint(u, case_param.root_dir + "/savepoint/" + std::to_string(iter) + "/u");
+            write_savepoint(v, case_param.root_dir + "/savepoint/" + std::to_string(iter) + "/v");
+            write_savepoint(w, case_param.root_dir + "/savepoint/" + std::to_string(iter) + "/w");
+            write_savepoint(c, case_param.root_dir + "/savepoint/" + std::to_string(iter) + "/c");
         }
 
         if (std::isnan(u_A1(0, 0, 0)))
