@@ -260,8 +260,8 @@ public:
     double nr              = 0.0;
 
     // Obstacle parameters
-    double sphere_radius_ratio   = 1.0;
-    double sphere_center_y_ratio = 0.3;
+    double sphere_radius_ratio   = 0.3;
+    double sphere_center_y_ratio = 1.0;
     double sphere_radius         = 0.0;
     double sphere_center_x       = 0.0;
     double sphere_center_y       = 0.0;

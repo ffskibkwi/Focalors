@@ -4,9 +4,17 @@
 #include "base/domain/variable3d.h"
 #include "base/field/field3.h"
 #include "base/location_boundary.h"
+#include "base/math/random.h"
+#include "ibm_Uhlmann/ib_scalar_solver_3d_Uhlmann.h"
+#include "ibm_Uhlmann/ib_velocity_solver_3d_Uhlmann.h"
+#include "io/case_base.hpp"
 #include "io/csv_handler.h"
+#include "io/savepoint_3d.h"
+#include "io/stat.h"
 #include "io/vtk_writer.h"
 #include "ns/ns_solver3d.h"
+#include "ns/scalar_solver3d.h"
+#include "particle/particles_coordinate_map_3d.h"
 #include "pe/concat/concat_solver3d.h"
 
 #include <algorithm>
@@ -15,14 +23,10 @@
 #include <cmath>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <string>
 
-// Basu, S., Dirbude, S.B. (2024). Flow, Thermal, and Mass Mixing Analysis in a T-Shaped Mixer. In: Sikarwar, B.S.,
-// Sharma, S.K. (eds) Scientific and Technological Advances in Materials for Energy Storage and Conversions. FLUTE 2023.
-// Lecture Notes in Mechanical Engineering. Springer, Singapore. https://doi.org/10.1007/978-981-97-2481-9_17
-
 /**
- *
  * y
  * ▲
  * │
@@ -42,76 +46,288 @@
  * O                         x
  *
  */
-int main(int argc, char* argv[])
-{
-    TIMER_BEGIN(Init, "Init", TimeRecordType::None, true);
 
-    if (argc != 2)
+class TShapedMixerObstacleCase : public CaseBase
+{
+public:
+    TShapedMixerObstacleCase(int argc, char* argv[])
+        : CaseBase(argc, argv)
+    {}
+
+    void read_paras() override
     {
-        std::cerr << "Error argument! Usage: program rank[double > 0]" << std::endl;
-        return 0;
+        CaseBase::read_paras();
+
+        IO::read_number(para_map, "rank", rank);
+        IO::read_bool(para_map, "has_obstacle", has_obstacle);
+
+        // Geometry parameters
+        IO::read_number(para_map, "Height", Height);
+        IO::read_number(para_map, "lx1_ratio", lx1_ratio);
+        IO::read_number(para_map, "lx2_ratio", lx2_ratio);
+        IO::read_number(para_map, "ly4_ratio", ly4_ratio);
+        IO::read_number(para_map, "mesh_density", mesh_density);
+
+        // Time stepping
+        IO::read_number(para_map, "cfl", cfl);
+        IO::read_number(para_map, "pv_output_step", pv_output_step);
+        IO::read_number(para_map, "statistics_output_step", statistics_output_step);
+
+        // Physics parameters
+        IO::read_number(para_map, "Re", Reynolds_number);
+        IO::read_number(para_map, "Sc", Schmidt_number);
+
+        // Obstacle parameters
+        IO::read_number(para_map, "sphere_radius_ratio", sphere_radius_ratio);
+        IO::read_number(para_map, "sphere_center_y_ratio", sphere_center_y_ratio);
+
+        // IBM parameters
+        IO::read_number(para_map, "ibm_repeat_number", ibm_repeat_number);
+        IO::read_number(para_map, "gmres_m", gmres_m);
+        IO::read_number(para_map, "gmres_tol", gmres_tol);
+        IO::read_number(para_map, "gmres_max_iter", gmres_max_iter);
+
+        // Calculate derived parameters
+        lx1 = lx1_ratio * Height;
+        ly1 = Height;
+        lz1 = Height;
+
+        lx2 = lx2_ratio * Height;
+        ly2 = Height;
+        lz2 = Height;
+
+        lx3 = lx1;
+        ly3 = ly1;
+        lz3 = lz1;
+
+        lx4 = lx2;
+        ly4 = ly4_ratio * Height;
+        lz4 = Height;
+
+        hx = Height / mesh_density / rank;
+        hy = Height / mesh_density / rank;
+        hz = Height / mesh_density / rank;
+
+        nx1 = static_cast<int>(lx1 / hx);
+        ny1 = static_cast<int>(ly1 / hy);
+        nz1 = static_cast<int>(lz1 / hz);
+        nx2 = static_cast<int>(lx2 / hx);
+        ny2 = static_cast<int>(ly2 / hy);
+        nz2 = static_cast<int>(lz2 / hz);
+        nx3 = static_cast<int>(lx3 / hx);
+        ny3 = static_cast<int>(ly3 / hy);
+        nz3 = static_cast<int>(lz3 / hz);
+        nx4 = static_cast<int>(lx4 / hx);
+        ny4 = static_cast<int>(ly4 / hy);
+        nz4 = static_cast<int>(lz4 / hz);
+
+        dt = cfl * hx;
+
+        Pe = Schmidt_number * Reynolds_number;
+        nr = 1.0 / Pe;
+
+        // Sphere parameters
+        sphere_radius   = sphere_radius_ratio * Height;
+        sphere_center_x = (lx1 + lx2 + lx3) / 2.0;
+        sphere_center_y = -sphere_center_y_ratio * Height + ly2;
+        sphere_center_z = lz1 / 2.0;
+
+        double mixing_channel_hydraulic_diameter = 2.0 * lx2 * ly2 / (lx2 + ly2);
+        double density                           = 1e3;
+        double dynamic_viscosity                 = 1.01e-3;
+        double inlet_velocity  = Reynolds_number * dynamic_viscosity / (density * mixing_channel_hydraulic_diameter);
+        double convective_time = mixing_channel_hydraulic_diameter / inlet_velocity;
+
+        paras_record.record("mixing_channel_hydraulic_diameter", mixing_channel_hydraulic_diameter)
+            .record("density", density)
+            .record("dynamic_viscosity", dynamic_viscosity)
+            .record("inlet_velocity", inlet_velocity)
+            .record("convective_time", convective_time);
+
+        // Non-dimensionalize
+        lx1 /= mixing_channel_hydraulic_diameter;
+        ly1 /= mixing_channel_hydraulic_diameter;
+        lz1 /= mixing_channel_hydraulic_diameter;
+
+        lx2 /= mixing_channel_hydraulic_diameter;
+        ly2 /= mixing_channel_hydraulic_diameter;
+        lz2 /= mixing_channel_hydraulic_diameter;
+
+        lx3 /= mixing_channel_hydraulic_diameter;
+        ly3 /= mixing_channel_hydraulic_diameter;
+        lz3 /= mixing_channel_hydraulic_diameter;
+
+        lx4 /= mixing_channel_hydraulic_diameter;
+        ly4 /= mixing_channel_hydraulic_diameter;
+        lz4 /= mixing_channel_hydraulic_diameter;
+
+        hx /= mixing_channel_hydraulic_diameter;
+        hy /= mixing_channel_hydraulic_diameter;
+        hz /= mixing_channel_hydraulic_diameter;
+
+        dt /= convective_time;
+
+        sphere_radius /= mixing_channel_hydraulic_diameter;
+        sphere_center_x /= mixing_channel_hydraulic_diameter;
+        sphere_center_y /= mixing_channel_hydraulic_diameter;
+        sphere_center_z /= mixing_channel_hydraulic_diameter;
     }
 
-    double rank = std::stod(argv[1]);
+    bool record_paras() override
+    {
+        if (!CaseBase::record_paras())
+            return false;
 
-    double lx1 = 0.2;
-    double ly1 = 0.02;
-    double lz1 = 0.02;
+        paras_record.record("rank", rank)
+            .record("has_obstacle", has_obstacle)
+            .record("Height", Height)
+            .record("lx1_ratio", lx1_ratio)
+            .record("lx2_ratio", lx2_ratio)
+            .record("ly4_ratio", ly4_ratio)
+            .record("mesh_density", mesh_density)
+            .record("lx1", lx1)
+            .record("ly1", ly1)
+            .record("lz1", lz1)
+            .record("lx2", lx2)
+            .record("ly2", ly2)
+            .record("lz2", lz2)
+            .record("lx3", lx3)
+            .record("ly3", ly3)
+            .record("lz3", lz3)
+            .record("lx4", lx4)
+            .record("ly4", ly4)
+            .record("lz4", lz4)
+            .record("hx", hx)
+            .record("hy", hy)
+            .record("hz", hz)
+            .record("nx1", nx1)
+            .record("ny1", ny1)
+            .record("nz1", nz1)
+            .record("nx2", nx2)
+            .record("ny2", ny2)
+            .record("nz2", nz2)
+            .record("nx3", nx3)
+            .record("ny3", ny3)
+            .record("nz3", nz3)
+            .record("nx4", nx4)
+            .record("ny4", ny4)
+            .record("nz4", nz4)
+            .record("cfl", cfl)
+            .record("dt", dt)
+            .record("Reynolds_number", Reynolds_number)
+            .record("Schmidt_number", Schmidt_number)
+            .record("Pe", Pe)
+            .record("nr", nr)
+            .record("sphere_radius_ratio", sphere_radius_ratio)
+            .record("sphere_center_y_ratio", sphere_center_y_ratio)
+            .record("sphere_radius", sphere_radius)
+            .record("sphere_center_x", sphere_center_x)
+            .record("sphere_center_y", sphere_center_y)
+            .record("sphere_center_z", sphere_center_z)
+            .record("ibm_repeat_number", ibm_repeat_number)
+            .record("gmres_m", gmres_m)
+            .record("gmres_tol", gmres_tol)
+            .record("gmres_max_iter", gmres_max_iter)
+            .record("pv_output_step", pv_output_step)
+            .record("statistics_output_step", statistics_output_step);
 
-    double lx2 = 0.04;
-    double ly2 = 0.02;
-    double lz2 = 0.02;
+        return true;
+    }
 
-    double lx3 = lx1; // symmetry
-    double ly3 = ly1; // symmetry
-    double lz3 = lz1; // symmetry
+    double rank         = 1.0;
+    bool   has_obstacle = false;
 
-    double lx4 = 0.04;
-    double ly4 = 0.4;
-    double lz4 = 0.02;
+    // Geometry parameters
+    double Height       = 1e-3;
+    double lx1_ratio    = 10.0;
+    double lx2_ratio    = 2.0;
+    double ly4_ratio    = 20.0;
+    int    mesh_density = 20;
 
-    double hx = 0.001 / rank;
-    double hy = 0.001 / rank;
-    double hz = 0.001 / rank / 2.0;
+    // Derived geometry
+    double lx1, ly1, lz1;
+    double lx2, ly2, lz2;
+    double lx3, ly3, lz3;
+    double lx4, ly4, lz4;
+    double hx, hy, hz;
+    int    nx1, ny1, nz1;
+    int    nx2, ny2, nz2;
+    int    nx3, ny3, nz3;
+    int    nx4, ny4, nz4;
 
-    int nx1 = lx1 / hx;
-    int ny1 = ly1 / hy;
-    int nz1 = lz1 / hz;
-    int nx2 = lx2 / hx;
-    int ny2 = ly2 / hy;
-    int nz2 = lz2 / hz;
-    int nx3 = lx3 / hx;
-    int ny3 = ly3 / hy;
-    int nz3 = lz3 / hz;
-    int nx4 = lx4 / hx;
-    int ny4 = ly4 / hy;
-    int nz4 = lz4 / hz;
+    // Time stepping
+    double cfl                    = 0.1;
+    double dt                     = 0.0;
+    int    pv_output_step         = 10000;
+    int    statistics_output_step = 20;
 
-    double Re                  = 350;
-    double density             = 1e3;
-    double dynamic_viscosity   = 1.01e-3;
-    double feature_velocity    = Re * dynamic_viscosity / (density * ly1);
-    double kinematic_viscosity = dynamic_viscosity / density;
+    // Physics parameters
+    double Reynolds_number = 100.0;
+    double Schmidt_number  = 5000;
+    double Pe              = 0.0;
+    double nr              = 0.0;
 
-    std::cout << "feature_velocity = " << feature_velocity << std::endl;
+    // Obstacle parameters
+    double sphere_radius_ratio   = 0.3;
+    double sphere_center_y_ratio = 1.0;
+    double sphere_radius         = 0.0;
+    double sphere_center_x       = 0.0;
+    double sphere_center_y       = 0.0;
+    double sphere_center_z       = 0.0;
+
+    // IBM parameters
+    int    ibm_repeat_number = 1;
+    int    gmres_m           = 20;
+    double gmres_tol         = 1e-6;
+    int    gmres_max_iter    = 100;
+};
+
+int main(int argc, char* argv[])
+{
+    TShapedMixerObstacleCase case_param(argc, argv);
+    case_param.read_paras();
+
+    // Configuration
+    EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
+    env_cfg.showGmresRes       = false;
+    env_cfg.showCurrentStep    = false;
+
+    TimeAdvancingConfig& time_cfg = TimeAdvancingConfig::Get();
+    time_cfg.dt                   = case_param.dt;
+    time_cfg.num_iterations       = case_param.max_step;
+
+    PhysicsConfig& physics_cfg = PhysicsConfig::Get();
+    physics_cfg.set_Re(case_param.Reynolds_number);
+
+    case_param.record_paras();
 
     // Geometry: Cross shape
     Geometry3D geo;
 
-    EnvironmentConfig& env_cfg = EnvironmentConfig::Get();
-    env_cfg.debugOutputDir     = "./result/T-shaped_mixer_grid_independence/" + std::to_string(rank);
+    std::cout << "=== T-shaped Mixer with Obstacle ===\n";
+    std::cout << "Domain dimensions (non-dim):\n";
+    std::cout << "  A1: " << case_param.lx1 << " x " << case_param.ly1 << " x " << case_param.lz1 << "\n";
+    std::cout << "  A2: " << case_param.lx2 << " x " << case_param.ly2 << " x " << case_param.lz2 << "\n";
+    std::cout << "  A3: " << case_param.lx3 << " x " << case_param.ly3 << " x " << case_param.lz3 << "\n";
+    std::cout << "  A4: " << case_param.lx4 << " x " << case_param.ly4 << " x " << case_param.lz4 << "\n";
+    std::cout << "Grid: " << case_param.nx1 << "x" << case_param.ny1 << "x" << case_param.nz1 << " (A1)\n";
+    std::cout << "      " << case_param.nx2 << "x" << case_param.ny2 << "x" << case_param.nz2 << " (A2)\n";
+    std::cout << "      " << case_param.nx3 << "x" << case_param.ny3 << "x" << case_param.nz3 << " (A3)\n";
+    std::cout << "      " << case_param.nx4 << "x" << case_param.ny4 << "x" << case_param.nz4 << " (A4)\n";
+    std::cout << "Grid spacing: " << case_param.hx << " x " << case_param.hy << " x " << case_param.hz << "\n";
+    std::cout << "Sphere: center = (" << case_param.sphere_center_x << ", " << case_param.sphere_center_y << ", "
+              << case_param.sphere_center_z << "), radius = " << case_param.sphere_radius << "\n";
+    std::cout << "Re = " << case_param.Reynolds_number << ", Sc = " << case_param.Schmidt_number << "\n";
+    std::cout << "dt = " << case_param.dt << ", max_step = " << case_param.max_step << "\n\n";
 
-    TimeAdvancingConfig& time_cfg = TimeAdvancingConfig::Get();
-    time_cfg.dt                   = 0.0001 * rank;
-    time_cfg.num_iterations       = 2e5 * rank;
-
-    PhysicsConfig& physics_cfg = PhysicsConfig::Get();
-    physics_cfg.set_nu(kinematic_viscosity);
-
-    Domain3DUniform A1(nx1, ny1, nz1, lx1, ly1, lz1, "A1");
-    Domain3DUniform A2(nx2, ny2, nz2, lx2, ly2, lz2, "A2");
-    Domain3DUniform A3(nx3, ny3, nz3, lx3, ly3, lz3, "A3");
-    Domain3DUniform A4(nx4, ny4, nz4, lx4, ly4, lz4, "A4");
+    Domain3DUniform A1(
+        case_param.nx1, case_param.ny1, case_param.nz1, case_param.lx1, case_param.ly1, case_param.lz1, "A1");
+    Domain3DUniform A2(
+        case_param.nx2, case_param.ny2, case_param.nz2, case_param.lx2, case_param.ly2, case_param.lz2, "A2");
+    Domain3DUniform A3(
+        case_param.nx3, case_param.ny3, case_param.nz3, case_param.lx3, case_param.ly3, case_param.lz3, "A3");
+    Domain3DUniform A4(
+        case_param.nx4, case_param.ny4, case_param.nz4, case_param.lx4, case_param.ly4, case_param.lz4, "A4");
 
     geo.add_domain(&A1);
     geo.add_domain(&A2);
@@ -127,18 +343,20 @@ int main(int argc, char* argv[])
     geo.axis(&A1, LocationType::YNegative);
     geo.axis(&A1, LocationType::ZNegative);
 
-    // Variable2Ds
-    Variable3D u("u"), v("v"), w("w"), p("p");
+    // Variable3Ds
+    Variable3D u("u"), v("v"), w("w"), p("p"), c("concentration");
     u.set_geometry(geo);
     v.set_geometry(geo);
     w.set_geometry(geo);
     p.set_geometry(geo);
+    c.set_geometry(geo);
 
     // Fields on each domain
     field3 u_A1, u_A2, u_A3, u_A4;
     field3 v_A1, v_A2, v_A3, v_A4;
     field3 w_A1, w_A2, w_A3, w_A4;
     field3 p_A1, p_A2, p_A3, p_A4;
+    field3 c_A1, c_A2, c_A3, c_A4;
 
     u.set_x_face_center_field(&A1, u_A1);
     u.set_x_face_center_field(&A2, u_A2);
@@ -156,6 +374,10 @@ int main(int argc, char* argv[])
     p.set_center_field(&A2, p_A2);
     p.set_center_field(&A3, p_A3);
     p.set_center_field(&A4, p_A4);
+    c.set_center_field(&A1, c_A1);
+    c.set_center_field(&A2, c_A2);
+    c.set_center_field(&A3, c_A3);
+    c.set_center_field(&A4, c_A4);
 
     std::cout << "mesh num = " << u_A1.get_size_n() + u_A2.get_size_n() + u_A3.get_size_n() + u_A4.get_size_n()
               << std::endl;
@@ -194,6 +416,7 @@ int main(int argc, char* argv[])
             set_dirichlet_zero(w, d, loc);
             // pressure: default Neumann (zero gradient)
             set_neumann_zero(p, d, loc);
+            set_dirichlet_zero(c, d, loc);
         }
     }
 
@@ -209,11 +432,26 @@ int main(int argc, char* argv[])
         {
             for (int k = 0; k < u_A1.get_nz(); ++k)
             {
-                double z = k * hz + 0.5 * hz;
-                z /= lz1;
-                double vel                = 6.0 * feature_velocity * (1.0 - z) * z;
+                double z = k * case_param.hz + 0.5 * case_param.hz;
+                z /= case_param.lz1;
+                double vel                = 6.0 * (1.0 - z) * z;
                 u_inlet_buffer_xneg(j, k) = vel;
                 u_inlet_buffer_xpos(j, k) = -vel;
+            }
+        }
+
+        if (!case_param.has_obstacle)
+        {
+            c.has_boundary_value_map[&A3][LocationType::XPositive] = true;
+
+            field2& c_inlet_buffer_xpos = *c.boundary_value_map[&A3][LocationType::XPositive];
+
+            for (int j = 0; j < c_A3.get_ny(); ++j)
+            {
+                for (int k = 0; k < c_A3.get_nz(); ++k)
+                {
+                    c_inlet_buffer_xpos(j, k) = 1.0;
+                }
             }
         }
     }
@@ -221,11 +459,125 @@ int main(int argc, char* argv[])
     u.set_boundary_type(&A4, LocationType::YNegative, PDEBoundaryType::Neumann);
     v.set_boundary_type(&A4, LocationType::YNegative, PDEBoundaryType::Neumann);
     w.set_boundary_type(&A4, LocationType::YNegative, PDEBoundaryType::Neumann);
+    c.set_boundary_type(&A4, LocationType::YNegative, PDEBoundaryType::Neumann);
+
+    DifferenceSchemeType c_scheme = DifferenceSchemeType::Conv_QUICK_Diff_Center2nd;
 
     ConcatPoissonSolver3D p_solver(&p);
     ConcatNSSolver3D      ns_solver(&u, &v, &w, &p, &p_solver);
+    ScalarSolver3D        scalar_solver_c(&u, &v, &w, &c, case_param.nr, c_scheme);
 
-    TIMER_END(Init);
+    // IBM setup - Uhlmann velocity solver
+    PCoordMap3D coord_map;
+    coord_map.add_sphere(case_param.hx,
+                         case_param.sphere_radius,
+                         case_param.sphere_center_x,
+                         case_param.sphere_center_y,
+                         case_param.sphere_center_z);
+    coord_map.generate_map(&geo);
+    auto coord_map_raw = coord_map.get_map();
+
+    IBVelocitySolver3D_Uhlmann ib_solver_vel(&u, &v, &w, coord_map_raw);
+    ib_solver_vel.set_parameters(coord_map.get_h(), case_param.hx);
+
+    // Initialize IBM particle velocities to zero (solid sphere)
+    for (auto& kv : coord_map_raw)
+    {
+        auto* p_coord = kv.second;
+        auto* ib_data = ib_solver_vel.get_ib_data(kv.first);
+
+        EXPOSE_PCOORD3D(p_coord)
+        EXPOSE_PIB3D(ib_data)
+
+        for (int i = 0; i < p_coord->cur_n; i++)
+        {
+            Up[i] = 0.0;
+            Vp[i] = 0.0;
+            Wp[i] = 0.0;
+        }
+    }
+
+    // Uhlmann concentration solver (Neumann: zero flux)
+    // Create normal map for Neumann boundary
+    std::unordered_map<Domain3DUniform*, PIBNormal*> normal_map;
+
+    for (auto& kv : coord_map_raw)
+    {
+        Domain3DUniform* domain  = kv.first;
+        PCoord3D*        p_coord = kv.second;
+
+        // Create PIBNormal for this domain
+        PIBNormal* p_normal = new PIBNormal(p_coord->cur_n);
+
+        EXPOSE_PCOORD3D(p_coord)
+        EXPOSE_PIBNORMAL(p_normal)
+
+        // Calculate normal vectors (pointing outward from sphere center)
+        for (int i = 0; i < p_coord->cur_n; i++)
+        {
+            double dx   = X[i] - case_param.sphere_center_x;
+            double dy   = Y[i] - case_param.sphere_center_y;
+            double dz   = Z[i] - case_param.sphere_center_z;
+            double norm = std::sqrt(dx * dx + dy * dy + dz * dz);
+
+            if (norm > 1e-10)
+            {
+                Nx[i] = dx / norm;
+                Ny[i] = dy / norm;
+                Nz[i] = dz / norm;
+            }
+            else
+            {
+                // Default normal (should not happen for surface points)
+                Nx[i] = 1.0;
+                Ny[i] = 0.0;
+                Nz[i] = 0.0;
+            }
+        }
+
+        normal_map[domain] = p_normal;
+    }
+
+    // Create Uhlmann scalar solver for concentration with Neumann BC
+    IBScalarSolver3D_Uhlmann ib_solver_c(&c, coord_map_raw, normal_map);
+    ib_solver_c.set_parameters(coord_map.get_h(), case_param.hx);
+    ib_solver_c.set_pde_type(PDEBoundaryType::Dirichlet);
+
+    for (auto& kv : ib_solver_c.get_ib_map())
+    {
+        Domain3DUniform* domain  = kv.first;
+        PIBScalar*       ib_data = kv.second;
+
+        EXPOSE_PIBSCALAR(ib_data)
+        for (int i = 0; i < ib_data->cur_n; i++)
+        {
+            Sp[i] = 1.0; // source term
+        }
+    }
+
+    if (case_param.savepoint_root_to_read != "invalid")
+    {
+        read_savepoint(u, case_param.savepoint_root_to_read + "/savepoint/0/u");
+        read_savepoint(v, case_param.savepoint_root_to_read + "/savepoint/0/v");
+        read_savepoint(w, case_param.savepoint_root_to_read + "/savepoint/0/w");
+        read_savepoint(c, case_param.savepoint_root_to_read + "/savepoint/0/c");
+    }
+
+    VTKWriter vtk_writer;
+    vtk_writer.add_vector_as_cell_data(&u, &v, &w, "velocity");
+    vtk_writer.add_scalar_as_cell_data(&c);
+    vtk_writer.validate();
+
+    auto calc_MI = [&](int j) {
+        double c_mean = c_A4.mean_at_xz_plane(j);
+        double sigma  = 0.0;
+        OPENMP_PARALLEL_FOR(reduction(+ : sigma))
+        for (int i = 0; i < case_param.nx4; i++)
+            for (int k = 0; k < case_param.nz4; k++)
+                sigma += (c_A4(i, j, k) - c_mean) * (c_A4(i, j, k) - c_mean);
+        sigma = std::sqrt(sigma / (case_param.nx4 * case_param.nz4));
+        return 1 - sigma / 0.5;
+    };
 
     for (int iter = 0; iter <= time_cfg.num_iterations; iter++)
     {
@@ -239,7 +591,46 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = true;
         }
 
-        ns_solver.solve();
+        ns_solver.euler_conv_diff_inner();
+        ns_solver.euler_conv_diff_outer();
+
+        if (case_param.has_obstacle)
+        {
+            // Apply Uhlmann velocity IBM solver
+            for (int ib_iter = 0; ib_iter < case_param.ibm_repeat_number; ib_iter++)
+            {
+                ib_solver_vel.solve();
+            }
+        }
+
+        ns_solver.phys_boundary_update();
+        ns_solver.nondiag_shared_boundary_update();
+        ns_solver.diag_shared_boundary_update();
+
+        // divu
+        ns_solver.velocity_div_inner();
+        ns_solver.velocity_div_outer();
+
+        // PE
+        ns_solver.normalize_pressure();
+        p_solver.solve();
+
+        // update buffer for p
+        ns_solver.pressure_buffer_update();
+
+        // p grad
+        ns_solver.add_pressure_gradient();
+
+        // Boundary update
+        ns_solver.phys_boundary_update();
+        ns_solver.nondiag_shared_boundary_update();
+        ns_solver.diag_shared_boundary_update();
+
+        if (case_param.has_obstacle)
+        {
+            ib_solver_c.solve();
+        }
+        scalar_solver_c.solve();
 
         if (iter % 100 == 0)
         {
@@ -247,26 +638,24 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = false;
         }
 
-        if (iter % static_cast<int>(20 * rank) == 0)
+        if (iter % case_param.statistics_output_step == 0)
         {
-            CSVHandler v_A4_mean_j0_file(env_cfg.debugOutputDir + "/v_A4_mean_j0");
-            CSVHandler v_A4_mean_jend_file(env_cfg.debugOutputDir + "/v_A4_mean_jend");
+            CSVHandler u_rms_file(case_param.root_dir + "/u_rms");
+            u_rms_file.stream << calc_rms(u) << std::endl;
 
-            double v_A4_mean_j0   = v_A4.mean_at_xz_plane(0);
-            double v_A4_mean_jend = v_A4.mean_at_xz_plane(v_A4.get_ny() - 1);
-            if (std::isnan(v_A4_mean_j0) || std::isnan(v_A4_mean_jend))
-            {
-                std::cout << "Error: Find nan! Break solving." << std::endl;
-                break;
-            }
-
-            v_A4_mean_j0_file.stream << v_A4_mean_j0 << std::endl;
-            v_A4_mean_jend_file.stream << v_A4_mean_jend << std::endl;
+            CSVHandler c_rms_file(case_param.root_dir + "/c_rms");
+            c_rms_file.stream << calc_rms(c) << std::endl;
         }
 
         if (std::isnan(u_A1(0, 0, 0)))
         {
-            std::cout << "Error: Find nan! Break solving." << std::endl;
+            std::cout << "Error: Find nan at u_A1! Break solving." << std::endl;
+            break;
+        }
+
+        if (std::isnan(c_A1(0, 0, 0)))
+        {
+            std::cout << "Error: Find nan at c_A1! Break solving." << std::endl;
             break;
         }
     }
