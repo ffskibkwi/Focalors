@@ -319,6 +319,87 @@ namespace
         return 0.5 * (field_value_clamped(v_field, ci, j) + field_value_clamped(v_field, ci, j + 1));
     }
 
+    double sample_speed_sq_center(const field2& u_field, const field2& v_field, int nx, int ny, int i, int j)
+    {
+        const double u_center = sample_u_center(u_field, nx, ny, i, j);
+        const double v_center = sample_v_center(v_field, nx, ny, i, j);
+        return u_center * u_center + v_center * v_center;
+    }
+
+    double refine_parabolic_offset(double left_value, double center_value, double right_value)
+    {
+        const double curvature = left_value - 2.0 * center_value + right_value;
+        if (curvature <= SMALL_NUMBER)
+            return 0.0;
+
+        const double offset = 0.5 * (left_value - right_value) / curvature;
+        if (std::abs(offset) > 0.5)
+            return 0.0;
+
+        return offset;
+    }
+
+    struct StagnationCandidate
+    {
+        Domain2DUniform* domain           = nullptr;
+        int              i                = 0;
+        int              j                = 0;
+        int              nx               = 0;
+        int              ny               = 0;
+        double           hx               = 0.0;
+        double           hy               = 0.0;
+        double           x_center         = 0.0;
+        double           y_center         = 0.0;
+        double           speed_sq         = std::numeric_limits<double>::infinity();
+        double           radius_sq        = std::numeric_limits<double>::infinity();
+        bool             valid            = false;
+    };
+
+    void finalize_stagnation_candidate(const StagnationCandidate& candidate,
+                                       Variable2D&                u_var,
+                                       Variable2D&                v_var,
+                                       double                     domain_width,
+                                       StabilityMetrics&          metrics)
+    {
+        if (!candidate.valid || candidate.domain == nullptr)
+            return;
+
+        double refined_x = candidate.x_center;
+        double refined_y = candidate.y_center;
+
+        if (candidate.i > 0 && candidate.i < candidate.nx - 1 && candidate.j > 0 && candidate.j < candidate.ny - 1)
+        {
+            const field2& u_field = *u_var.field_map[candidate.domain];
+            const field2& v_field = *v_var.field_map[candidate.domain];
+
+            const double left_sq =
+                sample_speed_sq_center(u_field, v_field, candidate.nx, candidate.ny, candidate.i - 1, candidate.j);
+            const double center_sq =
+                sample_speed_sq_center(u_field, v_field, candidate.nx, candidate.ny, candidate.i, candidate.j);
+            const double right_sq =
+                sample_speed_sq_center(u_field, v_field, candidate.nx, candidate.ny, candidate.i + 1, candidate.j);
+
+            const double down_sq =
+                sample_speed_sq_center(u_field, v_field, candidate.nx, candidate.ny, candidate.i, candidate.j - 1);
+            const double up_sq =
+                sample_speed_sq_center(u_field, v_field, candidate.nx, candidate.ny, candidate.i, candidate.j + 1);
+
+            // Sub-cell quadratic refinement suppresses one-cell toggling without changing the flow solve itself.
+            const double offset_x = refine_parabolic_offset(left_sq, center_sq, right_sq);
+            const double offset_y = refine_parabolic_offset(down_sq, center_sq, up_sq);
+
+            refined_x += offset_x * candidate.hx;
+            refined_y += offset_y * candidate.hy;
+        }
+
+        const double refined_radius_sq = refined_x * refined_x + refined_y * refined_y;
+        metrics.stagnation_x_over_d = refined_x / domain_width;
+        metrics.stagnation_y_over_d = refined_y / domain_width;
+        metrics.stagnation_r_over_d = std::sqrt(refined_radius_sq) / domain_width;
+        metrics.stagnation_speed    = std::sqrt(std::max(candidate.speed_sq, 0.0));
+        metrics.has_stagnation      = true;
+    }
+
     void apply_local_streamfunction_perturbation(const CrossShapedChannel2DStabilityCase& case_param,
                                                  Variable2D&                              u_var,
                                                  Variable2D&                              v_var,
@@ -395,9 +476,8 @@ namespace
 
         const double diag_half_width = case_param.diagnostic_window_half_width_over_d * domain_width;
         const double stag_half_width = case_param.stagnation_window_half_width_over_d * domain_width;
-        double       best_stagnation_speed_sq = std::numeric_limits<double>::infinity();
-        double       best_stagnation_radius_sq = std::numeric_limits<double>::infinity();
-        double       max_speed_window         = 0.0;
+        StagnationCandidate best_stagnation;
+        double              max_speed_window = 0.0;
 
         for (auto* domain : u_var.geometry->domains)
         {
@@ -441,20 +521,23 @@ namespace
                     if (std::abs(x_center) <= stag_half_width && std::abs(y_center) <= stag_half_width)
                     {
                         const double radius_sq = x_center * x_center + y_center * y_center;
-                        const bool   better_speed =
-                            speed_sq < best_stagnation_speed_sq - SMALL_NUMBER;
-                        const bool speed_tied = std::abs(speed_sq - best_stagnation_speed_sq) <= SMALL_NUMBER;
+                        const bool   better_speed = speed_sq < best_stagnation.speed_sq - SMALL_NUMBER;
+                        const bool speed_tied = std::abs(speed_sq - best_stagnation.speed_sq) <= SMALL_NUMBER;
 
-                        if (!metrics.has_stagnation || better_speed ||
-                            (speed_tied && radius_sq < best_stagnation_radius_sq))
+                        if (!best_stagnation.valid || better_speed || (speed_tied && radius_sq < best_stagnation.radius_sq))
                         {
-                            best_stagnation_speed_sq = speed_sq;
-                            best_stagnation_radius_sq = radius_sq;
-                            metrics.stagnation_x_over_d = x_center / domain_width;
-                            metrics.stagnation_y_over_d = y_center / domain_width;
-                            metrics.stagnation_r_over_d = std::sqrt(radius_sq) / domain_width;
-                            metrics.stagnation_speed = speed;
-                            metrics.has_stagnation   = true;
+                            best_stagnation.domain    = domain;
+                            best_stagnation.i         = i;
+                            best_stagnation.j         = j;
+                            best_stagnation.nx        = nx;
+                            best_stagnation.ny        = ny;
+                            best_stagnation.hx        = hx;
+                            best_stagnation.hy        = hy;
+                            best_stagnation.x_center  = x_center;
+                            best_stagnation.y_center  = y_center;
+                            best_stagnation.speed_sq  = speed_sq;
+                            best_stagnation.radius_sq = radius_sq;
+                            best_stagnation.valid     = true;
                         }
                     }
                 }
@@ -469,6 +552,8 @@ namespace
             metrics.asymmetry_lr_energy = (metrics.energy_right - metrics.energy_left) / lr_denom;
             metrics.max_speed_window    = max_speed_window;
         }
+
+        finalize_stagnation_candidate(best_stagnation, u_var, v_var, domain_width, metrics);
 
         return metrics;
     }
