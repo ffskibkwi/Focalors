@@ -829,9 +829,11 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    const int history_output_step = std::max(1, case_param.history_output_step);
-    const int pv_output_step =
-        case_param.pv_output_step > 0 ? case_param.pv_output_step : std::max(1, estimated_total_steps / 10);
+    const int history_output_step      = std::max(1, case_param.history_output_step);
+    constexpr int auto_pv_output_count = 100;
+    const int pv_output_step           = case_param.pv_output_step > 0
+                                             ? case_param.pv_output_step
+                                             : std::max(1, estimated_total_steps / auto_pv_output_count);
     const int final_step_to_save = case_param.step_to_save > 0 ? case_param.step_to_save : estimated_total_steps;
 
     case_param.max_step     = estimated_total_steps;
