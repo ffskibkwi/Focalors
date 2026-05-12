@@ -216,7 +216,7 @@ public:
     double cfl                    = 0.1;
     double dt                     = 0.0;
     int    pv_output_step         = 10000;
-    int    statistics_output_step = 20;
+    int    statistics_output_step = 1e4;
 
     // Physics parameters
     double Reynolds_number = 100.0;
@@ -457,7 +457,7 @@ int main(int argc, char* argv[])
             env_cfg.showGmresRes               = false;
         }
 
-        if (iter % static_cast<int>(1e4) == 0)
+        if (iter % case_param.pv_output_step == 0)
         {
             static int count = 0;
             vtk_writer.write(case_param.root_dir + "/vtk/" + std::to_string(count++));
