@@ -30,6 +30,7 @@ namespace
     constexpr double EXPLICIT_DIFFUSION_DT_FACTOR = 0.20;
     constexpr double MAGNETIC_DT_FACTOR           = 0.50;
     constexpr double SMALL_NUMBER                 = 1.0e-12;
+    constexpr int    METADATA_DECIMAL_DIGITS      = 8;
 
     double scale_viscosity_to_solver_units(double viscosity_value, const PhysicsConfig& physics_cfg)
     {
@@ -160,7 +161,9 @@ namespace
     public:
         CrossShapedChannel2DStabilityCase(int argc, char* argv[])
             : CrossShapedChannel2DCase(argc, argv)
-        {}
+        {
+            T_total = 300.0;
+        }
 
         void read_paras() override
         {
@@ -173,11 +176,14 @@ namespace
             IO::read_number(para_map, "diagnostic_window_half_width_over_d", diagnostic_window_half_width_over_d);
             IO::read_number(para_map, "stagnation_window_half_width_over_d", stagnation_window_half_width_over_d);
             IO::read_number(para_map, "history_output_step", history_output_step);
+            IO::read_number(para_map, "postprocess_output_step", postprocess_output_step);
 
             if (perturb_stream_sign == 0)
                 perturb_stream_sign = 1;
             if (history_output_step <= 0)
                 history_output_step = 1;
+            if (postprocess_output_step <= 0)
+                postprocess_output_step = 1;
         }
 
         bool record_paras() override
@@ -192,7 +198,8 @@ namespace
                 .record("perturb_stream_sign", perturb_stream_sign)
                 .record("diagnostic_window_half_width_over_d", diagnostic_window_half_width_over_d)
                 .record("stagnation_window_half_width_over_d", stagnation_window_half_width_over_d)
-                .record("history_output_step", history_output_step);
+                .record("history_output_step", history_output_step)
+                .record("postprocess_output_step", postprocess_output_step);
 
             return true;
         }
@@ -205,6 +212,7 @@ namespace
         double diagnostic_window_half_width_over_d = 1.0;
         double stagnation_window_half_width_over_d = 0.5;
         int    history_output_step                 = 50;
+        int    postprocess_output_step             = 1;
     };
 
     struct StabilityMetrics
@@ -293,6 +301,409 @@ namespace
             stagnation_r_max.update(metrics.stagnation_r_over_d, step, time);
         }
     };
+
+    enum class SectionOrientation
+    {
+        Vertical,
+        Horizontal,
+    };
+
+    struct SectionMonitorDefinition
+    {
+        std::string        name;
+        std::string        family;
+        Domain2DUniform*   domain          = nullptr;
+        LocationType       boundary        = LocationType::XNegative;
+        SectionOrientation orientation     = SectionOrientation::Vertical;
+        int                line_index      = 0;
+        int                probe_i         = 0;
+        int                probe_j         = 0;
+        int                probe_i_interp  = 0;
+        int                probe_j_interp  = 0;
+        int                sample_count    = 0;
+        double             spacing         = 0.0;
+        double             section_length  = 0.0;
+        double             outward_sign    = 1.0;
+        double             section_center_x = 0.0;
+        double             section_center_y = 0.0;
+        double             probe_x         = 0.0;
+        double             probe_y         = 0.0;
+        double             probe_interp_weight = 0.0;
+        std::string        probe_sampling_method = "cell_center_exact";
+    };
+
+    struct PointProbeSample
+    {
+        double u = std::numeric_limits<double>::quiet_NaN();
+        double v = std::numeric_limits<double>::quiet_NaN();
+    };
+
+    struct SectionAggregateSample
+    {
+        double mean_u     = std::numeric_limits<double>::quiet_NaN();
+        double mean_v     = std::numeric_limits<double>::quiet_NaN();
+        double mean_speed = std::numeric_limits<double>::quiet_NaN();
+    };
+
+    double sample_u_center(const field2& u_field, int nx, int ny, int i, int j);
+    double sample_v_center(const field2& v_field, int nx, int ny, int i, int j);
+
+    const char* location_type_name(LocationType loc)
+    {
+        switch (loc)
+        {
+            case LocationType::XNegative:
+                return "XNegative";
+            case LocationType::XPositive:
+                return "XPositive";
+            case LocationType::YNegative:
+                return "YNegative";
+            case LocationType::YPositive:
+                return "YPositive";
+            default:
+                return "Unknown";
+        }
+    }
+
+    const char* section_orientation_name(SectionOrientation orientation)
+    {
+        switch (orientation)
+        {
+            case SectionOrientation::Vertical:
+                return "vertical";
+            case SectionOrientation::Horizontal:
+                return "horizontal";
+            default:
+                return "unknown";
+        }
+    }
+
+    double cell_center_x(const Domain2DUniform& domain, int i)
+    {
+        return domain.get_offset_x() + (static_cast<double>(i) + 0.5) * domain.get_hx();
+    }
+
+    double cell_center_y(const Domain2DUniform& domain, int j)
+    {
+        return domain.get_offset_y() + (static_cast<double>(j) + 0.5) * domain.get_hy();
+    }
+
+    double boundary_coordinate(const Domain2DUniform& domain, LocationType boundary)
+    {
+        switch (boundary)
+        {
+            case LocationType::XNegative:
+                return domain.get_offset_x();
+            case LocationType::XPositive:
+                return domain.get_offset_x() + domain.get_lx();
+            case LocationType::YNegative:
+                return domain.get_offset_y();
+            case LocationType::YPositive:
+                return domain.get_offset_y() + domain.get_ly();
+            default:
+                throw std::runtime_error("Unsupported boundary type for section monitor.");
+        }
+    }
+
+    struct CenterInterpolation1D
+    {
+        int         first_index  = 0;
+        int         second_index = 0;
+        double      weight       = 0.0;
+        std::string method       = "cell_center_exact";
+    };
+
+    CenterInterpolation1D center_interpolation(int count, double origin, double spacing, double target)
+    {
+        CenterInterpolation1D interpolation;
+        if (count <= 1)
+        {
+            interpolation.method = "single_cell";
+            return interpolation;
+        }
+
+        const double normalized = (target - origin) / spacing - 0.5;
+        if (normalized <= 0.0)
+        {
+            interpolation.first_index = 0;
+            interpolation.second_index = 0;
+            return interpolation;
+        }
+        if (normalized >= static_cast<double>(count - 1))
+        {
+            interpolation.first_index = count - 1;
+            interpolation.second_index = count - 1;
+            return interpolation;
+        }
+
+        const int lower = static_cast<int>(std::floor(normalized));
+        const double weight = normalized - static_cast<double>(lower);
+        if (weight <= SMALL_NUMBER)
+        {
+            interpolation.first_index = lower;
+            interpolation.second_index = lower;
+            return interpolation;
+        }
+        if (1.0 - weight <= SMALL_NUMBER)
+        {
+            interpolation.first_index = lower + 1;
+            interpolation.second_index = lower + 1;
+            return interpolation;
+        }
+
+        interpolation.first_index = lower;
+        interpolation.second_index = lower + 1;
+        interpolation.weight = weight;
+        interpolation.method = "linear_center_interp";
+        return interpolation;
+    }
+
+    SectionMonitorDefinition build_section_monitor(const std::string& name,
+                                                   const std::string& family,
+                                                   Domain2DUniform*   domain,
+                                                   LocationType       boundary,
+                                                   double             outward_sign,
+                                                   double             geometry_center_x,
+                                                   double             geometry_center_y)
+    {
+        if (domain == nullptr)
+            throw std::runtime_error("Null domain in build_section_monitor.");
+
+        SectionMonitorDefinition def;
+        def.name         = name;
+        def.family       = family;
+        def.domain       = domain;
+        def.boundary     = boundary;
+        def.outward_sign = outward_sign;
+
+        if (boundary == LocationType::XNegative || boundary == LocationType::XPositive)
+        {
+            const CenterInterpolation1D tangent_interp =
+                center_interpolation(domain->get_ny(), domain->get_offset_y(), domain->get_hy(), geometry_center_y);
+            def.orientation      = SectionOrientation::Vertical;
+            def.line_index       = boundary == LocationType::XNegative ? 0 : domain->get_nx() - 1;
+            def.sample_count     = domain->get_ny();
+            def.spacing          = domain->get_hy();
+            def.section_length   = domain->get_ly();
+            def.probe_i          = def.line_index;
+            def.probe_j          = tangent_interp.first_index;
+            def.probe_i_interp   = def.line_index;
+            def.probe_j_interp   = tangent_interp.second_index;
+            def.probe_interp_weight = tangent_interp.weight;
+            def.probe_sampling_method = tangent_interp.method;
+            def.section_center_x = boundary_coordinate(*domain, boundary);
+            def.section_center_y = domain->get_offset_y() + 0.5 * domain->get_ly();
+            def.probe_x          = cell_center_x(*domain, def.probe_i);
+            def.probe_y          = def.section_center_y;
+        }
+        else
+        {
+            const CenterInterpolation1D tangent_interp =
+                center_interpolation(domain->get_nx(), domain->get_offset_x(), domain->get_hx(), geometry_center_x);
+            def.orientation      = SectionOrientation::Horizontal;
+            def.line_index       = boundary == LocationType::YNegative ? 0 : domain->get_ny() - 1;
+            def.sample_count     = domain->get_nx();
+            def.spacing          = domain->get_hx();
+            def.section_length   = domain->get_lx();
+            def.probe_i          = tangent_interp.first_index;
+            def.probe_j          = def.line_index;
+            def.probe_i_interp   = tangent_interp.second_index;
+            def.probe_j_interp   = def.line_index;
+            def.probe_interp_weight = tangent_interp.weight;
+            def.probe_sampling_method = tangent_interp.method;
+            def.section_center_x = domain->get_offset_x() + 0.5 * domain->get_lx();
+            def.section_center_y = boundary_coordinate(*domain, boundary);
+            def.probe_x          = def.section_center_x;
+            def.probe_y          = cell_center_y(*domain, def.probe_j);
+        }
+
+        return def;
+    }
+
+    PointProbeSample sample_point_probe(const SectionMonitorDefinition& def, Variable2D& u_var, Variable2D& v_var)
+    {
+        if (def.domain == nullptr)
+            throw std::runtime_error("Null domain in sample_point_probe.");
+
+        const int    nx      = def.domain->get_nx();
+        const int    ny      = def.domain->get_ny();
+        const field2& u_field = *u_var.field_map[def.domain];
+        const field2& v_field = *v_var.field_map[def.domain];
+
+        PointProbeSample sample;
+        const double u_first = sample_u_center(u_field, nx, ny, def.probe_i, def.probe_j);
+        const double v_first = sample_v_center(v_field, nx, ny, def.probe_i, def.probe_j);
+        const double u_second = sample_u_center(u_field, nx, ny, def.probe_i_interp, def.probe_j_interp);
+        const double v_second = sample_v_center(v_field, nx, ny, def.probe_i_interp, def.probe_j_interp);
+        sample.u = (1.0 - def.probe_interp_weight) * u_first + def.probe_interp_weight * u_second;
+        sample.v = (1.0 - def.probe_interp_weight) * v_first + def.probe_interp_weight * v_second;
+        return sample;
+    }
+
+    SectionAggregateSample sample_section_aggregate(const SectionMonitorDefinition& def,
+                                                    Variable2D&                    u_var,
+                                                    Variable2D&                    v_var)
+    {
+        if (def.domain == nullptr || def.sample_count <= 0)
+            return {};
+
+        const int    nx      = def.domain->get_nx();
+        const int    ny      = def.domain->get_ny();
+        const field2& u_field = *u_var.field_map[def.domain];
+        const field2& v_field = *v_var.field_map[def.domain];
+
+        double sum_u      = 0.0;
+        double sum_v      = 0.0;
+        double sum_speed  = 0.0;
+
+        if (def.orientation == SectionOrientation::Vertical)
+        {
+            for (int j = 0; j < def.sample_count; ++j)
+            {
+                const double u_center = sample_u_center(u_field, nx, ny, def.line_index, j);
+                const double v_center = sample_v_center(v_field, nx, ny, def.line_index, j);
+                sum_u += u_center;
+                sum_v += v_center;
+                sum_speed += std::sqrt(u_center * u_center + v_center * v_center);
+            }
+        }
+        else
+        {
+            for (int i = 0; i < def.sample_count; ++i)
+            {
+                const double u_center = sample_u_center(u_field, nx, ny, i, def.line_index);
+                const double v_center = sample_v_center(v_field, nx, ny, i, def.line_index);
+                sum_u += u_center;
+                sum_v += v_center;
+                sum_speed += std::sqrt(u_center * u_center + v_center * v_center);
+            }
+        }
+
+        SectionAggregateSample sample;
+        sample.mean_u     = sum_u / static_cast<double>(def.sample_count);
+        sample.mean_v     = sum_v / static_cast<double>(def.sample_count);
+        sample.mean_speed = sum_speed / static_cast<double>(def.sample_count);
+        return sample;
+    }
+
+    void write_point_probe_metadata(std::ofstream&                              out,
+                                    const std::vector<SectionMonitorDefinition>& defs,
+                                    double                                       geometry_center_x,
+                                    double                                       geometry_center_y,
+                                    double                                       domain_width)
+    {
+        out << "probe_name,section_name,section_family,domain_name,boundary_name,section_orientation,"
+               "probe_i_local,probe_j_local,probe_i_interp_local,probe_j_interp_local,probe_interp_weight,"
+               "probe_sampling_method,probe_x_abs,probe_y_abs,probe_x_rel_center,probe_y_rel_center,"
+               "probe_x_rel_center_over_d,probe_y_rel_center_over_d,section_center_x_abs,section_center_y_abs,"
+               "section_center_x_rel_center,section_center_y_rel_center,section_center_x_rel_center_over_d,"
+               "section_center_y_rel_center_over_d\n";
+
+        for (const auto& def : defs)
+        {
+            const double probe_x_rel   = def.probe_x - geometry_center_x;
+            const double probe_y_rel   = def.probe_y - geometry_center_y;
+            const double section_x_rel = def.section_center_x - geometry_center_x;
+            const double section_y_rel = def.section_center_y - geometry_center_y;
+
+            out << def.name << "," << def.name << "," << def.family << "," << def.domain->name << ","
+                << location_type_name(def.boundary) << "," << section_orientation_name(def.orientation) << ","
+                << def.probe_i << "," << def.probe_j << ","
+                << def.probe_i_interp << "," << def.probe_j_interp << "," << def.probe_interp_weight << ","
+                << def.probe_sampling_method << "," << def.probe_x << "," << def.probe_y << ","
+                << probe_x_rel << "," << probe_y_rel << "," << probe_x_rel / domain_width << ","
+                << probe_y_rel / domain_width << "," << def.section_center_x << "," << def.section_center_y << ","
+                << section_x_rel << "," << section_y_rel << "," << section_x_rel / domain_width << ","
+                << section_y_rel / domain_width << "\n";
+        }
+    }
+
+    void write_section_metadata(std::ofstream&                              out,
+                                const std::vector<SectionMonitorDefinition>& defs,
+                                double                                       geometry_center_x,
+                                double                                       geometry_center_y,
+                                double                                       domain_width)
+    {
+        out << "section_name,section_family,domain_name,boundary_name,section_orientation,line_index_local,"
+               "section_sample_count,section_spacing,section_length,outward_normal_sign,section_center_x_abs,"
+               "section_center_y_abs,section_center_x_rel_center,section_center_y_rel_center,"
+               "section_center_x_rel_center_over_d,section_center_y_rel_center_over_d,probe_name,probe_i_local,"
+               "probe_j_local,probe_i_interp_local,probe_j_interp_local,probe_interp_weight,probe_sampling_method,"
+               "probe_x_abs,probe_y_abs,probe_x_rel_center,probe_y_rel_center,"
+               "probe_x_rel_center_over_d,probe_y_rel_center_over_d\n";
+
+        for (const auto& def : defs)
+        {
+            const double probe_x_rel   = def.probe_x - geometry_center_x;
+            const double probe_y_rel   = def.probe_y - geometry_center_y;
+            const double section_x_rel = def.section_center_x - geometry_center_x;
+            const double section_y_rel = def.section_center_y - geometry_center_y;
+
+            out << def.name << "," << def.family << "," << def.domain->name << ","
+                << location_type_name(def.boundary) << "," << section_orientation_name(def.orientation) << ","
+                << def.line_index << "," << def.sample_count << "," << def.spacing << "," << def.section_length << ","
+                << def.outward_sign << "," << def.section_center_x << "," << def.section_center_y << ","
+                << section_x_rel << "," << section_y_rel << "," << section_x_rel / domain_width << ","
+                << section_y_rel / domain_width << "," << def.name << "," << def.probe_i << "," << def.probe_j << ","
+                << def.probe_i_interp << "," << def.probe_j_interp << "," << def.probe_interp_weight << ","
+                << def.probe_sampling_method << "," << def.probe_x << "," << def.probe_y << "," << probe_x_rel << "," << probe_y_rel << ","
+                << probe_x_rel / domain_width << "," << probe_y_rel / domain_width << "\n";
+        }
+    }
+
+    void write_point_probe_header(std::ofstream& out, const std::vector<SectionMonitorDefinition>& defs)
+    {
+        out << "step,time,dt";
+        for (const auto& def : defs)
+        {
+            out << "," << def.name << "_u" << "," << def.name << "_v";
+        }
+        out << "\n";
+    }
+
+    void write_section_integral_header(std::ofstream& out, const std::vector<SectionMonitorDefinition>& defs)
+    {
+        out << "step,time,dt";
+        for (const auto& def : defs)
+        {
+            out << "," << def.name << "_mean_u" << "," << def.name << "_mean_v" << "," << def.name << "_mean_speed";
+        }
+        out << "\n";
+    }
+
+    void write_point_probe_row(std::ofstream&                              out,
+                               const std::vector<SectionMonitorDefinition>& defs,
+                               Variable2D&                                  u_var,
+                               Variable2D&                                  v_var,
+                               int                                          step,
+                               double                                       time,
+                               double                                       dt)
+    {
+        out << step << "," << time << "," << dt;
+        for (const auto& def : defs)
+        {
+            const PointProbeSample sample = sample_point_probe(def, u_var, v_var);
+            out << "," << sample.u << "," << sample.v;
+        }
+        out << "\n";
+    }
+
+    void write_section_integral_row(std::ofstream&                              out,
+                                    const std::vector<SectionMonitorDefinition>& defs,
+                                    Variable2D&                                  u_var,
+                                    Variable2D&                                  v_var,
+                                    int                                          step,
+                                    double                                       time,
+                                    double                                       dt)
+    {
+        out << step << "," << time << "," << dt;
+        for (const auto& def : defs)
+        {
+            const SectionAggregateSample sample = sample_section_aggregate(def, u_var, v_var);
+            out << "," << sample.mean_u << "," << sample.mean_v << "," << sample.mean_speed;
+        }
+        out << "\n";
+    }
 
     double field_value_clamped(const field2& field, int i, int j)
     {
@@ -830,6 +1241,7 @@ int main(int argc, char* argv[])
     }
 
     const int history_output_step      = std::max(1, case_param.history_output_step);
+    const int postprocess_output_step  = std::max(1, case_param.postprocess_output_step);
     constexpr int auto_pv_output_count = 100;
     const int pv_output_step           = case_param.pv_output_step > 0
                                              ? case_param.pv_output_step
@@ -1132,6 +1544,56 @@ int main(int argc, char* argv[])
         scalar_solver->nondiag_shared_boundary_update();
     }
 
+    const std::vector<SectionMonitorDefinition> section_monitors = {
+        build_section_monitor(
+            "center_left", "center_interface", &A1, LocationType::XPositive, -1.0, geometry_center_x, geometry_center_y),
+        build_section_monitor(
+            "center_right", "center_interface", &A3, LocationType::XNegative, 1.0, geometry_center_x, geometry_center_y),
+        build_section_monitor(
+            "center_bottom", "center_interface", &A4, LocationType::YPositive, -1.0, geometry_center_x, geometry_center_y),
+        build_section_monitor(
+            "center_top", "center_interface", &A5, LocationType::YNegative, 1.0, geometry_center_x, geometry_center_y),
+        build_section_monitor(
+            "physical_left", "physical_boundary", &A1, LocationType::XNegative, -1.0, geometry_center_x, geometry_center_y),
+        build_section_monitor(
+            "physical_right", "physical_boundary", &A3, LocationType::XPositive, 1.0, geometry_center_x, geometry_center_y),
+        build_section_monitor(
+            "physical_bottom", "physical_boundary", &A4, LocationType::YNegative, -1.0, geometry_center_x, geometry_center_y),
+        build_section_monitor(
+            "physical_top", "physical_boundary", &A5, LocationType::YPositive, 1.0, geometry_center_x, geometry_center_y),
+    };
+
+    const std::string postprocess_dir = case_param.root_dir + "/postProcessing";
+    IO::create_directory(postprocess_dir);
+
+    std::ofstream point_probe_metadata(postprocess_dir + "/point_probe_metadata.csv");
+    if (!point_probe_metadata.is_open())
+        throw std::runtime_error("Failed to open point_probe_metadata.csv for writing.");
+    point_probe_metadata << std::fixed << std::setprecision(METADATA_DECIMAL_DIGITS);
+    write_point_probe_metadata(
+        point_probe_metadata, section_monitors, geometry_center_x, geometry_center_y, reference_domain_width);
+    point_probe_metadata.flush();
+
+    std::ofstream section_metadata(postprocess_dir + "/section_metadata.csv");
+    if (!section_metadata.is_open())
+        throw std::runtime_error("Failed to open section_metadata.csv for writing.");
+    section_metadata << std::fixed << std::setprecision(METADATA_DECIMAL_DIGITS);
+    write_section_metadata(
+        section_metadata, section_monitors, geometry_center_x, geometry_center_y, reference_domain_width);
+    section_metadata.flush();
+
+    std::ofstream point_probes(postprocess_dir + "/point_probes.csv");
+    if (!point_probes.is_open())
+        throw std::runtime_error("Failed to open point_probes.csv for writing.");
+    point_probes << std::setprecision(16);
+    write_point_probe_header(point_probes, section_monitors);
+
+    std::ofstream section_integrals(postprocess_dir + "/section_integrals.csv");
+    if (!section_integrals.is_open())
+        throw std::runtime_error("Failed to open section_integrals.csv for writing.");
+    section_integrals << std::setprecision(16);
+    write_section_integral_header(section_integrals, section_monitors);
+
     std::ofstream stability_history(case_param.root_dir + "/stability_history.csv");
     if (!stability_history.is_open())
         throw std::runtime_error("Failed to open stability_history.csv for writing.");
@@ -1144,6 +1606,10 @@ int main(int argc, char* argv[])
     write_history_row(stability_history, 0, 0.0, time_cfg.dt, initial_metrics);
     stability_history.flush();
     summary_accumulator.update(initial_metrics, 0, 0.0);
+    write_point_probe_row(point_probes, section_monitors, u, v, 0, 0.0, time_cfg.dt);
+    write_section_integral_row(section_integrals, section_monitors, u, v, 0, 0.0, time_cfg.dt);
+    point_probes.flush();
+    section_integrals.flush();
 
     std::cout << "Starting MHD + Non-Newtonian stability simulation..." << std::endl;
 
@@ -1151,6 +1617,18 @@ int main(int argc, char* argv[])
     double last_dt      = time_cfg.dt;
     int    step         = 0;
     bool   diverged     = false;
+    int    last_postprocess_step = 0;
+
+    auto sync_boundaries = [&]() {
+        ns_solver.phys_boundary_update();
+        ns_solver.nondiag_shared_boundary_update();
+        ns_solver.diag_shared_boundary_update();
+        if (scalar_solver)
+        {
+            scalar_solver->phys_boundary_update();
+            scalar_solver->nondiag_shared_boundary_update();
+        }
+    };
 
     while (step < estimated_total_steps)
     {
@@ -1185,11 +1663,24 @@ int main(int argc, char* argv[])
 
         current_time += dt_step;
 
-        if (step % pv_output_step == 0)
+        const bool velocity_finite = representative_value_is_finite(u_A1) && representative_value_is_finite(v_A1);
+        const bool scalar_finite   = !enable_scalar_transport || representative_value_is_finite(c_A1);
+        if (!velocity_finite || !scalar_finite)
         {
-            ns_solver.phys_boundary_update();
-            ns_solver.nondiag_shared_boundary_update();
-            ns_solver.diag_shared_boundary_update();
+            diverged = true;
+            std::cout << "=== DIVERGENCE ===" << std::endl;
+            break;
+        }
+
+        const bool need_postprocess_output = (step % postprocess_output_step == 0);
+        const bool need_pv_output          = (step % pv_output_step == 0);
+        const bool need_history_output     = (step % history_output_step == 0);
+
+        if (need_postprocess_output || need_pv_output || need_history_output)
+            sync_boundaries();
+
+        if (need_pv_output)
+        {
             IO::write_csv(u, case_param.root_dir + "/u/u_" + std::to_string(step));
             IO::write_csv(v, case_param.root_dir + "/v/v_" + std::to_string(step));
             IO::write_csv(p, case_param.root_dir + "/p/p_" + std::to_string(step));
@@ -1200,20 +1691,21 @@ int main(int argc, char* argv[])
                 IO::write_csv(c, case_param.root_dir + "/c/c_" + std::to_string(step));
         }
 
-        const bool velocity_finite = representative_value_is_finite(u_A1) && representative_value_is_finite(v_A1);
-        const bool scalar_finite   = !enable_scalar_transport || representative_value_is_finite(c_A1);
-        if (!velocity_finite || !scalar_finite)
+        if (need_postprocess_output)
         {
-            diverged = true;
-            std::cout << "=== DIVERGENCE ===" << std::endl;
-            break;
+            // 高频 postProcessing 输出统一放在独立子目录下，避免和全场快照/末态文件混写。
+            write_point_probe_row(point_probes, section_monitors, u, v, step, current_time, dt_step);
+            write_section_integral_row(section_integrals, section_monitors, u, v, step, current_time, dt_step);
+            last_postprocess_step = step;
+            if (step % history_output_step == 0)
+            {
+                point_probes.flush();
+                section_integrals.flush();
+            }
         }
 
-        if (step % history_output_step == 0)
+        if (need_history_output)
         {
-            ns_solver.phys_boundary_update();
-            ns_solver.nondiag_shared_boundary_update();
-            ns_solver.diag_shared_boundary_update();
             const StabilityMetrics metrics =
                 compute_stability_metrics(case_param, u, v, reference_domain_width, geometry_center_x, geometry_center_y);
             write_history_row(stability_history, step, current_time, dt_step, metrics);
@@ -1226,9 +1718,7 @@ int main(int argc, char* argv[])
 
     if (!diverged)
     {
-        ns_solver.phys_boundary_update();
-        ns_solver.nondiag_shared_boundary_update();
-        ns_solver.diag_shared_boundary_update();
+        sync_boundaries();
 
         if (summary_accumulator.last_recorded_step != step)
         {
@@ -1237,6 +1727,12 @@ int main(int argc, char* argv[])
             write_history_row(stability_history, step, current_time, last_dt, final_metrics);
             stability_history.flush();
             summary_accumulator.update(final_metrics, step, current_time);
+        }
+
+        if (last_postprocess_step != step)
+        {
+            write_point_probe_row(point_probes, section_monitors, u, v, step, current_time, last_dt);
+            write_section_integral_row(section_integrals, section_monitors, u, v, step, current_time, last_dt);
         }
 
         const int runtime_final_step = case_param.step_to_save > 0 ? case_param.step_to_save : step;
@@ -1249,6 +1745,9 @@ int main(int argc, char* argv[])
         if (enable_scalar_transport)
             IO::write_csv(c, case_param.root_dir + "/final/c_" + std::to_string(runtime_final_step));
     }
+
+    point_probes.flush();
+    section_integrals.flush();
 
     write_summary_csv(
         case_param, run_status, diverged, step, current_time, last_dt, estimated_total_steps, summary_accumulator);
