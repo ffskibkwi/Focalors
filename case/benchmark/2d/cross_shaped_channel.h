@@ -1,6 +1,7 @@
 #pragma once
 
 #include "io/case_base.hpp"
+#include <stdexcept>
 
 /**
  * @brief Case class for Cross-Shaped Channel 2D simulation.
@@ -35,12 +36,20 @@ public:
         IO::read_number(para_map, "lx_3", lx_3);
         IO::read_number(para_map, "ly_4", ly_4);
         IO::read_number(para_map, "ly_5", ly_5);
+        double requested_io_width_ratio = 0.0;
+        if (IO::read_number(para_map, "io_width_ratio", requested_io_width_ratio))
+        {
+            if (requested_io_width_ratio <= 0.0)
+                throw std::runtime_error("io_width_ratio must be > 0.");
+            ly_2 = lx_2 * requested_io_width_ratio;
+        }
         std::cout << "1" << std::endl;
 
         // Physics Parameters
         IO::read_number(para_map, "Re", Re);
         IO::read_number(para_map, "U0", U0);
         IO::read_number(para_map, "diameter", diameter);
+        update_derived_geometry_scales();
 
         // MHD Parameters
         IO::read_number(para_map, "Ha", Ha);
@@ -104,8 +113,13 @@ public:
             .record("ly_4", ly_4)
             .record("ly_5", ly_5)
             .record("Re", Re)
+            .record("Re_inlet_width", Re_inlet_width)
+            .record("Re_outlet_width", Re_outlet_width)
             .record("U0", U0)
             .record("diameter", diameter)
+            .record("inlet_width", inlet_width)
+            .record("outlet_width", outlet_width)
+            .record("io_width_ratio", io_width_ratio)
             .record("Ha", Ha)
             .record("B0", B0)
             .record("sigma", sigma)
@@ -138,6 +152,18 @@ public:
         return true;
     }
 
+    void update_derived_geometry_scales()
+    {
+        if (lx_2 <= 0.0 || ly_2 <= 0.0 || diameter <= 0.0)
+            return;
+
+        io_width_ratio = ly_2 / lx_2;
+        inlet_width    = diameter;
+        outlet_width   = diameter / io_width_ratio;
+        Re_inlet_width = Re;
+        Re_outlet_width = Re / io_width_ratio;
+    }
+
     // Grid Spacing
     double h = 0.01;
 
@@ -150,9 +176,14 @@ public:
     double ly_5 = 15.0;
 
     // Physics
-    double Re       = 100.0;
-    double U0       = 1.0;
-    double diameter = 0.01;
+    double Re              = 100.0;
+    double Re_inlet_width  = 100.0;
+    double Re_outlet_width = 100.0;
+    double U0              = 1.0;
+    double diameter        = 0.01; // Physical inlet width.
+    double inlet_width     = 0.01;
+    double outlet_width    = 0.01;
+    double io_width_ratio  = 1.0;  // ly_2 / lx_2.
 
     // MHD Parameters
     double Ha    = 10.0; // Hartmann number

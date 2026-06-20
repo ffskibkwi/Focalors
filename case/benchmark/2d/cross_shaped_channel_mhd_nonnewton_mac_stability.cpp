@@ -177,6 +177,7 @@ namespace
             IO::read_number(para_map, "stagnation_window_half_width_over_d", stagnation_window_half_width_over_d);
             IO::read_number(para_map, "history_output_step", history_output_step);
             IO::read_number(para_map, "postprocess_output_step", postprocess_output_step);
+            IO::read_number(para_map, "inlet_flow_bias_alpha", inlet_flow_bias_alpha);
 
             if (perturb_stream_sign == 0)
                 perturb_stream_sign = 1;
@@ -184,6 +185,8 @@ namespace
                 history_output_step = 1;
             if (postprocess_output_step <= 0)
                 postprocess_output_step = 1;
+            if (!std::isfinite(inlet_flow_bias_alpha) || std::abs(inlet_flow_bias_alpha) >= 1.0)
+                throw std::runtime_error("inlet_flow_bias_alpha must be finite and satisfy |alpha| < 1.");
         }
 
         bool record_paras() override
@@ -192,6 +195,7 @@ namespace
                 return false;
 
             paras_record.record("perturb_eps", perturb_eps)
+                .record("inlet_flow_bias_alpha", inlet_flow_bias_alpha)
                 .record("perturb_sigma_over_d", perturb_sigma_over_d)
                 .record("perturb_center_x_over_d", perturb_center_x_over_d)
                 .record("perturb_center_y_over_d", perturb_center_y_over_d)
@@ -205,6 +209,7 @@ namespace
         }
 
         double perturb_eps                        = 1.0e-6;
+        double inlet_flow_bias_alpha              = 0.0;
         double perturb_sigma_over_d               = 0.25;
         double perturb_center_x_over_d            = 0.0;
         double perturb_center_y_over_d            = 0.1;
@@ -1029,6 +1034,7 @@ namespace
 
         out << std::setprecision(16);
         out << "run_status,diverged,final_step,final_time,final_dt,estimated_total_steps,history_samples,"
+               "io_width_ratio,Re_inlet_width,Re_outlet_width,"
                "perturb_eps,perturb_sigma_over_d,perturb_center_x_over_d,perturb_center_y_over_d,"
                "diagnostic_window_half_width_over_d,stagnation_window_half_width_over_d,"
                "asymmetry_ud_energy_final,asymmetry_ud_energy_abs_max,asymmetry_ud_energy_abs_max_step,"
@@ -1041,7 +1047,8 @@ namespace
             summary_acc.has_last_metrics ? summary_acc.last_metrics : StabilityMetrics {};
 
         out << run_status << "," << (diverged ? 1 : 0) << "," << final_step << "," << final_time << "," << final_dt
-            << "," << estimated_total_steps << "," << summary_acc.history_samples << "," << case_param.perturb_eps
+            << "," << estimated_total_steps << "," << summary_acc.history_samples << "," << case_param.io_width_ratio
+            << "," << case_param.Re_inlet_width << "," << case_param.Re_outlet_width << "," << case_param.perturb_eps
             << "," << case_param.perturb_sigma_over_d << "," << case_param.perturb_center_x_over_d << ","
             << case_param.perturb_center_y_over_d << "," << case_param.diagnostic_window_half_width_over_d << ","
             << case_param.stagnation_window_half_width_over_d << "," << final_metrics.asymmetry_ud_energy << ","
@@ -1072,8 +1079,8 @@ int main(int argc, char* argv[])
     CrossShapedChannel2DStabilityCase case_param(argc, argv);
     case_param.read_paras();
 
-    double      Sc                 = 0.0;
-    std::string scalar_scheme_name = "quick";
+    double      Sc                 = 1000.0;
+    std::string scalar_scheme_name = "tvd";
     IO::read_number(case_param.para_map, "Sc", Sc);
     IO::read_string(case_param.para_map, "scalar_scheme", scalar_scheme_name);
     const bool                 enable_scalar_transport = Sc > 0.0;
@@ -1337,7 +1344,7 @@ int main(int argc, char* argv[])
     geo.check();
     geo.solve_prepare();
 
-    const double reference_domain_width = lx2;
+    const double reference_domain_width = ly2;
     const double geometry_center_x      = 0.5 * lx2;
     const double geometry_center_y      = 0.5 * ly2;
 
@@ -1495,19 +1502,22 @@ int main(int argc, char* argv[])
         set_neumann_zero(c, &A5, LocationType::YPositive);
     }
 
+    const double left_inlet_velocity  = 1.0 + case_param.inlet_flow_bias_alpha;
+    const double right_inlet_velocity = -(1.0 - case_param.inlet_flow_bias_alpha);
+
     u.set_boundary_type(&A1, LocationType::XNegative, PDEBoundaryType::Dirichlet);
     u.set_boundary_value(&A1, LocationType::XNegative, 0.0);
     u.has_boundary_value_map[&A1][LocationType::XNegative] = true;
     set_dirichlet_zero(v, &A1, LocationType::XNegative);
     for (int j = 0; j < u_A1.get_ny(); ++j)
-        u.boundary_value_map[&A1][LocationType::XNegative][j] = 1.0;
+        u.boundary_value_map[&A1][LocationType::XNegative][j] = left_inlet_velocity;
 
     u.set_boundary_type(&A3, LocationType::XPositive, PDEBoundaryType::Dirichlet);
     u.set_boundary_value(&A3, LocationType::XPositive, 0.0);
     u.has_boundary_value_map[&A3][LocationType::XPositive] = true;
     set_dirichlet_zero(v, &A3, LocationType::XPositive);
     for (int j = 0; j < u_A3.get_ny(); ++j)
-        u.boundary_value_map[&A3][LocationType::XPositive][j] = -1.0;
+        u.boundary_value_map[&A3][LocationType::XPositive][j] = right_inlet_velocity;
 
     set_neumann_zero(u, &A4, LocationType::YNegative);
     set_neumann_zero(v, &A4, LocationType::YNegative);
