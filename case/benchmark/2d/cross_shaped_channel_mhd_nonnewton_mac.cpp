@@ -185,8 +185,8 @@ int main(int argc, char* argv[])
     CrossShapedChannel2DCase case_param(argc, argv);
     case_param.read_paras();
 
-    double      Sc                 = 0.0;
-    std::string scalar_scheme_name = "quick";
+    double      Sc                 = 1000.0;
+    std::string scalar_scheme_name = "tvd";
     IO::read_number(case_param.para_map, "Sc", Sc);
     IO::read_string(case_param.para_map, "scalar_scheme", scalar_scheme_name);
     const bool                 enable_scalar_transport = Sc > 0.0;
