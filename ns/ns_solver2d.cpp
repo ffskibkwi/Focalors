@@ -86,6 +86,56 @@ void ConcatNSSolver2D::variable_check()
         throw std::runtime_error("ConcatNSSolver2D: p->position_type is not Center");
 }
 
+void ConcatNSSolver2D::raw_vorticity_update(Variable2D& vorticity_var) const
+{
+    raw_vorticity_update(*u_var, *v_var, vorticity_var);
+}
+
+void ConcatNSSolver2D::raw_vorticity_update(const Variable2D& u_var,
+                                            const Variable2D& v_var,
+                                            Variable2D&       vorticity_var)
+{
+    if (u_var.geometry == nullptr || v_var.geometry == nullptr || vorticity_var.geometry == nullptr)
+        throw std::runtime_error("raw_vorticity_update: variables must have geometry");
+    if (u_var.geometry != v_var.geometry || u_var.geometry != vorticity_var.geometry)
+        throw std::runtime_error("raw_vorticity_update: u, v, vorticity must share one geometry");
+    if (u_var.position_type != VariablePositionType::XFace)
+        throw std::runtime_error("raw_vorticity_update: u must be XFace");
+    if (v_var.position_type != VariablePositionType::YFace)
+        throw std::runtime_error("raw_vorticity_update: v must be YFace");
+    if (vorticity_var.position_type != VariablePositionType::Center)
+        throw std::runtime_error("raw_vorticity_update: vorticity output must be center-sized");
+
+    for (auto* domain : u_var.geometry->domains)
+    {
+        const field2& u     = *u_var.field_map.at(domain);
+        const field2& v     = *v_var.field_map.at(domain);
+        field2&       omega = *vorticity_var.field_map.at(domain);
+
+        const int nx = domain->get_nx();
+        const int ny = domain->get_ny();
+        if (u.get_nx() != nx || u.get_ny() != ny || v.get_nx() != nx || v.get_ny() != ny ||
+            omega.get_nx() != nx || omega.get_ny() != ny)
+            throw std::runtime_error("raw_vorticity_update: field size mismatch on domain " + domain->name);
+
+        const double hx = domain->get_hx();
+        const double hy = domain->get_hy();
+        double*      v_xneg_buffer = v_var.buffer_map.at(domain).at(LocationType::XNegative);
+        double*      u_yneg_buffer = u_var.buffer_map.at(domain).at(LocationType::YNegative);
+
+        OPENMP_PARALLEL_FOR()
+        for (int i = 0; i < nx; ++i)
+        {
+            for (int j = 0; j < ny; ++j)
+            {
+                const double v_left = i == 0 ? v_xneg_buffer[j] : v(i - 1, j);
+                const double u_down = j == 0 ? u_yneg_buffer[i] : u(i, j - 1);
+                omega(i, j) = (v(i, j) - v_left) / hx - (u(i, j) - u_down) / hy;
+            }
+        }
+    }
+}
+
 void ConcatNSSolver2D::solve()
 {
     PhysicsConfig& physics_cfg = PhysicsConfig::Get();

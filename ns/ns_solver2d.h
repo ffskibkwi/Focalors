@@ -134,6 +134,21 @@ public:
     void pressure_buffer_update();
     void add_pressure_gradient();
 
+    /**
+     * Compute raw MAC vorticity without first interpolating velocity to cell centers.
+     *
+     * The result is stored on the domain's lower-left node stencil with the same
+     * array shape as a center field (nx by ny):
+     *   omega(i,j) = [v(i,j)-v(i-1,j)]/hx - [u(i,j)-u(i,j-1)]/hy.
+     * Boundary values are taken from the synchronized x-negative and y-negative
+     * velocity buffers. The output variable must share the same geometry and use
+     * center-sized fields on each domain.
+     */
+    void raw_vorticity_update(Variable2D& vorticity_var) const;
+    static void raw_vorticity_update(const Variable2D& u_var,
+                                     const Variable2D& v_var,
+                                     Variable2D&       vorticity_var);
+
 protected:
     std::vector<Domain2DUniform*>                                                            domains;
     std::unordered_map<Domain2DUniform*, std::unordered_map<LocationType, Domain2DUniform*>> adjacency;

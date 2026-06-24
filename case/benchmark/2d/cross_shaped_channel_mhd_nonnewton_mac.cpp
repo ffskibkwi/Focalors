@@ -462,10 +462,11 @@ int main(int argc, char* argv[])
     geo.check();
     geo.solve_prepare();
 
-    Variable2D u("u"), v("v"), p("p");
+    Variable2D u("u"), v("v"), p("p"), vorticity("vorticity");
     u.set_geometry(geo);
     v.set_geometry(geo);
     p.set_geometry(geo);
+    vorticity.set_geometry(geo);
 
     // Electric potential variable (center type, like pressure p)
     Variable2D phi("phi");
@@ -487,6 +488,7 @@ int main(int argc, char* argv[])
     field2 u_A1, u_A2, u_A3, u_A4, u_A5;
     field2 v_A1, v_A2, v_A3, v_A4, v_A5;
     field2 p_A1, p_A2, p_A3, p_A4, p_A5;
+    field2 vorticity_A1, vorticity_A2, vorticity_A3, vorticity_A4, vorticity_A5;
 
     u.set_x_edge_field(&A1, u_A1);
     u.set_x_edge_field(&A2, u_A2);
@@ -503,6 +505,11 @@ int main(int argc, char* argv[])
     p.set_center_field(&A3, p_A3);
     p.set_center_field(&A4, p_A4);
     p.set_center_field(&A5, p_A5);
+    vorticity.set_center_field(&A1, vorticity_A1);
+    vorticity.set_center_field(&A2, vorticity_A2);
+    vorticity.set_center_field(&A3, vorticity_A3);
+    vorticity.set_center_field(&A4, vorticity_A4);
+    vorticity.set_center_field(&A5, vorticity_A5);
 
     // Electric potential fields (center type)
     field2 phi_A1("phi_A1"), phi_A2("phi_A2"), phi_A3("phi_A3"), phi_A4("phi_A4"), phi_A5("phi_A5");
@@ -745,8 +752,10 @@ int main(int argc, char* argv[])
             ns_solver.phys_boundary_update();
             ns_solver.nondiag_shared_boundary_update();
             ns_solver.diag_shared_boundary_update();
+            ns_solver.raw_vorticity_update(vorticity);
             IO::write_csv(u, nowtime_dir + "/u/u_" + std::to_string(step));
             IO::write_csv(v, nowtime_dir + "/v/v_" + std::to_string(step));
+            IO::write_csv(vorticity, nowtime_dir + "/vorticity/vorticity_" + std::to_string(step));
             IO::write_csv(p, nowtime_dir + "/p/p_" + std::to_string(step));
             IO::write_csv(mu, nowtime_dir + "/mu/mu_" + std::to_string(step));
             if (enable_mhd)
@@ -768,8 +777,10 @@ int main(int argc, char* argv[])
     std::cout << "Simulation finished." << std::endl;
     const int runtime_final_step = case_param.step_to_save > 0 ? case_param.step_to_save : step;
     // 使用 step_to_save 控制最终保存
+    ns_solver.raw_vorticity_update(vorticity);
     IO::write_csv(u, nowtime_dir + "/final/u_" + std::to_string(runtime_final_step));
     IO::write_csv(v, nowtime_dir + "/final/v_" + std::to_string(runtime_final_step));
+    IO::write_csv(vorticity, nowtime_dir + "/final/vorticity_" + std::to_string(runtime_final_step));
     IO::write_csv(p, nowtime_dir + "/final/p_" + std::to_string(runtime_final_step));
     IO::write_csv(mu, nowtime_dir + "/final/mu_" + std::to_string(runtime_final_step));
     if (enable_mhd)
