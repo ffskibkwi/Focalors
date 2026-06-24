@@ -384,6 +384,9 @@ int main(int argc, char* argv[])
     }
     std::cout << "Simulation finished." << std::endl;
     // 使用 step_to_save 控制最终保存
+    ns_solver.phys_boundary_update();
+    ns_solver.nondiag_shared_boundary_update();
+    ns_solver.diag_shared_boundary_update();
     ns_solver.raw_vorticity_update(vorticity);
     IO::write_csv(u, nowtime_dir + "/final/u_" + std::to_string(final_step_to_save));
     IO::write_csv(v, nowtime_dir + "/final/v_" + std::to_string(final_step_to_save));

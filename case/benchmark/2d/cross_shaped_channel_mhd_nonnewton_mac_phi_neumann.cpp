@@ -624,6 +624,9 @@ int main(int argc, char* argv[])
     }
     std::cout << "Simulation finished." << std::endl;
     const int runtime_final_step = case_param.step_to_save > 0 ? case_param.step_to_save : step;
+    ns_solver.phys_boundary_update();
+    ns_solver.nondiag_shared_boundary_update();
+    ns_solver.diag_shared_boundary_update();
     ns_solver.raw_vorticity_update(vorticity);
     IO::write_csv(u, nowtime_dir + "/final/u_" + std::to_string(runtime_final_step));
     IO::write_csv(v, nowtime_dir + "/final/v_" + std::to_string(runtime_final_step));
