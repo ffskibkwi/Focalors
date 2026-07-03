@@ -52,3 +52,7 @@ log_*
 
 result/
 temp/
+
+# For MacOS
+**/.DS_Store
+.DS_Store
