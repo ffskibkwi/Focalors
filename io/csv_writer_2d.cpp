@@ -1,5 +1,6 @@
 #include "csv_writer_2d.h"
 #include "common.h"
+#include "csv_numeric_parse.h"
 
 #include <fstream>
 #include <iomanip>
@@ -158,13 +159,15 @@ namespace IO
             {
                 try
                 {
-                    double numeric_value = std::stod(value);
+                    double numeric_value = detail::parse_csv_double(value);
                     field(i, j)          = numeric_value;
                     j++;
                 }
-                catch (const std::invalid_argument&)
+                catch (const std::exception& error)
                 {
-                    std::cerr << "Invalid number at i " << i << ", j " << j << ": " << value << std::endl;
+                    std::cerr << "Invalid number at i " << i << ", j " << j << ": " << value << " ("
+                              << error.what() << ")" << std::endl;
+                    return false;
                 }
             }
             i++;
@@ -201,7 +204,7 @@ namespace IO
                 {
                     try
                     {
-                        row.push_back(std::stod(value));
+                        row.push_back(detail::parse_csv_double(value));
                     }
                     catch (const std::exception&)
                     {

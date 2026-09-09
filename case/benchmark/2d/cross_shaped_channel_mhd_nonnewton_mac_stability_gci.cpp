@@ -6,6 +6,7 @@
 #include "base/location_boundary.h"
 #include "cross_shaped_channel.h"
 #include "cross_shaped_channel_restart_utils.h"
+#include "cross_shaped_channel_probe_interpolation.h"
 #include "io/common.h"
 #include "io/csv_writer_2d.h"
 #include "ns/mhd_module_2d_mac.h"
@@ -177,11 +178,14 @@ namespace
             IO::read_number(para_map, "history_output_step", history_output_step);
             IO::read_number(para_map, "postprocess_output_step", postprocess_output_step);
             IO::read_number(para_map, "inlet_flow_bias_alpha", inlet_flow_bias_alpha);
+            IO::read_number(para_map, "r06_fixed_probes", r06_fixed_probes);
 
             if (perturb_stream_sign == 0)
                 perturb_stream_sign = 1;
             if (perturb_after_restart != 0 && perturb_after_restart != 1)
                 throw std::runtime_error("perturb_after_restart must be 0 or 1.");
+            if (r06_fixed_probes != 0 && r06_fixed_probes != 1)
+                throw std::runtime_error("r06_fixed_probes must be 0 or 1.");
             if (history_output_step <= 0)
                 history_output_step = 1;
             if (postprocess_output_step <= 0)
@@ -205,7 +209,8 @@ namespace
                 .record("diagnostic_window_half_width_over_d", diagnostic_window_half_width_over_d)
                 .record("stagnation_window_half_width_over_d", stagnation_window_half_width_over_d)
                 .record("history_output_step", history_output_step)
-                .record("postprocess_output_step", postprocess_output_step);
+                .record("postprocess_output_step", postprocess_output_step)
+                .record("r06_fixed_probes", r06_fixed_probes);
 
             return true;
         }
@@ -221,6 +226,7 @@ namespace
         double stagnation_window_half_width_over_d = 0.5;
         int    history_output_step                 = 50;
         int    postprocess_output_step             = 1;
+        int    r06_fixed_probes                     = 0;
     };
 
     struct StabilityMetrics
@@ -661,6 +667,39 @@ namespace
         sample.u                  = (1.0 - def.probe_interp_weight) * u_first + def.probe_interp_weight * u_second;
         sample.v                  = (1.0 - def.probe_interp_weight) * v_first + def.probe_interp_weight * v_second;
         return sample;
+    }
+
+    struct FixedProbeLocation
+    {
+        const char* name;
+        double x_over_d, y_over_d;
+    };
+    const FixedProbeLocation r06_probe_locations[] = {
+        {"top_d1", 0.0, 1.0}, {"top_d2", 0.0, 2.0}, {"top_d1_xp025", 0.25, 1.0}};
+
+    void write_r06_probe_row(std::ostream& out, Domain2DUniform& domain, Variable2D& u_var, Variable2D& v_var,
+                             double cx, double cy, double width, int step, double time, double dt)
+    {
+        // Read-only observations at identical physical coordinates across grids.
+        // Face velocities are averaged to centres, then bilinearly interpolated.
+        const auto& u_field = *u_var.field_map.at(&domain);
+        const auto& v_field = *v_var.field_map.at(&domain);
+        const int nx = domain.get_nx(), ny = domain.get_ny();
+        out << step << ',' << time << ',' << dt;
+        for (const auto& probe : r06_probe_locations)
+        {
+            const auto stencil = CrossSlotProbe::cell_center_stencil(
+                nx, ny, domain.get_hx(), domain.get_hy(), domain.get_offset_x(), domain.get_offset_y(),
+                cx + probe.x_over_d * width, cy + probe.y_over_d * width);
+            const double ux = CrossSlotProbe::interpolate(stencil, [&](int i, int j) {
+                return sample_u_center(u_field, nx, ny, i, j);
+            });
+            const double uy = CrossSlotProbe::interpolate(stencil, [&](int i, int j) {
+                return sample_v_center(v_field, nx, ny, i, j);
+            });
+            out << ',' << ux << ',' << uy;
+        }
+        out << '\n';
     }
 
     SectionAggregateSample
@@ -1924,6 +1963,34 @@ int main(int argc, char* argv[])
     point_probes << std::setprecision(16);
     write_point_probe_header(point_probes, section_monitors);
 
+    std::ofstream fixed_point_probes;
+    if (case_param.r06_fixed_probes)
+    {
+        fixed_point_probes.open(postprocess_dir + "/fixed_point_probes.csv");
+        if (!fixed_point_probes)
+            throw std::runtime_error("Cannot open fixed_point_probes.csv");
+        fixed_point_probes << std::setprecision(17) << "step,time,dt";
+        std::ofstream metadata(postprocess_dir + "/fixed_point_probe_metadata.csv");
+        if (!metadata)
+            throw std::runtime_error("Cannot open fixed_point_probe_metadata.csv");
+        metadata << std::setprecision(17)
+                 << "probe_name,domain,x_over_d,y_over_d,x_absolute,y_absolute,sampling_method\n";
+        for (const auto& probe : r06_probe_locations)
+        {
+            fixed_point_probes << ',' << probe.name << "_u," << probe.name << "_v";
+            metadata << probe.name << ",A5," << probe.x_over_d << ',' << probe.y_over_d << ','
+                     << geometry_center_x + probe.x_over_d * reference_domain_width << ','
+                     << geometry_center_y + probe.y_over_d * reference_domain_width
+                     << ",MAC_face_to_center_then_bilinear\n";
+        }
+        fixed_point_probes << '\n';
+    }
+    auto write_fixed_probes = [&](int output_step, double output_time, double output_dt) {
+        if (case_param.r06_fixed_probes)
+            write_r06_probe_row(fixed_point_probes, A5, u, v, geometry_center_x, geometry_center_y,
+                                reference_domain_width, output_step, output_time, output_dt);
+    };
+
     std::ofstream section_integrals(postprocess_dir + "/section_integrals.csv");
     if (!section_integrals.is_open())
         throw std::runtime_error("Failed to open section_integrals.csv for writing.");
@@ -1955,6 +2022,7 @@ int main(int argc, char* argv[])
     gci_metrics.flush();
     gci_summary_accumulator.update(initial_gci_metrics, 0.0, 0.5 * case_param.T_total);
     write_point_probe_row(point_probes, section_monitors, u, v, 0, 0.0, time_cfg.dt);
+    write_fixed_probes(0, 0.0, time_cfg.dt);
     write_section_integral_row(section_integrals, section_monitors, u, v, 0, 0.0, time_cfg.dt);
     point_probes.flush();
     section_integrals.flush();
@@ -2045,11 +2113,14 @@ int main(int argc, char* argv[])
         {
             // 高频 postProcessing 输出统一放在独立子目录下，避免和全场快照/末态文件混写。
             write_point_probe_row(point_probes, section_monitors, u, v, step, current_time, dt_step);
+            write_fixed_probes(step, current_time, dt_step);
             write_section_integral_row(section_integrals, section_monitors, u, v, step, current_time, dt_step);
             last_postprocess_step = step;
             if (step % history_output_step == 0)
             {
                 point_probes.flush();
+                if (case_param.r06_fixed_probes)
+                    fixed_point_probes.flush();
                 section_integrals.flush();
             }
         }
@@ -2092,6 +2163,7 @@ int main(int argc, char* argv[])
         if (last_postprocess_step != step)
         {
             write_point_probe_row(point_probes, section_monitors, u, v, step, current_time, last_dt);
+            write_fixed_probes(step, current_time, last_dt);
             write_section_integral_row(section_integrals, section_monitors, u, v, step, current_time, last_dt);
         }
 
@@ -2111,6 +2183,8 @@ int main(int argc, char* argv[])
     point_probes.flush();
     section_integrals.flush();
     gci_metrics.flush();
+    if (case_param.r06_fixed_probes)
+        fixed_point_probes.flush();
 
     write_summary_csv(
         case_param, run_status, diverged, step, current_time, last_dt, estimated_total_steps, summary_accumulator);
