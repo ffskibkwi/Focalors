@@ -98,6 +98,7 @@ public:
         {
             gamma_ref = use_dimensionless_viscosity ? (U0 / ((diameter > 0.0) ? diameter : 1.0)) : 1.0;
         }
+        IO::read_number(para_map, "viscosity_relax_alpha", viscosity_relax_alpha);
     }
 
     bool record_paras() override
@@ -147,7 +148,8 @@ public:
             .record("mu_max_pl", mu_max_pl)
             .record("mu_ref", mu_ref)
             .record("gamma_ref", gamma_ref)
-            .record("use_dimensionless_viscosity", use_dimensionless_viscosity ? 1 : 0);
+            .record("use_dimensionless_viscosity", use_dimensionless_viscosity ? 1 : 0)
+            .record("viscosity_relax_alpha", viscosity_relax_alpha);
 
         return true;
     }
@@ -223,4 +225,5 @@ public:
     double mu_ref                      = POWERLAW_ETA_C;
     double gamma_ref                   = 1.0;
     bool   use_dimensionless_viscosity = true;
+    double viscosity_relax_alpha       = 1.0;
 };

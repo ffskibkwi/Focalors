@@ -232,6 +232,8 @@ int main(int argc, char* argv[])
     // Set Non-Newtonian parameters based on model type
     physics_cfg.set_model_type(case_param.model_type);
     physics_cfg.set_gamma_ref(case_param.gamma_ref);
+    physics_cfg.set_viscosity_relax_alpha(case_param.viscosity_relax_alpha);
+    std::cout << "  viscosity_relax_alpha: " << physics_cfg.viscosity_relax_alpha << std::endl;
     if (case_param.model_type == 1) // Power Law
     {
         physics_cfg.set_power_law_dimensionless(case_param.k_pl,

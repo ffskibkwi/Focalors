@@ -8,8 +8,8 @@
 
 /** @brief Minimum shear rate threshold to prevent singularity in power-law model */
 constexpr double GAMMA_DOT_MIN = 1.0e-4;
-/** @brief Under-relaxation factor for viscosity update (0, 1], smaller means stronger damping */
-constexpr double VISCOSITY_RELAX_ALPHA = 0.7;
+/** @brief Default under-relaxation factor for viscosity update (0, 1], smaller means stronger damping */
+constexpr double DEFAULT_VISCOSITY_RELAX_ALPHA = 1.0;
 /** @brief Spatial smoothing weights for viscosity field */
 constexpr double VISCOSITY_SMOOTH_CENTER_WEIGHT   = 0.8;
 constexpr double VISCOSITY_SMOOTH_NEIGHBOR_WEIGHT = 0.05;
@@ -271,6 +271,7 @@ void ConcatNSSolver2D::viscosity_update()
         double hy = domain->hy;
 
         const bool enable_spatial_smoothing = VISCOSITY_ENABLE_SPATIAL_SMOOTHING;
+        const double relax_alpha            = physics_cfg.viscosity_relax_alpha;
 
         const int mu_ny  = ny + 1;
         auto      mu_idx = [mu_ny](int i_idx, int j_idx) { return i_idx * mu_ny + j_idx; };
@@ -414,11 +415,11 @@ void ConcatNSSolver2D::viscosity_update()
                 // 4. Update Viscosity with under-relaxation to suppress oscillations
                 double mu_new = calc_viscosity_by_model(gamma_dot, physics_cfg);
 
-                // Skip relaxation for first initialization-like states to avoid delaying startup.
+                // Skip relaxation for first initialization-like states or when alpha >= 1.0 (no relaxation).
                 double mu_old         = mu(i, j);
-                double mu_relaxed_val = (mu_old <= 0.0) ?
+                double mu_relaxed_val = (mu_old <= 0.0 || relax_alpha >= 1.0) ?
                                             mu_new :
-                                            (VISCOSITY_RELAX_ALPHA * mu_new + (1.0 - VISCOSITY_RELAX_ALPHA) * mu_old);
+                                            (relax_alpha * mu_new + (1.0 - relax_alpha) * mu_old);
 
                 int idx         = mu_idx(i, j);
                 mu_relaxed[idx] = mu_relaxed_val;
