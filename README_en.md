@@ -194,7 +194,7 @@ Core algorithm and fluid solver publications:
 
 ## Development Team
 
-This project is developed and maintained by Zichao Jiang, Jiacheng Lian, and Zhiwei Zhang.
+This project is developed and maintained by Zichao Jiang, Jiacheng Lian, and Zhaowei Zhang.
 
 ---
 

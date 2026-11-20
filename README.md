@@ -195,7 +195,7 @@ int main(int argc, char** argv) {
 
 ## 开发团队
 
-本项目由 Zichao Jiang、Jiacheng Lian、Zhiwei Zhang 共同开发与维护。
+本项目由 Zichao Jiang、Jiacheng Lian、Zhaowei Zhang 共同开发与维护。
 
 ---
 
