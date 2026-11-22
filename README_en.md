@@ -39,7 +39,7 @@ The solver supports the incompressible Navier-Stokes equations and incorporates 
   - Supports MAC staggered grid and collocated grid discretizations.
   - Includes a passive scalar convection-diffusion solver (supporting high-order schemes such as QUICK).
 - **Non-Newtonian Rheology (`ns`)**
-  - Supports Power-law, Carreau, and Bird-Carreau constitutive models.
+  - Supports Power-law, Carreau-Yasuda, and Casson constitutive models.
   - Implements viscosity under-relaxation and non-linear strain-rate iterations.
 - **Low-Rm Magnetohydrodynamics (`ns`)**
   - Couples fluid flow and electromagnetic fields under the low magnetic Reynolds number approximation; solves the electric potential Poisson equation and evaluates the J × B Lorentz force.

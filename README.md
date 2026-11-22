@@ -40,7 +40,7 @@ High-Performance Incompressible Multi-Physics CFD Solver Based on FFT-DDM
   - 支持 MAC 交错网格与同位网格离散。
   - 包含被动标量对流扩散求解器（支持 QUICK 等高阶格式）。
 - **非牛顿流变模型 (`ns`)**
-  - 支持幂律模型（Power-law）、Carreau 模型与 Bird-Carreau 模型。
+  - 支持幂律模型（Power-law）、Carreau-Yasuda 模型与 Casson 模型。
   - 支持黏度亚松弛调节与非线性剪切率迭代更新。
 - **低磁雷诺数磁流体力学 (`ns`)**
   - 在低 Rm 近似下耦合电磁场与流场，求解电势泊松方程并计算 J × B 洛伦兹力项。
